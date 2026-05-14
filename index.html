@@ -2089,11 +2089,15 @@
           <span class="hpc-tag">Book Club</span>
           <div class="hpc-title">Join &amp; Save on Every Order</div>
           <ul class="hpc-perks">
-            <li>10% off on all purchases</li>
+            <li>Attractive discounts on all purchases</li>
+            <li>Surprise gifts</li>
             <li>Exclusive member-only deals</li>
             <li>Early access to new titles</li>
+            <li>High speed delivery</li>
+            <li>Member dashboard</li>
+            <li>News letter</li>
           </ul>
-          <div class="hpc-price">₹99 / year &nbsp;·&nbsp; Cancel anytime</div>
+          <div class="hpc-price">₹99 / year</div>
           <button class="hpc-cta">Join Now →</button>
         </div>
 
@@ -2106,8 +2110,11 @@
             <li>3 flexible listing plans</li>
             <li>Reach thousands of readers</li>
             <li>Signed copy &amp; event support</li>
+            <li>Digital posters</li>
+            <li>Instagram collaboration</li>
+            <li>Author dashboard</li>
           </ul>
-          <div class="hpc-price">Plans starting ₹99 / month</div>
+          <div class="hpc-price">Plans starting ₹99 / month &nbsp;·&nbsp; Cancel anytime</div>
           <span class="hpc-cta">Get Started →</span>
         </a>
 
@@ -4733,6 +4740,21 @@
       // Auto-dismiss after 6 seconds
       setTimeout(hideCheckoutToast, 6000);
     }
+  </script>
+
+  <!-- Tidio Chat -->
+  <script src="//code.tidio.co/amq0gj3q8imrtj1fsvws5jmaqqfjy806.js" async></script>
+
+  <!-- Force Tidio product links to open in new tab -->
+  <script>
+    document.addEventListener('click', function(e) {
+      var target = e.target.closest('a');
+      if (target && target.href && target.href.includes('yellowfeatherbookstore.in')) {
+        e.preventDefault();
+        e.stopPropagation();
+        window.open(target.href, '_blank');
+      }
+    }, true);
   </script>
 </body>
 </html>

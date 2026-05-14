@@ -1,0 +1,58 @@
+{
+  "name": "YFB — Signed Copy Request Notification",
+  "nodes": [
+    {
+      "id": "1",
+      "name": "Signed Copy Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [100, 300],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "yfb-signed-copy-request",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "2",
+      "name": "Send Notification Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [400, 300],
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "toList": "yellowfeatherbookstore@gmail.com",
+        "subject": "={{ '📚 Signed Copy Request — ' + $json.body.book_title }}",
+        "message": "=<div style=\"font-family:Arial,sans-serif;max-width:520px;margin:0 auto;color:#1a1a2e;\">\n  <div style=\"background:#1a1a2e;padding:24px 32px;text-align:center;\">\n    <div style=\"color:#C9922A;font-size:20px;font-weight:700;\">🪶 Yellow Feather Books</div>\n    <div style=\"color:#aaa;font-size:12px;margin-top:4px;\">Book Club — Signed Copy Request</div>\n  </div>\n  <div style=\"padding:32px;background:#fff;\">\n    <h2 style=\"font-size:18px;margin-bottom:16px;\">New Signed Copy Request</h2>\n    <table style=\"width:100%;border-collapse:collapse;font-size:14px;\">\n      <tr style=\"background:#f5f0e8;\"><td style=\"padding:10px 14px;font-weight:600;width:35%;\">Member Name</td><td style=\"padding:10px 14px;\">{{ $json.body.member_name }}</td></tr>\n      <tr><td style=\"padding:10px 14px;font-weight:600;\">Email</td><td style=\"padding:10px 14px;\">{{ $json.body.member_email }}</td></tr>\n      <tr style=\"background:#f5f0e8;\"><td style=\"padding:10px 14px;font-weight:600;\">Book Title</td><td style=\"padding:10px 14px;\">{{ $json.body.book_title }}</td></tr>\n      <tr><td style=\"padding:10px 14px;font-weight:600;\">Author</td><td style=\"padding:10px 14px;\">{{ $json.body.author_name || '—' }}</td></tr>\n      <tr style=\"background:#f5f0e8;\"><td style=\"padding:10px 14px;font-weight:600;\">Notes</td><td style=\"padding:10px 14px;\">{{ $json.body.notes || '—' }}</td></tr>\n    </table>\n  </div>\n  <div style=\"padding:16px 32px;background:#f5f0e8;text-align:center;font-size:11px;color:#888;\">\n    Yellow Feather Books &nbsp;·&nbsp; yellowfeatherbookstore.com\n  </div>\n</div>",
+        "options": { "emailType": "html" }
+      },
+      "credentials": {
+        "gmailOAuth2": { "id": "REPLACE_WITH_GMAIL_CRED_ID", "name": "Gmail Account" }
+      }
+    },
+    {
+      "id": "3",
+      "name": "Respond OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [700, 300],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"status\": \"ok\" }"
+      }
+    }
+  ],
+  "connections": {
+    "Signed Copy Webhook": {
+      "main": [[{ "node": "Send Notification Email", "type": "main", "index": 0 }]]
+    },
+    "Send Notification Email": {
+      "main": [[{ "node": "Respond OK", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "tags": ["yfb", "book-club", "signed-copy"]
+}

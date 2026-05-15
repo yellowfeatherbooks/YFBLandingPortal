@@ -228,12 +228,13 @@
     .hero {
       min-height: 100vh;
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       justify-content: center;
       text-align: center;
       padding: 7rem 1.5rem 5rem;
       position: relative;
-      overflow: hidden;
+      overflow-x: hidden;
+      overflow-y: visible;
     }
 
     .hero-bg {
@@ -1881,16 +1882,18 @@
     .hero-promo-card {
       position: relative;
       border-radius: 16px;
-      padding: 1.75rem 1.5rem;
+      padding: 1.25rem 1.25rem;
       text-align: left;
       cursor: pointer;
-      overflow: hidden;
+      overflow: visible;
       transition: transform 0.22s ease, box-shadow 0.22s ease;
       text-decoration: none;
       color: inherit;
       display: flex;
       flex-direction: column;
-      gap: 0.6rem;
+      gap: 0.35rem;
+      height: auto;
+      min-height: 0;
     }
     .hero-promo-card:hover {
       transform: translateY(-4px);
@@ -1928,9 +1931,9 @@
     }
 
     .hpc-icon {
-      font-size: 2.2rem;
+      font-size: 1.8rem;
       line-height: 1;
-      margin-bottom: 0.2rem;
+      margin-bottom: 0;
     }
     .hpc-tag {
       font-size: 0.65rem;
@@ -1947,9 +1950,9 @@
 
     .hpc-title {
       font-family: 'Playfair Display', serif;
-      font-size: 1.3rem;
+      font-size: 1.1rem;
       font-weight: 700;
-      line-height: 1.25;
+      line-height: 1.2;
     }
     .club  .hpc-title { color: var(--cream); }
     .author .hpc-title { color: var(--cream); }
@@ -1958,11 +1961,11 @@
       list-style: none;
       display: flex;
       flex-direction: column;
-      gap: 0.3rem;
-      margin: 0.2rem 0 0.5rem;
+      gap: 0.18rem;
+      margin: 0.1rem 0 0.3rem;
     }
     .hpc-perks li {
-      font-size: 0.8rem;
+      font-size: 0.74rem;
       color: rgba(245,240,232,0.72);
       display: flex;
       align-items: center;
@@ -1973,7 +1976,7 @@
     .author .hpc-perks li::before { color: #8aaaf0; }
 
     .hpc-cta {
-      margin-top: auto;
+      margin-top: 0.5rem;
       display: inline-flex;
       align-items: center;
       gap: 0.4rem;
@@ -1998,12 +2001,53 @@
       margin-top: 0.15rem;
     }
 
+    .hpc-terms {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-top: 0.3rem;
+      font-size: 0.72rem;
+      color: rgba(245,240,232,0.55);
+      cursor: pointer;
+      user-select: none;
+    }
+    .hpc-terms input[type="checkbox"] {
+      width: 15px;
+      height: 15px;
+      accent-color: var(--gold);
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .hpc-terms a {
+      color: inherit;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+    .hpc-terms a:hover { color: var(--gold); }
+    .hpc-tc-link {
+      display: block;
+      text-align: right;
+      font-size: 0.65rem;
+      color: rgba(245,240,232,0.35);
+      text-decoration: underline;
+      text-underline-offset: 2px;
+      text-decoration-color: rgba(245,240,232,0.2);
+      margin-top: 0.3rem;
+    }
+    .hpc-tc-link:hover { color: rgba(245,240,232,0.7); }
+    .hpc-cta:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+      transform: none;
+      pointer-events: none;
+    }
+
     @media (max-width: 580px) {
       .hero-promo-cards { grid-template-columns: 1fr; gap: 0.9rem; max-width: 400px; }
-      .hero-promo-card  { padding: 1.4rem 1.25rem; flex-direction: row; align-items: flex-start; gap: 1rem; }
-      .hpc-icon         { font-size: 1.8rem; flex-shrink: 0; margin-bottom: 0; }
-      .hpc-title        { font-size: 1.1rem; }
-      .hpc-perks li     { font-size: 0.76rem; }
+      .hero-promo-card  { padding: 1.25rem; flex-direction: column; align-items: flex-start; gap: 0.35rem; }
+      .hpc-icon         { font-size: 1.6rem; flex-shrink: 0; margin-bottom: 0; }
+      .hpc-title        { font-size: 1rem; }
+      .hpc-perks li     { font-size: 0.72rem; }
     }
   </style>
 </head>
@@ -2098,11 +2142,12 @@
             <li>News letter</li>
           </ul>
           <div class="hpc-price">₹99 / year</div>
-          <button class="hpc-cta">Join Now →</button>
+          <button class="hpc-cta" id="club-btn" onclick="event.stopPropagation(); handleBookClubNav()">Join Now →</button>
+          <a href="terms.html" class="hpc-tc-link" onclick="openTcModal(event)">Terms &amp; Conditions</a>
         </div>
 
         <!-- Author Portal -->
-        <a class="hero-promo-card author" href="https://yellowfeatherbooks.netlify.app" target="_blank">
+        <div class="hero-promo-card author" onclick="window.open('https://yellowfeatherbooks.netlify.app','_blank')" style="cursor:pointer;">
           <div class="hpc-icon">✍️</div>
           <span class="hpc-tag">For Authors</span>
           <div class="hpc-title">List Your Book &amp; Reach Readers</div>
@@ -2113,10 +2158,12 @@
             <li>Digital posters</li>
             <li>Instagram collaboration</li>
             <li>Author dashboard</li>
+            <li>Online pre-launch</li>
           </ul>
           <div class="hpc-price">Plans starting ₹99 / month &nbsp;·&nbsp; Cancel anytime</div>
-          <span class="hpc-cta">Get Started →</span>
-        </a>
+          <span class="hpc-cta" id="author-btn" onclick="event.stopPropagation(); window.open('https://yellowfeatherbooks.netlify.app','_blank')">Get Started →</span>
+          <a href="terms.html" class="hpc-tc-link" onclick="openTcModal(event)">Terms &amp; Conditions</a>
+        </div>
 
       </div>
       <div class="hero-stats">
@@ -4744,6 +4791,63 @@
 
   <!-- Tidio Chat -->
   <script src="//code.tidio.co/amq0gj3q8imrtj1fsvws5jmaqqfjy806.js" async></script>
+
+
+  <!-- T&C Modal -->
+  <div id="tc-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.75);backdrop-filter:blur(4px);overflow-y:auto;padding:2rem 1rem;" onclick="if(event.target===this)closeTcModal()">
+    <div style="max-width:680px;margin:2rem auto;background:#1a1612;border:1px solid rgba(201,146,42,0.25);border-radius:16px;padding:2rem 2rem 2.5rem;position:relative;color:rgba(245,240,232,0.82);font-family:'Inter',sans-serif;line-height:1.7;">
+      <button onclick="closeTcModal()" style="position:absolute;top:1rem;right:1rem;background:none;border:none;color:rgba(245,240,232,0.5);font-size:1.4rem;cursor:pointer;line-height:1;">✕</button>
+      <h2 style="font-family:'Playfair Display',serif;color:#F5B800;font-size:1.5rem;margin-bottom:0.25rem;">Terms &amp; Conditions</h2>
+      <p style="font-size:0.75rem;color:rgba(245,240,232,0.35);margin-bottom:1.5rem;">Last updated: May 2025</p>
+
+      <p style="font-size:0.88rem;margin-bottom:1.25rem;">By subscribing to the Yellow Feather Books Book Club or Author's Plan, you agree to the following terms. Please read them carefully before proceeding.</p>
+
+      <h3 style="color:#F5B800;font-size:0.95rem;margin:1.25rem 0 0.4rem;">1. Book Club Membership</h3>
+      <ul style="font-size:0.85rem;padding-left:1.25rem;margin-bottom:0.5rem;">
+        <li>The Book Club membership is available at ₹99 per year.</li>
+        <li>Benefits include discounts, surprise gifts, early access to new titles, high speed delivery, a member dashboard, and a newsletter.</li>
+        <li>Membership is non-transferable and valid for one account only.</li>
+        <li>Yellow Feather Books reserves the right to modify membership benefits with prior notice.</li>
+        <li>Refunds will not be provided for partially used membership periods.</li>
+      </ul>
+
+      <h3 style="color:#F5B800;font-size:0.95rem;margin:1.25rem 0 0.4rem;">2. Author's Plan Subscription</h3>
+      <ul style="font-size:0.85rem;padding-left:1.25rem;margin-bottom:0.5rem;">
+        <li>Author's Plans are available starting at ₹99 per month.</li>
+        <li>Plans include book listing, reach to readers, digital posters, Instagram collaboration, signed copy support, author dashboard, and online pre-launch.</li>
+        <li>Subscriptions are billed monthly and can be cancelled anytime before the next billing cycle.</li>
+        <li>Yellow Feather Books reserves the right to remove listings that violate content guidelines.</li>
+        <li>Listing approval is subject to review and is not guaranteed.</li>
+      </ul>
+
+      <h3 style="color:#F5B800;font-size:0.95rem;margin:1.25rem 0 0.4rem;">3. Payments</h3>
+      <ul style="font-size:0.85rem;padding-left:1.25rem;margin-bottom:0.5rem;">
+        <li>All payments are processed securely via Razorpay.</li>
+        <li>Prices are listed in Indian Rupees (INR) and are inclusive of applicable taxes.</li>
+        <li>Yellow Feather Books is not responsible for payment failures due to bank or network issues.</li>
+      </ul>
+
+      <h3 style="color:#F5B800;font-size:0.95rem;margin:1.25rem 0 0.4rem;">4. Privacy</h3>
+      <ul style="font-size:0.85rem;padding-left:1.25rem;margin-bottom:0.5rem;">
+        <li>Your personal information is used solely for providing services and will not be shared with third parties without consent.</li>
+        <li>We may send you newsletters and promotional emails. You can unsubscribe at any time.</li>
+      </ul>
+
+      <h3 style="color:#F5B800;font-size:0.95rem;margin:1.25rem 0 0.4rem;">5. Governing Law</h3>
+      <p style="font-size:0.85rem;margin-bottom:0.5rem;">These terms are governed by the laws of India. Any disputes shall be subject to the jurisdiction of courts in Kerala, India.</p>
+
+      <h3 style="color:#F5B800;font-size:0.95rem;margin:1.25rem 0 0.4rem;">6. Contact</h3>
+      <p style="font-size:0.85rem;">For any queries regarding these terms, please contact us at <strong>yellowfeatherpublications@gmail.com</strong>.</p>
+
+      <button onclick="closeTcModal()" style="margin-top:1.75rem;padding:0.55rem 1.5rem;background:linear-gradient(135deg,#F5B800,#E8A830);color:#fff;border:none;border-radius:8px;font-weight:700;font-size:0.88rem;cursor:pointer;">Close</button>
+    </div>
+  </div>
+
+  <script>
+    function openTcModal(e) { e.preventDefault(); e.stopPropagation(); document.getElementById('tc-modal').style.display='block'; document.body.style.overflow='hidden'; }
+    function closeTcModal() { document.getElementById('tc-modal').style.display='none'; document.body.style.overflow=''; }
+    document.addEventListener('keydown', function(e){ if(e.key==='Escape') closeTcModal(); });
+  </script>
 
   <!-- Force Tidio product links to open in new tab -->
   <script>

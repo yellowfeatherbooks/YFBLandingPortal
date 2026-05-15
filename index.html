@@ -4528,8 +4528,7 @@
           handler: async function(response) {
             // Verify payment + create Shopify account
             const verifyBtn = document.getElementById('bc-join-btn');
-            verifyBtn.textContent = 'Activating membership…';
-            verifyBtn.disabled    = true;
+            if (verifyBtn) { verifyBtn.textContent = 'Activating membership…'; verifyBtn.disabled = true; }
             try {
               const verRes  = await fetch('/.netlify/functions/verify-book-club-payment', {
                 method: 'POST',

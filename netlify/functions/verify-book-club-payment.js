@@ -43,8 +43,8 @@ exports.handler = async (event) => {
           email,
           name,
           phone:      phone || null,
-          payment_id: razorpay_payment_id,
-          order_id:   razorpay_order_id,
+          razorpay_payment_id,
+          razorpay_order_id,
           joined_at:  new Date().toISOString()
         })
       });
@@ -71,6 +71,19 @@ exports.handler = async (event) => {
           }
         })
       });
+    }
+
+    // 4 — Trigger n8n invoice workflow
+    const n8nUrl = process.env.N8N_BOOK_CLUB_INVOICE_URL || 'https://yellowfeather.app.n8n.cloud/webhook/yfb-book-club-invoice';
+    try {
+      const n8nRes = await fetch(n8nUrl, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ email, name, phone: phone || null, razorpay_payment_id, razorpay_order_id })
+      });
+      console.log('n8n invoice webhook status:', n8nRes.status);
+    } catch (n8nErr) {
+      console.error('n8n invoice webhook failed:', n8nErr.message);
     }
 
     return {

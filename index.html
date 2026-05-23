@@ -3719,7 +3719,10 @@
         </div>
         <div class="sf-field">
           <label class="sf-label">Password <span style="color:var(--muted);font-weight:400;">(for your Yellow Feather account)</span></label>
-          <input id="bc-password" type="password" class="sf-input" placeholder="Min. 5 characters" />
+          <div class="pw-wrap">
+            <input id="bc-password" type="password" class="sf-input" placeholder="Min. 5 characters" />
+            <button type="button" class="pw-eye" onclick="togglePw('bc-password',this)" tabindex="-1" aria-label="Show password">👁</button>
+          </div>
         </div>
         <div class="sf-field">
           <label class="sf-label">Phone <span style="color:var(--muted);font-weight:400;">(optional)</span></label>

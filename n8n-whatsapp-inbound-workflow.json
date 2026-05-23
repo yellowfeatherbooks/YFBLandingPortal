@@ -1,0 +1,168 @@
+{
+  "name": "WhatsApp Inbound Reply Handler",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "ALL",
+        "path": "whatsapp-inbound",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "a1000001-0001-0001-0001-000000000001",
+      "name": "WhatsApp Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [0, 0],
+      "webhookId": "whatsapp-inbound-yfb"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-hub-challenge",
+              "leftValue": "={{ $json.query?.['hub.challenge'] }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a1000002-0002-0002-0002-000000000002",
+      "name": "Is Verification?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [240, 0]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $('WhatsApp Webhook').first().json.query?.['hub.challenge'] ?? '' }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "a1000003-0003-0003-0003-000000000003",
+      "name": "Return Challenge",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [480, -140]
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body;\n\nconst entry = body?.entry?.[0];\nconst change = entry?.changes?.[0]?.value;\n\nif (!change || !Array.isArray(change.messages) || change.messages.length === 0) {\n  return [{ json: { skip: true, emailHtml: '', senderName: '', senderPhone: '', messageText: '', timestamp: '' } }];\n}\n\nconst message = change.messages[0];\nconst contact = change.contacts?.[0];\n\nconst senderName  = contact?.profile?.name || 'Unknown Sender';\nconst senderPhone = message.from || '';\nconst messageType = message.type || 'text';\nconst messageText = message.text?.body || `[${messageType} message — cannot display inline]`;\nconst timestamp   = new Date(parseInt(message.timestamp) * 1000).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });\n\nconst emailHtml = `<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"UTF-8\"/><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"/></head><body style=\"margin:0;padding:0;font-family:Arial,sans-serif;background:#f4f4f4;\"><div style=\"max-width:600px;margin:32px auto;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,0.10);\"><div style=\"background:#1a1a2e;padding:24px 32px;\"><img src=\"https://yellowfeather.netlify.app/logo-landscape.png\" alt=\"Yellow Feather Books\" style=\"height:44px;object-fit:contain;\"/></div><div style=\"padding:32px;\"><h2 style=\"color:#1a1a2e;margin-top:0;font-size:20px;\">WhatsApp Reply Received</h2><table style=\"width:100%;border-collapse:collapse;margin-bottom:24px;font-size:14px;\"><tr style=\"background:#f9f9f9;\"><td style=\"padding:10px 14px;font-weight:bold;color:#555;width:90px;\">From</td><td style=\"padding:10px 14px;color:#1a1a2e;\">${senderName}</td></tr><tr><td style=\"padding:10px 14px;font-weight:bold;color:#555;\">Phone</td><td style=\"padding:10px 14px;color:#1a1a2e;\">+${senderPhone}</td></tr><tr style=\"background:#f9f9f9;\"><td style=\"padding:10px 14px;font-weight:bold;color:#555;\">Time</td><td style=\"padding:10px 14px;color:#1a1a2e;\">${timestamp}</td></tr></table><div style=\"background:#f5f0e8;border-left:4px solid #C9922A;padding:16px 20px;border-radius:4px;margin-bottom:28px;\"><p style=\"margin:0;font-size:15px;color:#1a1a2e;line-height:1.7;\">${messageText}</p></div><a href=\"https://wa.me/${senderPhone}\" style=\"display:inline-block;background:#25D366;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-size:14px;font-weight:bold;\">&#128172; Reply on WhatsApp</a></div><div style=\"background:#f5f0e8;padding:16px 32px;font-size:12px;color:#888;border-top:1px solid #e5e0d8;\">Yellow Feather Books &mdash; Automated WhatsApp Reply Notification</div></div></body></html>`;\n\nreturn [{ json: { senderName, senderPhone, messageText, messageType, timestamp, emailHtml } }];"
+      },
+      "id": "a1000004-0004-0004-0004-000000000004",
+      "name": "Parse & Build Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 140]
+    },
+    {
+      "parameters": {
+        "sendTo": "yellowfeatherbookstore@gmail.com",
+        "subject": "={{ 'WhatsApp Reply from ' + $json.senderName + ' (+' + $json.senderPhone + ')' }}",
+        "message": "={{ $json.emailHtml }}",
+        "options": {}
+      },
+      "id": "a1000005-0005-0005-0005-000000000005",
+      "name": "Email WhatsApp Reply",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [720, 140],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "n4S10HXIC145nr8L",
+          "name": "Gmail account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"status\": \"ok\" }",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "a1000006-0006-0006-0006-000000000006",
+      "name": "Acknowledge",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [960, 140]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "WhatsApp Webhook": {
+      "main": [
+        [
+          {
+            "node": "Is Verification?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Verification?": {
+      "main": [
+        [
+          {
+            "node": "Return Challenge",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Parse & Build Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse & Build Email": {
+      "main": [
+        [
+          {
+            "node": "Email WhatsApp Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email WhatsApp Reply": {
+      "main": [
+        [
+          {
+            "node": "Acknowledge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}

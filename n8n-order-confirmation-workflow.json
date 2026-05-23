@@ -1,0 +1,283 @@
+{
+  "name": "Order Confirmation WorkFlow",
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "const order = $input.first().json.body;\n\nconst firstName   = order.customer?.first_name || order.billing_address?.first_name || 'Valued Customer';\nconst email       = order.email || order.customer?.email || '';\nconst lineItems   = Array.isArray(order.line_items) ? order.line_items : [];\n\nconst bookTitles  = lineItems.map(i => i.title).filter(Boolean);\nconst primaryBook = bookTitles[0] || 'your recent purchase';\nconst bookList    = bookTitles.join(', ');\n\nconst orderNumber = order.order_number || order.name || order.id || '';\nconst orderTotal  = order.total_price ? '₹' + parseFloat(order.total_price).toFixed(2) : '';\n\nconst rawPhone = order.customer?.phone || order.billing_address?.phone || order.shipping_address?.phone || '';\nconst phone    = rawPhone.replace(/[^0-9]/g, '').replace(/^0+/, '');\nconst waPhone  = phone.startsWith('91') ? phone : (phone.length === 10 ? '91' + phone : phone);\n\nreturn [{ json: { firstName, email, primaryBook, bookList, bookTitles, orderNumber, orderTotal, waPhone } }];"
+      },
+      "id": "652091b4-4242-43dd-8d3f-662a30de3075",
+      "name": "Extract Order Details",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const order = $('Extract Order Details').first().json;\n\nconst raw = $input.first().json;\n\nlet products = [];\nif (Array.isArray(raw)) {\n  products = raw;\n} else if (raw.products && Array.isArray(raw.products)) {\n  products = raw.products;\n} else {\n  products = $input.all().map(i => i.json).filter(p => p.title && p.handle);\n}\n\nconst catalogLines = products\n  .filter(p => p.title && p.handle)\n  .map((p, i) => `${i + 1}. ${p.title} by ${p.vendor || 'Unknown'} (handle: ${p.handle})`);\n\nconst catalogString = catalogLines.join(' | ');\n\nreturn [{ json: { ...order, catalogString, totalProducts: catalogLines.length } }];"
+      },
+      "id": "16511e9e-47c1-4f43-9737-a7413b5c9245",
+      "name": "Build Catalog for AI",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer OPENAI_API_KEY_REDACTED"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"gpt-3.5-turbo\",\n  \"temperature\": 0.5,\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are a book recommendation engine for Yellow Feather Books (yellowfeatherbookstore.in). You will be given a list of books available in the store, and a book the customer just purchased. Your job is to recommend exactly 3 books from the store catalog that are most similar or complementary to what the customer bought.\\n\\nRules:\\n- You MUST only recommend books that appear in the provided store catalog.\\n- Do NOT invent or suggest books not in the list.\\n- For the author field, use your knowledge of the book to provide the real author name. If you do not know the author, leave it as an empty string.\\n- Respond ONLY with a valid JSON array, no markdown, no explanation.\\n- Each object must have: title (exact title from catalog), author (real author name from your knowledge), description (1 compelling sentence), handle (exact handle from catalog).\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Customer purchased: {{ $json.bookList }}\\n\\nStore catalog ({{ $json.totalProducts }} books):\\n{{ $json.catalogString }}\\n\\nRecommend 3 books from this catalog the customer would enjoy next.\"\n    }\n  ]\n}",
+        "options": {}
+      },
+      "id": "56a1cfab-26dc-4f10-a957-369118602c27",
+      "name": "Get AI Book Recommendations",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        960,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const order  = $('Build Catalog for AI').first().json;\nconst aiRaw  = $input.first().json;\n\n// Parse AI JSON response\nlet recs = [];\ntry {\n  const content = aiRaw.choices?.[0]?.message?.content || '[]';\n  const cleaned = content.replace(/```json|```/g, '').trim();\n  recs = JSON.parse(cleaned);\n} catch(e) {\n  recs = [];\n}\n\nif (!Array.isArray(recs) || recs.length === 0) {\n  recs = [{ title: 'Explore Our Collection', author: '', description: 'Browse our full curated collection of books across all genres.', handle: '' }];\n}\n\nconst recRows = recs.slice(0, 3).map((r, i) => {\n  const url = r.handle\n    ? `https://yellowfeatherbookstore.in/products/${r.handle}`\n    : 'https://yellowfeatherbookstore.in';\n  const authorLine = r.author ? `<div style=\"font-size:13px;color:#888;margin-bottom:6px;\">by ${r.author}</div>` : '';\n  return `<tr><td style=\"padding:20px 0;border-bottom:1px solid #e5e0d8;\"><div style=\"font-size:13px;color:#C9922A;font-weight:700;margin-bottom:4px;\">0${i+1}</div><div style=\"font-size:16px;font-weight:700;color:#1a1a2e;margin-bottom:2px;\">${r.title}</div>${authorLine}<div style=\"font-size:14px;color:#555;line-height:1.6;margin-bottom:10px;\">${r.description}</div><a href=\"${url}\" style=\"display:inline-block;background:#C9922A;color:#fff;font-size:13px;font-weight:600;padding:8px 18px;border-radius:6px;text-decoration:none;\">View Book &rarr;</a></td></tr>`;\n}).join('');\n\nconst html = `<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"UTF-8\"/><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"/><style>body{font-family:Arial,sans-serif;background:#f4f4f4;margin:0;padding:0;}.wrapper{max-width:620px;margin:32px auto;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,0.10);}.header{background:#1a1a2e;padding:28px 40px;text-align:center;}.header img{height:52px;object-fit:contain;}.body{padding:40px;}p{font-size:15px;color:#444;line-height:1.8;margin:0 0 16px;}.footer{background:#f5f0e8;padding:20px 40px;font-size:13px;color:#555;line-height:1.8;border-top:1px solid #e5e0d8;}.footer strong{color:#1a1a2e;display:block;font-size:15px;margin-bottom:4px;}.footer a{color:#C9922A;text-decoration:none;}</style></head><body><div class=\"wrapper\"><div class=\"header\"><img src=\"https://yellowfeather.netlify.app/logo-landscape.png\" alt=\"Yellow Feather Books\"/></div><div class=\"body\"><p>Hello <strong>${order.firstName}</strong>,</p><p>I hope this message finds you well! I wanted to take a moment to express my heartfelt gratitude for your recent purchase of <strong>&ldquo;${order.primaryBook}&rdquo;</strong> from Yellow Feather Books. We truly appreciate your support and trust in our bookstore.</p><p>As a token of our appreciation, I&rsquo;ve handpicked a few book recommendations from our store that I believe you&rsquo;ll enjoy:</p><table style=\"width:100%;border-collapse:collapse;margin:8px 0 24px;\">${recRows}</table><p>I hope you find these titles intriguing and that they add to your reading journey. Thank you once again for choosing Yellow Feather Books. If you have any questions or need further assistance, please feel free to reach out to me directly!</p><p style=\"margin-top:28px;\">Warm regards,</p></div><div class=\"footer\"><strong>Mehru</strong><br/>Sales Manager<br/>Yellow Feather Books<br/>Phone: <a href=\"tel:9605689946\">9605689946</a><br/>Website: <a href=\"https://yellowfeatherbookstore.in\">https://yellowfeatherbookstore.in</a></div></div></body></html>`;\n\nreturn [{ json: { ...order, emailHtml: html } }];"
+      },
+      "id": "5400e442-7e32-40fc-b646-389102101d22",
+      "name": "Parse Recommendations & Build Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.email }}",
+        "subject": "={{ 'Thank you for your purchase — ' + $json.primaryBook + ' | Yellow Feather Books' }}",
+        "message": "={{ $json.emailHtml }}",
+        "options": {}
+      },
+      "id": "b132e1ea-b396-483c-8e6b-c55f1af89d0b",
+      "name": "Send Confirmation Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1440,
+        0
+      ],
+      "webhookId": "24e2c8cd-f05e-4edf-bd80-573ee26ad54a",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "n4S10HXIC145nr8L",
+          "name": "Gmail account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "5a82c331-a782-4132-ae05-0c550617b88e",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "952dd105-43ea-4211-bb52-c497265843c9",
+      "name": "Webhook",
+      "webhookId": "5a82c331-a782-4132-ae05-0c550617b88e"
+    },
+    {
+      "parameters": {
+        "url": "https://zgqk4e-1m.myshopify.com/admin/api/2024-01/products.json?fields=title,handle,vendor&limit=250",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Shopify-Access-Token",
+              "value": "SHOPIFY_ACCESS_TOKEN_REDACTED"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        448,
+        0
+      ],
+      "id": "9b1351b9-8497-4fb1-b9a2-872916e41ac1",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.facebook.com/v20.0/1178132198705778/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"messaging_product\": \"whatsapp\",\n  \"to\": \"{{ $('Parse Recommendations & Build Email').first().json.waPhone }}\",\n  \"type\": \"template\",\n  \"template\": {\n    \"name\": \"order_confirmation\",\n    \"language\": { \"code\": \"en_GB\" },\n    \"components\": [\n      {\n        \"type\": \"body\",\n        \"parameters\": [\n          { \"type\": \"text\", \"parameter_name\": \"customer_name\", \"text\": \"{{ $('Parse Recommendations & Build Email').first().json.firstName }}\" },\n          { \"type\": \"text\", \"parameter_name\": \"order_id\", \"text\": \"{{ $('Parse Recommendations & Build Email').first().json.orderNumber }}\" },\n          { \"type\": \"text\", \"parameter_name\": \"order_total\", \"text\": \"{{ $('Parse Recommendations & Build Email').first().json.orderTotal }}\" }\n        ]\n      }\n    ]\n  }\n}",
+        "options": {}
+      },
+      "id": "f352afee-414c-455b-95c7-57de77657778",
+      "name": "Send WhatsApp Confirmation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1648,
+        0
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "PduyAvcBaYt6Afke",
+          "name": "WhatsApp-YFB"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "eb014cd8-6cf3-4fdd-959d-a92d7f5cf47d",
+      "name": "Done1",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1808,
+        0
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Extract Order Details": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Catalog for AI": {
+      "main": [
+        [
+          {
+            "node": "Get AI Book Recommendations",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get AI Book Recommendations": {
+      "main": [
+        [
+          {
+            "node": "Parse Recommendations & Build Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Recommendations & Build Email": {
+      "main": [
+        [
+          {
+            "node": "Send Confirmation Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Confirmation Email": {
+      "main": [
+        [
+          {
+            "node": "Send WhatsApp Confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Extract Order Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Build Catalog for AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send WhatsApp Confirmation": {
+      "main": [
+        [
+          {
+            "node": "Done1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "88643e2c-1288-42d2-a349-9061be323398",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "ab350bd4e167229b36cd6d6f6e9e1b6ef571ce6291758918013894ed15cf95d1"
+  },
+  "id": "R0h40pVouwqS1itv",
+  "tags": []
+}

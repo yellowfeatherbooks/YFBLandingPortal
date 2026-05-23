@@ -1,77 +1,296 @@
 {
-  "name": "YFB Book Club — Invoice on Membership Payment",
+  "name": "BookClubInvoice",
   "nodes": [
     {
-      "id": "1",
-      "name": "Book Club Invoice Webhook",
-      "type": "n8n-nodes-base.webhook",
-      "typeVersion": 2,
-      "position": [100, 300],
-      "webhookId": "yfb-book-club-invoice",
       "parameters": {
         "httpMethod": "POST",
         "path": "yfb-book-club-invoice",
         "responseMode": "responseNode",
         "options": {}
-      }
+      },
+      "id": "568af01f-2f2c-46b9-b12a-21692d99f94e",
+      "name": "Book Club Invoice Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "26500f68-d94a-4101-b487-fee52d915459"
     },
     {
-      "id": "2",
+      "parameters": {
+        "jsCode": "const d = $input.first().json;\n\nconst amount    = 99;\nconst gst       = parseFloat((amount * 18 / 118).toFixed(2));\nconst subTotal  = parseFloat((amount - gst).toFixed(2));\n\nconst now            = new Date();\nconst invoiceDateFmt = now.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });\nconst invoiceNumber  = 'YFB-BC-' + Date.now();\n\nconst LOGO_URL = 'https://yellowfeather.netlify.app/logo-landscape.png';\n\nconst html = `<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"UTF-8\"/>\n<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"/>\n<title>Invoice ${invoiceNumber}</title>\n<style>\n  body { font-family: Arial, sans-serif; background: #f4f4f4; margin: 0; padding: 0; }\n  .wrapper { max-width: 680px; margin: 32px auto; background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 16px rgba(0,0,0,0.10); }\n  .header { background: #1a1a2e; padding: 28px 40px; display: flex; align-items: center; justify-content: space-between; }\n  .header img { height: 52px; object-fit: contain; }\n  .inv-label { text-align: right; color: #aaa; font-size: 12px; }\n  .inv-label strong { color: #F5B800; font-size: 18px; display: block; }\n  .body { padding: 36px 40px; }\n  .thank-you { font-size: 22px; font-weight: 700; color: #1a1a2e; margin-bottom: 4px; }\n  .subtitle { color: #666; font-size: 14px; margin-bottom: 28px; line-height: 1.6; }\n  .meta-row { display: flex; gap: 40px; margin-bottom: 28px; flex-wrap: wrap; }\n  .meta-block label { font-size: 11px; color: #999; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 3px; }\n  .meta-block span { font-size: 14px; color: #1a1a2e; font-weight: 600; }\n  table { width: 100%; border-collapse: collapse; font-size: 14px; margin-bottom: 24px; }\n  thead tr { background: #1a1a2e; color: #fff; }\n  thead th { padding: 11px 14px; text-align: left; font-weight: 600; font-size: 13px; }\n  tbody tr:nth-child(even) { background: #f9f7f2; }\n  tbody td { padding: 11px 14px; color: #333; border-bottom: 1px solid #eee; }\n  .total-row td { background: #C9922A !important; color: #fff !important; font-weight: 700; font-size: 15px; border: none; }\n  .payment-ref { background: #f5f0e8; border-left: 4px solid #C9922A; padding: 12px 16px; border-radius: 4px; font-size: 13px; color: #444; margin-bottom: 24px; }\n  .payment-ref code { font-family: monospace; color: #1a1a2e; font-weight: 700; }\n  .benefits { background: #f9f7f2; border-radius: 8px; padding: 16px 20px; margin-bottom: 24px; }\n  .benefits h4 { font-size: 13px; color: #1a1a2e; margin-bottom: 10px; font-weight: 700; }\n  .benefits ul { margin: 0; padding-left: 18px; font-size: 13px; color: #555; line-height: 2; }\n  .message { font-size: 13px; color: #555; line-height: 1.75; margin-bottom: 28px; }\n  .footer { background: #f5f0e8; padding: 18px 40px; text-align: center; font-size: 11px; color: #888; border-top: 1px solid #e5e0d8; }\n  .footer a { color: #C9922A; text-decoration: none; }\n</style>\n</head>\n<body>\n<div class=\"wrapper\">\n  <div class=\"header\">\n    <img src=\"${LOGO_URL}\" alt=\"Yellow Feather Books\" />\n    <div class=\"inv-label\"><strong>INVOICE</strong>${invoiceNumber}<br/>${invoiceDateFmt}</div>\n  </div>\n  <div class=\"body\">\n    <div class=\"thank-you\">Welcome to the Book Club! 📚</div>\n    <div class=\"subtitle\">Thank you for joining the Yellow Feather Book Club, <strong>${d.name}</strong>!<br/>This is a one-time membership fee of ₹99. Your lifetime membership is now active.</div>\n    <div class=\"meta-row\">\n      <div class=\"meta-block\"><label>Member Name</label><span>${d.name}</span></div>\n      <div class=\"meta-block\"><label>Email</label><span>${d.email}</span></div>\n      <div class=\"meta-block\"><label>Membership Type</label><span>Lifetime</span></div>\n    </div>\n    <table>\n      <thead><tr><th>Description</th><th style=\"text-align:right\">Amount (INR)</th></tr></thead>\n      <tbody>\n        <tr><td>Yellow Feather Book Club — Lifetime Membership (One-time fee)</td><td style=\"text-align:right\">₹${subTotal.toFixed(2)}</td></tr>\n        <tr><td>GST @ 18% (inclusive)</td><td style=\"text-align:right\">₹${gst.toFixed(2)}</td></tr>\n        <tr class=\"total-row\"><td>Total Paid</td><td style=\"text-align:right\">₹${amount.toFixed(2)}</td></tr>\n      </tbody>\n    </table>\n    <div class=\"payment-ref\">Razorpay Payment ID: <code>${d.razorpay_payment_id}</code> &nbsp;·&nbsp; Invoice Ref: <code>${invoiceNumber}</code></div>\n    <div class=\"benefits\">\n      <h4>Your Book Club Benefits</h4>\n      <ul>\n        <li>Priority access to new arrivals</li>\n        <li>Exclusive member discounts on all books</li>\n        <li>Early access to author events &amp; book launches</li>\n        <li>Monthly curated reading recommendations</li>\n        <li>Access to the Yellow Feather community</li>\n      </ul>\n    </div>\n    <div class=\"message\">You can now log in to <a href=\"https://yellowfeather.netlify.app\" style=\"color:#C9922A;\">yellowfeather.netlify.app</a> with your email and password to start exploring.<br/><br/>For any queries, reach us at <a href=\"mailto:bookstore@yellowfeatherbookstore.com\" style=\"color:#C9922A;\">bookstore@yellowfeatherbookstore.com</a>.</div>\n  </div>\n  <div class=\"footer\">Yellow Feather Books &nbsp;·&nbsp; <a href=\"mailto:bookstore@yellowfeatherbookstore.com\">bookstore@yellowfeatherbookstore.com</a> &nbsp;·&nbsp; +91 96056 89946</div>\n</div>\n</body>\n</html>`;\n\nreturn [{ json: { ...d, invoiceHtml: html, invoiceNumber } }];"
+      },
+      "id": "da1591b1-1c38-4e7c-b402-0604cca59795",
       "name": "Generate Invoice HTML",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [340, 300],
-      "parameters": {
-        "mode": "runOnceForAllItems",
-        "jsCode": "const d = $input.first().json;\n\nconst amount    = 99;\nconst gst       = parseFloat((amount * 18 / 118).toFixed(2));\nconst subTotal  = parseFloat((amount - gst).toFixed(2));\n\nconst now            = new Date();\nconst invoiceDateFmt = now.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });\nconst invoiceNumber  = 'YFB-BC-' + Date.now();\n\nconst LOGO_URL = 'https://yellowfeather.netlify.app/logo-landscape.png';\n\nconst html = `<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"UTF-8\"/>\n<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"/>\n<title>Invoice ${invoiceNumber}</title>\n<style>\n  body { font-family: Arial, sans-serif; background: #f4f4f4; margin: 0; padding: 0; }\n  .wrapper { max-width: 680px; margin: 32px auto; background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 16px rgba(0,0,0,0.10); }\n  .header { background: #1a1a2e; padding: 28px 40px; display: flex; align-items: center; justify-content: space-between; }\n  .header img { height: 52px; object-fit: contain; }\n  .inv-label { text-align: right; color: #aaa; font-size: 12px; }\n  .inv-label strong { color: #F5B800; font-size: 18px; display: block; }\n  .body { padding: 36px 40px; }\n  .thank-you { font-size: 22px; font-weight: 700; color: #1a1a2e; margin-bottom: 4px; }\n  .subtitle { color: #666; font-size: 14px; margin-bottom: 28px; line-height: 1.6; }\n  .meta-row { display: flex; gap: 40px; margin-bottom: 28px; flex-wrap: wrap; }\n  .meta-block label { font-size: 11px; color: #999; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 3px; }\n  .meta-block span { font-size: 14px; color: #1a1a2e; font-weight: 600; }\n  table { width: 100%; border-collapse: collapse; font-size: 14px; margin-bottom: 24px; }\n  thead tr { background: #1a1a2e; color: #fff; }\n  thead th { padding: 11px 14px; text-align: left; font-weight: 600; font-size: 13px; }\n  tbody tr:nth-child(even) { background: #f9f7f2; }\n  tbody td { padding: 11px 14px; color: #333; border-bottom: 1px solid #eee; }\n  .total-row td { background: #C9922A !important; color: #fff !important; font-weight: 700; font-size: 15px; border: none; }\n  .payment-ref { background: #f5f0e8; border-left: 4px solid #C9922A; padding: 12px 16px; border-radius: 4px; font-size: 13px; color: #444; margin-bottom: 24px; }\n  .payment-ref code { font-family: monospace; color: #1a1a2e; font-weight: 700; }\n  .benefits { background: #f9f7f2; border-radius: 8px; padding: 16px 20px; margin-bottom: 24px; }\n  .benefits h4 { font-size: 13px; color: #1a1a2e; margin-bottom: 10px; font-weight: 700; }\n  .benefits ul { margin: 0; padding-left: 18px; font-size: 13px; color: #555; line-height: 2; }\n  .message { font-size: 13px; color: #555; line-height: 1.75; margin-bottom: 28px; }\n  .footer { background: #f5f0e8; padding: 18px 40px; text-align: center; font-size: 11px; color: #888; border-top: 1px solid #e5e0d8; }\n  .footer a { color: #C9922A; text-decoration: none; }\n</style>\n</head>\n<body>\n<div class=\"wrapper\">\n  <div class=\"header\">\n    <img src=\"${LOGO_URL}\" alt=\"Yellow Feather Books\" />\n    <div class=\"inv-label\"><strong>INVOICE</strong>${invoiceNumber}<br/>${invoiceDateFmt}</div>\n  </div>\n  <div class=\"body\">\n    <div class=\"thank-you\">Welcome to the Book Club! 📚</div>\n    <div class=\"subtitle\">Thank you for joining the Yellow Feather Book Club, <strong>${d.name}</strong>!<br/>This is a one-time membership fee of ₹99. Your lifetime membership is now active.</div>\n    <div class=\"meta-row\">\n      <div class=\"meta-block\"><label>Member Name</label><span>${d.name}</span></div>\n      <div class=\"meta-block\"><label>Email</label><span>${d.email}</span></div>\n      <div class=\"meta-block\"><label>Membership Type</label><span>Lifetime</span></div>\n    </div>\n    <table>\n      <thead><tr><th>Description</th><th style=\"text-align:right\">Amount (INR)</th></tr></thead>\n      <tbody>\n        <tr><td>Yellow Feather Book Club — Lifetime Membership (One-time fee)</td><td style=\"text-align:right\">₹${subTotal.toFixed(2)}</td></tr>\n        <tr><td>GST @ 18% (inclusive)</td><td style=\"text-align:right\">₹${gst.toFixed(2)}</td></tr>\n        <tr class=\"total-row\"><td>Total Paid</td><td style=\"text-align:right\">₹${amount.toFixed(2)}</td></tr>\n      </tbody>\n    </table>\n    <div class=\"payment-ref\">Razorpay Payment ID: <code>${d.razorpay_payment_id}</code> &nbsp;·&nbsp; Invoice Ref: <code>${invoiceNumber}</code></div>\n    <div class=\"benefits\">\n      <h4>Your Book Club Benefits</h4>\n      <ul>\n        <li>Priority access to new arrivals</li>\n        <li>Exclusive member discounts on all books</li>\n        <li>Early access to author events &amp; book launches</li>\n        <li>Monthly curated reading recommendations</li>\n        <li>Access to the Yellow Feather community</li>\n      </ul>\n    </div>\n    <div class=\"message\">You can now log in to <a href=\"https://yellowfeather.netlify.app\" style=\"color:#C9922A;\">yellowfeather.netlify.app</a> with your email and password to start exploring.<br/><br/>For any queries, reach us at <a href=\"mailto:bookstore@yellowfeatherbookstore.com\" style=\"color:#C9922A;\">bookstore@yellowfeatherbookstore.com</a>.</div>\n  </div>\n  <div class=\"footer\">Yellow Feather Books &nbsp;·&nbsp; <a href=\"mailto:bookstore@yellowfeatherbookstore.com\">bookstore@yellowfeatherbookstore.com</a> &nbsp;·&nbsp; +91 96056 89946</div>\n</div>\n</body>\n</html>`;\n\nreturn [{ json: { ...d, invoiceHtml: html, invoiceNumber } }];"
-      }
+      "position": [
+        224,
+        0
+      ]
     },
     {
-      "id": "3",
+      "parameters": {
+        "sendTo": "={{ $('Book Club Invoice Webhook').item.json.body.email }}",
+        "subject": "={{ 'Welcome to Yellow Feather Book Club – Invoice ' + $('HTTP Request').item.json.invoice.invoice_number }}",
+        "message": "={{ $('Generate Invoice HTML').item.json.invoiceHtml }}",
+        "options": {}
+      },
+      "id": "4a5028be-87e9-4be2-a7d5-d5fb2d004ceb",
       "name": "Email Invoice via Gmail",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,
-      "position": [580, 300],
-      "parameters": {
-        "resource": "message",
-        "operation": "send",
-        "toList": "={{ $json.email }}",
-        "subject": "={{ 'Welcome to Yellow Feather Book Club — Invoice ' + $json.invoiceNumber }}",
-        "message": "={{ $json.invoiceHtml }}",
-        "options": {
-          "emailType": "html"
-        }
-      },
+      "position": [
+        672,
+        0
+      ],
+      "webhookId": "8060f905-e275-45ee-b19f-09b275cb8b4e",
       "credentials": {
-        "gmailOAuth2": { "id": "REPLACE_WITH_GMAIL_CRED_ID", "name": "Gmail Account" }
+        "gmailOAuth2": {
+          "id": "n4S10HXIC145nr8L",
+          "name": "Gmail account 2"
+        }
       }
     },
     {
-      "id": "4",
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"status\": \"ok\" }",
+        "options": {}
+      },
+      "id": "3fcd6669-ab0a-465b-9a30-6197e0f17409",
       "name": "Respond OK",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [820, 300],
+      "position": [
+        1488,
+        0
+      ]
+    },
+    {
       "parameters": {
-        "respondWith": "json",
-        "responseBody": "={ \"status\": \"ok\" }"
+        "method": "POST",
+        "url": "https://www.zohoapis.in/books/v3/invoices?organization_id=60071500652",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"customer_id\": \"3809116000000057079\",\n  \"line_items\": [\n    {\n      \"item_id\": \"3809116000000057022\",\n      \"quantity\": 1,\n      \"description\": \"{{ $json.body.name }} ({{ $json.body.email }})\"\n    }\n  ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        448,
+        0
+      ],
+      "id": "c8eebaf0-21e6-4b2e-99de-d5c83cbd7fdb",
+      "name": "HTTP Request",
+      "credentials": {
+        "oAuth2Api": {
+          "id": "K7bBCoiWWVHysLst",
+          "name": "Zoho Invoice OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "yellowfeatherbookstore@gmail.com",
+        "subject": "={{ '📚 New Book Club Member — ' + $('Book Club Invoice Webhook').item.json.body.name }}",
+        "message": "={{ '<div style=\"font-family:Arial,sans-serif;max-width:520px;margin:0 auto;background:#f9f7f2;padding:32px;border-radius:12px;\"><h2 style=\"color:#1a1a2e;margin-top:0;\">New Book Club Member</h2><table style=\"width:100%;border-collapse:collapse;font-size:15px;\"><tr><td style=\"padding:10px 0;color:#666;width:140px;\">Name</td><td style=\"padding:10px 0;font-weight:600;color:#1a1a2e;\">' + $('Book Club Invoice Webhook').item.json.body.name + '</td></tr><tr style=\"border-top:1px solid #e5e0d8;\"><td style=\"padding:10px 0;color:#666;\">Email</td><td style=\"padding:10px 0;font-weight:600;color:#1a1a2e;\">' + $('Book Club Invoice Webhook').item.json.body.email + '</td></tr><tr style=\"border-top:1px solid #e5e0d8;\"><td style=\"padding:10px 0;color:#666;\">Phone</td><td style=\"padding:10px 0;font-weight:600;color:#1a1a2e;\">' + ($('Book Club Invoice Webhook').item.json.body.phone || 'Not provided') + '</td></tr><tr style=\"border-top:1px solid #e5e0d8;\"><td style=\"padding:10px 0;color:#666;\">Membership</td><td style=\"padding:10px 0;font-weight:600;color:#C9922A;\">Lifetime — ₹99</td></tr><tr style=\"border-top:1px solid #e5e0d8;\"><td style=\"padding:10px 0;color:#666;\">Payment ID</td><td style=\"padding:10px 0;font-size:13px;color:#555;\">' + $('Book Club Invoice Webhook').item.json.body.razorpay_payment_id + '</td></tr><tr style=\"border-top:1px solid #e5e0d8;\"><td style=\"padding:10px 0;color:#666;\">Invoice</td><td style=\"padding:10px 0;font-size:13px;color:#555;\">' + $('Generate Invoice HTML').item.json.invoiceNumber + '</td></tr></table></div>' }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1088,
+        0
+      ],
+      "id": "0eb6eb93-3826-4ca2-97e0-513f5bbdfcda",
+      "name": "Notify Internal Team",
+      "webhookId": "eabe302b-1fa2-4436-9fe2-54254eba1f31",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "n4S10HXIC145nr8L",
+          "name": "Gmail account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Book Club Invoice Webhook').item.json.body.email }}",
+        "subject": "Welcome to Yellow Feather Book Club!",
+        "message": "={{ `<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"UTF-8\"/><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"/><style>body{font-family:Arial,sans-serif;background:#f4f4f4;margin:0;padding:0;}.wrapper{max-width:620px;margin:32px auto;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,0.10);}.header{background:#1a1a2e;padding:28px 40px;text-align:center;}.header img{height:52px;object-fit:contain;}.body{padding:40px;color:#333;font-size:15px;line-height:1.8;}.greeting{font-size:20px;font-weight:700;color:#1a1a2e;margin-bottom:20px;}p{margin:0 0 16px;}.highlight{color:#C9922A;font-weight:600;}.footer{background:#f5f0e8;padding:18px 40px;text-align:center;font-size:11px;color:#888;border-top:1px solid #e5e0d8;}.footer a{color:#C9922A;text-decoration:none;}</style></head><body><div class=\"wrapper\"><div class=\"header\"><img src=\"https://yellowfeather.netlify.app/logo-landscape.png\" alt=\"Yellow Feather Books\"/></div><div class=\"body\"><div class=\"greeting\">Hello ` + $json.name + `,</div><p>Welcome to <span class=\"highlight\">Yellow Feather Book Club</span>, and thank you for registering with us.</p><p>We would like to know if you need any assistance or if you have any questions or clarifications. We are happy to help you.</p><p>Please reach us at <span class=\"highlight\">+91 94004 48000</span> for any queries.</p><p>Once again, welcome to the Yellow Feather Family!</p><p style=\"margin-top:32px;\">Warm regards,<br/><strong>Team Yellow Feather</strong></p></div><div class=\"footer\">Yellow Feather Books &nbsp;·&nbsp; <a href=\"mailto:bookstore@yellowfeatherbookstore.com\">bookstore@yellowfeatherbookstore.com</a> &nbsp;·&nbsp; +91 96056 89946</div></div></body></html>` }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        880,
+        0
+      ],
+      "id": "3e678957-b485-4021-a780-d3b5031ad1ba",
+      "name": "Send a message",
+      "webhookId": "02b6f10d-ed3e-4d80-be70-4f239848a365",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "n4S10HXIC145nr8L",
+          "name": "Gmail account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.facebook.com/v20.0/1178132198705778/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"messaging_product\": \"whatsapp\",\n  \"to\": \"{{ $('Book Club Invoice Webhook').item.json.body.phone.replace(/[^0-9]/g, '').replace(/^0+/, '').replace(/^([0-9]{10})$/, '91$1') }}\",\n  \"type\": \"template\",\n  \"template\": {\n    \"name\": \"book_club_welcome\",\n    \"language\": { \"code\": \"en\" },\n    \"components\": [\n      {\n        \"type\": \"body\",\n        \"parameters\": [\n          {\n            \"type\": \"text\",\n            \"parameter_name\": \"customer_name\",\n            \"text\": \"{{ $('Book Club Invoice Webhook').item.json.body.name }}\"\n          }\n        ]\n      }\n    ]\n  }\n}",
+        "options": {}
+      },
+      "id": "add3e101-8182-405d-917a-9dc8889e7a9f",
+      "name": "Send WhatsApp Welcome",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1296,
+        0
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "PduyAvcBaYt6Afke",
+          "name": "WhatsApp-YFB"
+        }
       }
     }
   ],
-
+  "pinData": {
+    "Generate Invoice HTML": [
+      {
+        "json": {
+          "body": {
+            "name": "Test User",
+            "email": "test@example.com",
+            "razorpay_payment_id": "pay_test123",
+            "razorpay_order_id": "order_test123"
+          },
+          "invoiceHtml": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"UTF-8\"/>\n<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"/>\n<title>Invoice YFB-BC-1778872386195</title>\n<style>\n  body { font-family: Arial, sans-serif; background: #f4f4f4; margin: 0; padding: 0; }\n  .wrapper { max-width: 680px; margin: 32px auto; background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 16px rgba(0,0,0,0.10); }\n  .header { background: #1a1a2e; padding: 28px 40px; display: flex; align-items: center; justify-content: space-between; }\n  .header img { height: 52px; object-fit: contain; }\n  .inv-label { text-align: right; color: #aaa; font-size: 12px; }\n  .inv-label strong { color: #F5B800; font-size: 18px; display: block; }\n  .body { padding: 36px 40px; }\n  .thank-you { font-size: 22px; font-weight: 700; color: #1a1a2e; margin-bottom: 4px; }\n  .subtitle { color: #666; font-size: 14px; margin-bottom: 28px; line-height: 1.6; }\n  .meta-row { display: flex; gap: 40px; margin-bottom: 28px; flex-wrap: wrap; }\n  .meta-block label { font-size: 11px; color: #999; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 3px; }\n  .meta-block span { font-size: 14px; color: #1a1a2e; font-weight: 600; }\n  table { width: 100%; border-collapse: collapse; font-size: 14px; margin-bottom: 24px; }\n  thead tr { background: #1a1a2e; color: #fff; }\n  thead th { padding: 11px 14px; text-align: left; font-weight: 600; font-size: 13px; }\n  tbody tr:nth-child(even) { background: #f9f7f2; }\n  tbody td { padding: 11px 14px; color: #333; border-bottom: 1px solid #eee; }\n  .total-row td { background: #C9922A !important; color: #fff !important; font-weight: 700; font-size: 15px; border: none; }\n  .payment-ref { background: #f5f0e8; border-left: 4px solid #C9922A; padding: 12px 16px; border-radius: 4px; font-size: 13px; color: #444; margin-bottom: 24px; }\n  .payment-ref code { font-family: monospace; color: #1a1a2e; font-weight: 700; }\n  .benefits { background: #f9f7f2; border-radius: 8px; padding: 16px 20px; margin-bottom: 24px; }\n  .benefits h4 { font-size: 13px; color: #1a1a2e; margin-bottom: 10px; font-weight: 700; }\n  .benefits ul { margin: 0; padding-left: 18px; font-size: 13px; color: #555; line-height: 2; }\n  .message { font-size: 13px; color: #555; line-height: 1.75; margin-bottom: 28px; }\n  .footer { background: #f5f0e8; padding: 18px 40px; text-align: center; font-size: 11px; color: #888; border-top: 1px solid #e5e0d8; }\n  .footer a { color: #C9922A; text-decoration: none; }\n</style>\n</head>\n<body>\n<div class=\"wrapper\">\n  <div class=\"header\">\n    <img src=\"https://yellowfeather.netlify.app/logo-landscape.png\" alt=\"Yellow Feather Books\" />\n    <div class=\"inv-label\"><strong>INVOICE</strong>YFB-BC-1778872386195<br/>15 May 2026</div>\n  </div>\n  <div class=\"body\">\n    <div class=\"thank-you\">Welcome to the Book Club! 📚</div>\n    <div class=\"subtitle\">Thank you for joining the Yellow Feather Book Club, <strong>undefined</strong>!<br/>This is a one-time membership fee of ₹99. Your lifetime membership is now active.</div>\n    <div class=\"meta-row\">\n      <div class=\"meta-block\"><label>Member Name</label><span>undefined</span></div>\n      <div class=\"meta-block\"><label>Email</label><span>undefined</span></div>\n      <div class=\"meta-block\"><label>Membership Type</label><span>Lifetime</span></div>\n    </div>\n    <table>\n      <thead><tr><th>Description</th><th style=\"text-align:right\">Amount (INR)</th></tr></thead>\n      <tbody>\n        <tr><td>Yellow Feather Book Club — Lifetime Membership (One-time fee)</td><td style=\"text-align:right\">₹83.90</td></tr>\n        <tr><td>GST @ 18% (inclusive)</td><td style=\"text-align:right\">₹15.10</td></tr>\n        <tr class=\"total-row\"><td>Total Paid</td><td style=\"text-align:right\">₹99.00</td></tr>\n      </tbody>\n    </table>\n    <div class=\"payment-ref\">Razorpay Payment ID: <code>undefined</code> &nbsp;·&nbsp; Invoice Ref: <code>YFB-BC-1778872386195</code></div>\n    <div class=\"benefits\">\n      <h4>Your Book Club Benefits</h4>\n      <ul>\n        <li>Priority access to new arrivals</li>\n        <li>Exclusive member discounts on all books</li>\n        <li>Early access to author events &amp; book launches</li>\n        <li>Monthly curated reading recommendations</li>\n        <li>Access to the Yellow Feather community</li>\n      </ul>\n    </div>\n    <div class=\"message\">You can now log in to <a href=\"https://yellowfeather.netlify.app\" style=\"color:#C9922A;\">yellowfeather.netlify.app</a> with your email and password to start exploring.<br/><br/>For any queries, reach us at <a href=\"mailto:bookstore@yellowfeatherbookstore.com\" style=\"color:#C9922A;\">bookstore@yellowfeatherbookstore.com</a>.</div>\n  </div>\n  <div class=\"footer\">Yellow Feather Books &nbsp;·&nbsp; <a href=\"mailto:bookstore@yellowfeatherbookstore.com\">bookstore@yellowfeatherbookstore.com</a> &nbsp;·&nbsp; +91 96056 89946</div>\n</div>\n</body>\n</html>",
+          "invoiceNumber": "YFB-BC-1778872386195"
+        }
+      }
+    ]
+  },
   "connections": {
     "Book Club Invoice Webhook": {
-      "main": [[{ "node": "Generate Invoice HTML", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Generate Invoice HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Generate Invoice HTML": {
-      "main": [[{ "node": "Email Invoice via Gmail", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Email Invoice via Gmail": {
-      "main": [[{ "node": "Respond OK", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Email Invoice via Gmail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Internal Team": {
+      "main": [
+        [
+          {
+            "node": "Send WhatsApp Welcome",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        [
+          {
+            "node": "Notify Internal Team",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send WhatsApp Welcome": {
+      "main": [
+        [
+          {
+            "node": "Respond OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
-
-  "active": false,
-  "settings": { "executionOrder": "v1" },
-  "tags": ["yfb", "book-club", "invoice", "razorpay"]
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "a38dece3-efe6-4c69-a834-ef23c77a80ca",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "ab350bd4e167229b36cd6d6f6e9e1b6ef571ce6291758918013894ed15cf95d1"
+  },
+  "id": "LKVW74kwjmuIp3tT",
+  "tags": []
 }

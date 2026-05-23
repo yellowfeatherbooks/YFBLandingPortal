@@ -108,7 +108,7 @@
     }
 
     .nav-links {
-      display: flex;
+      display: none;
       align-items: center;
       gap: 0.25rem;
       list-style: none;
@@ -215,6 +215,27 @@
     .nav-icon-btn .ni-label { font-size: 0.58rem; font-weight: 600; letter-spacing: 0.02em; color: var(--muted); white-space: nowrap; }
     .nav-icon-btn.active-member { border-color: rgba(201,146,42,0.5); background: rgba(201,146,42,0.07); }
     .nav-icon-btn.active-member .ni-label { color: var(--gold); }
+
+    /* ── NAV STATS ── */
+    .nav-stats {
+      display: none;
+      align-items: center;
+      gap: 0;
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+    @media (min-width: 900px) { .nav-stats { display: flex; } }
+    .nav-stat-item { display: flex; flex-direction: column; align-items: center; padding: 0 1rem; }
+    .nav-stat-item .ns-num {
+      font-family: 'Playfair Display', serif;
+      font-size: 1rem; font-weight: 700; color: var(--gold2); line-height: 1.1;
+    }
+    .nav-stat-item .ns-lbl {
+      font-size: 0.52rem; color: var(--muted);
+      letter-spacing: 0.05em; text-transform: uppercase; margin-top: 2px; white-space: nowrap;
+    }
+    .nav-stat-sep { width: 1px; height: 22px; background: rgba(255,255,255,0.1); flex-shrink: 0; }
 
     /* My Account button — teal accent */
     .nav-icon-btn--account {
@@ -783,6 +804,14 @@
     }
     .sf-input:focus { border-color: var(--gold); }
     .sf-input::placeholder { color: var(--muted); }
+    .pw-wrap { position: relative; }
+    .pw-wrap input { padding-right: 2.6rem !important; width: 100%; }
+    .pw-eye {
+      position: absolute; right: 0.7rem; top: 50%; transform: translateY(-50%);
+      background: none; border: none; cursor: pointer; padding: 0; line-height: 1;
+      color: var(--muted); font-size: 1rem; transition: color 0.15s;
+    }
+    .pw-eye:hover { color: var(--cream); }
     .sf-error { font-size: 0.78rem; color: #f87171; margin-top: 0.5rem; display: none; }
     .login-submit-btn {
       width: 100%;
@@ -1546,9 +1575,480 @@
       }
     }
 
+    /* ── HAMBURGER BUTTON ── */
+    .nav-hamburger {
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      gap: 5px;
+      width: 40px; height: 40px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 6px;
+      flex-shrink: 0;
+    }
+    .nav-hamburger span {
+      display: block;
+      height: 2px;
+      background: var(--cream);
+      border-radius: 2px;
+      transition: all 0.25s;
+    }
+
+    /* ── MOBILE DRAWER ── */
+    /* ── MOBILE LEFT SIDEBAR ── */
+    .mobile-drawer-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.85);
+      z-index: 99998;
+    }
+    .mobile-drawer-overlay.open { display: block; }
+    .mobile-drawer {
+      position: fixed;
+      top: 0; left: -105%;
+      width: 78%; max-width: 300px; height: 100%;
+      background: #0d0f1e;
+      border-right: 1px solid rgba(201,146,42,0.2);
+      z-index: 99999;
+      transition: left 0.3s ease;
+      display: flex; flex-direction: column;
+      overflow-y: auto;
+    }
+    .mobile-drawer.open { left: 0; }
+    .mobile-drawer-header {
+      display: flex; align-items: center;
+      justify-content: space-between;
+      padding: 1.1rem 1.25rem;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      background: rgba(201,146,42,0.06);
+    }
+    .mobile-drawer-header img { height: 32px; object-fit: contain; }
+    .mobile-drawer-close {
+      background: none; border: none;
+      color: var(--muted); font-size: 1.3rem;
+      cursor: pointer; padding: 0.3rem 0.5rem;
+      line-height: 1;
+    }
+    .mobile-drawer-nav { display: flex !important; flex-direction: column; flex: 1; position: static !important; height: auto !important; padding: 0 !important; background: none !important; border: none !important; backdrop-filter: none !important; top: auto !important; left: auto !important; right: auto !important; width: 100% !important; }
+    .mobile-drawer-nav a, .mobile-drawer-nav button {
+      display: flex; align-items: center; gap: 0.85rem;
+      padding: 0.95rem 1.25rem;
+      color: var(--cream);
+      text-decoration: none;
+      font-size: 1rem;
+      font-weight: 500;
+      border: none; border-bottom: 1px solid rgba(255,255,255,0.06);
+      background: none; cursor: pointer;
+      text-align: left; width: 100%;
+      transition: background 0.15s;
+      min-height: 52px;
+    }
+    .mobile-drawer-nav a:active,
+    .mobile-drawer-nav button:active { background: rgba(255,255,255,0.07); }
+    .mobile-drawer-nav a.find-book { color: var(--teal); font-weight: 700; }
+    .mobile-drawer-nav .drawer-section-label {
+      font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em;
+      color: var(--gold); text-transform: uppercase;
+      padding: 0.9rem 1.25rem 0.3rem;
+      pointer-events: none;
+    }
+    .mobile-drawer-contact {
+      padding: 1rem 1.25rem;
+      border-top: 1px solid rgba(255,255,255,0.08);
+      display: flex; flex-direction: column; gap: 0.7rem;
+    }
+    .mobile-drawer-contact a {
+      display: flex; align-items: center; gap: 0.75rem;
+      color: var(--muted); font-size: 0.88rem;
+      text-decoration: none;
+    }
+
+    /* ── DESKTOP SIDEBAR ── */
+    #desktop-sidebar {
+      display: none;
+      position: fixed;
+      top: 64px; left: 0;
+      width: 220px;
+      height: calc(100vh - 64px);
+      background: #0d0f1e;
+      border-right: 1px solid rgba(201,146,42,0.2);
+      z-index: 99;
+      overflow-y: auto;
+      flex-direction: column;
+    }
+    .ds-nav { display: flex; flex-direction: column; flex: 1; padding: 0.5rem 0; }
+    .ds-section-label {
+      font-size: 0.62rem; font-weight: 700; letter-spacing: 0.1em;
+      color: var(--gold); text-transform: uppercase;
+      padding: 0.38rem 1.1rem 0.1rem;
+      pointer-events: none;
+    }
+    .ds-nav-link {
+      display: flex; align-items: center; gap: 0.7rem;
+      padding: 0.42rem 1.1rem;
+      color: var(--cream);
+      text-decoration: none;
+      font-size: 0.84rem; font-weight: 500;
+      border: none; border-bottom: 1px solid rgba(255,255,255,0.05);
+      background: none; cursor: pointer;
+      text-align: left; width: 100%;
+      font-family: 'Inter', sans-serif;
+      transition: background 0.15s, color 0.15s;
+      min-height: 32px;
+      box-sizing: border-box;
+    }
+    .ds-nav-link:hover { background: rgba(255,255,255,0.05); color: var(--gold); }
+    .ds-nav-link.highlight { color: var(--teal); font-weight: 700; }
+    #desktop-sidebar-footer {
+      padding: 0.5rem 1.1rem;
+      border-top: 1px solid rgba(255,255,255,0.08);
+      display: flex; flex-direction: column; gap: 0.35rem;
+    }
+    #desktop-sidebar-footer a {
+      color: var(--muted); font-size: 0.8rem;
+      text-decoration: none;
+      display: flex; align-items: center; gap: 0.5rem;
+    }
+    #desktop-sidebar-footer a:hover { color: var(--cream); }
+
+    /* ── INLINE IFRAME PANE ── */
+    #iframe-panel {
+      display: none;
+      flex-direction: column;
+      height: calc(100vh - 64px);
+      position: sticky; top: 64px;
+    }
+    #iframe-panel.active { display: flex; }
+    .iframe-panel-bar {
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 0.5rem 1.25rem;
+      background: var(--navy2);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .iframe-panel-back {
+      display: flex; align-items: center; gap: 0.35rem;
+      background: none; border: none; color: var(--gold);
+      font-size: 0.85rem; font-weight: 600; cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      padding: 0.3rem 0.75rem 0.3rem 0.4rem;
+      border-radius: 6px; transition: background 0.15s;
+    }
+    .iframe-panel-back:hover { background: rgba(201,146,42,0.1); }
+    #iframe-panel-title { font-size: 0.9rem; font-weight: 600; color: var(--cream); }
+    #iframe-panel-frame { flex: 1; border: none; width: 100%; }
+    #page-content.pane-mode > section:not(#find-a-book):not(#author-login-panel):not(#bc-login-panel),
+    #page-content.pane-mode > footer,
+    #page-content.pane-mode > .mobile-home-panel { display: none !important; }
+
+    /* ── AUTHOR LOGIN PANEL ── */
+    #author-login-panel {
+      display: none; min-height: calc(100vh - 64px);
+      background: radial-gradient(ellipse 70% 50% at 50% 40%, rgba(201,146,42,0.07) 0%, transparent 70%), var(--navy);
+    }
+    .alp-bar {
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 0.5rem 1.25rem;
+      background: var(--navy2); border-bottom: 1px solid var(--border);
+      position: sticky; top: 64px; z-index: 10;
+    }
+    .alp-back-btn {
+      display: flex; align-items: center; gap: 0.35rem;
+      background: none; border: none; color: var(--gold);
+      font-size: 0.85rem; font-weight: 600; cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      padding: 0.3rem 0.75rem 0.3rem 0.4rem;
+      border-radius: 6px; transition: background 0.15s;
+    }
+    .alp-back-btn:hover { background: rgba(201,146,42,0.1); }
+    .alp-bar-title { font-size: 0.9rem; font-weight: 600; color: var(--cream); }
+    .alp-body {
+      display: flex; align-items: flex-start; justify-content: center;
+      padding: 2.5rem 2rem; flex: 1; gap: 2.5rem; flex-wrap: wrap;
+      max-width: 960px; margin: 0 auto; width: 100%;
+    }
+    /* Plans column */
+    .alp-plans-col { flex: 1; min-width: 260px; max-width: 440px; }
+    .alp-plans-heading { font-size: 1.05rem; font-weight: 700; margin-bottom: 0.25rem; }
+    .alp-plans-sub { font-size: 0.78rem; color: var(--muted); margin-bottom: 1.1rem; }
+    .alp-plan-tile {
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: 12px; padding: 1rem 1.1rem; margin-bottom: 0.75rem;
+    }
+    .alp-plan-tile.popular { border-color: rgba(201,146,42,0.5); }
+    .alp-plan-header { display: flex; align-items: baseline; gap: 0.6rem; margin-bottom: 0.5rem; }
+    .alp-plan-name { font-size: 0.9rem; font-weight: 700; }
+    .alp-plan-price { font-size: 0.82rem; color: var(--gold); font-weight: 600; margin-left: auto; }
+    .alp-popular-tag {
+      font-size: 0.6rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+      background: rgba(201,146,42,0.15); color: var(--gold);
+      border: 1px solid rgba(201,146,42,0.3); border-radius: 4px; padding: 0.1rem 0.4rem;
+    }
+    .alp-plan-features { list-style: none; padding: 0; margin: 0; }
+    .alp-plan-features li {
+      font-size: 0.76rem; color: rgba(245,240,232,0.75);
+      padding: 0.2rem 0; display: flex; align-items: flex-start; gap: 0.4rem;
+    }
+    .alp-plan-features li::before { content: '✓'; color: #2dc653; font-weight: 700; flex-shrink: 0; font-size: 0.72rem; margin-top: 0.05rem; }
+    .alp-plans-link { font-size: 0.75rem; color: var(--gold); display: inline-block; margin-top: 0.25rem; }
+    .alp-plans-link:hover { text-decoration: underline; }
+    /* Login column */
+    .alp-login-col { flex: 0 0 auto; width: 100%; max-width: 360px; }
+    .alp-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 2rem 1.75rem;
+      width: 100%;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.35);
+    }
+    .alp-logo { text-align: center; margin-bottom: 1.25rem; }
+    .alp-logo span { font-size: 2.2rem; }
+    .alp-title { font-size: 1.2rem; font-weight: 700; text-align: center; margin-bottom: 0.3rem; }
+    .alp-sub { font-size: 0.78rem; color: var(--muted); text-align: center; margin-bottom: 1.5rem; }
+    .alp-field { margin-bottom: 0.9rem; }
+    .alp-field label { display: block; font-size: 0.78rem; font-weight: 600; color: var(--muted); margin-bottom: 0.4rem; letter-spacing: 0.04em; text-transform: uppercase; }
+    .alp-input {
+      width: 100%; padding: 0.7rem 0.9rem;
+      background: rgba(255,255,255,0.04); border: 1px solid rgba(201,146,42,0.2);
+      border-radius: 8px; color: var(--cream); font-family: 'Inter', sans-serif;
+      font-size: 0.9rem; transition: border-color 0.2s;
+    }
+    .alp-input:focus { outline: none; border-color: var(--gold); }
+    .alp-error { color: #f87171; font-size: 0.8rem; margin-bottom: 0.75rem; min-height: 1.1em; }
+    .alp-btn {
+      width: 100%; padding: 0.8rem;
+      background: var(--gold); border: none; border-radius: 8px;
+      color: #fff; font-family: 'Inter', sans-serif;
+      font-size: 0.95rem; font-weight: 700; cursor: pointer;
+      transition: background 0.2s; margin-top: 0.25rem;
+    }
+    .alp-btn:hover { background: var(--gold2); color: var(--navy); }
+    .alp-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .alp-footer-note { text-align: center; font-size: 0.75rem; color: var(--muted); margin-top: 1.1rem; }
+    .alp-footer-note a { color: var(--gold); }
+
+    /* ── BOOK CLUB LOGIN PANEL ── */
+    #bc-login-panel {
+      display: none; min-height: calc(100vh - 64px);
+      background: radial-gradient(ellipse 70% 50% at 50% 40%, rgba(201,146,42,0.07) 0%, transparent 70%), var(--navy);
+    }
+    .bcp-benefits-col { flex: 1; min-width: 260px; max-width: 420px; }
+    .bcp-benefits-card {
+      background: var(--card-bg);
+      border: 1px solid rgba(201,146,42,0.35);
+      border-radius: 16px;
+      padding: 1.75rem 1.5rem;
+    }
+    .bcp-badge {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      background: rgba(201,146,42,0.12); border: 1px solid rgba(201,146,42,0.3);
+      color: var(--gold2); font-size: 0.7rem; font-weight: 700;
+      letter-spacing: 0.08em; text-transform: uppercase;
+      padding: 0.3rem 0.9rem; border-radius: 999px; margin-bottom: 1rem;
+    }
+    .bcp-card-title { font-size: 1.15rem; font-weight: 700; margin-bottom: 0.25rem; }
+    .bcp-card-price { font-size: 1.5rem; font-weight: 800; color: var(--gold); margin-bottom: 0.2rem; }
+    .bcp-card-price span { font-size: 0.8rem; font-weight: 500; color: var(--muted); }
+    .bcp-card-sub { font-size: 0.78rem; color: var(--muted); margin-bottom: 1.25rem; }
+    .bcp-perks { list-style: none; padding: 0; margin: 0; }
+    .bcp-perks li {
+      display: flex; align-items: flex-start; gap: 0.6rem;
+      font-size: 0.82rem; color: rgba(245,240,232,0.85);
+      padding: 0.45rem 0; border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .bcp-perks li:last-child { border-bottom: none; }
+    .bcp-perks li .pi { font-size: 1rem; flex-shrink: 0; }
+    .bcp-join-btn {
+      display: block; width: 100%; margin-top: 1.25rem;
+      padding: 0.75rem; text-align: center;
+      background: linear-gradient(135deg, var(--gold), #E8A830);
+      border: none; border-radius: 10px;
+      color: #fff; font-family: 'Inter', sans-serif;
+      font-size: 0.9rem; font-weight: 700; cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .bcp-join-btn:hover { opacity: 0.88; }
+
+    /* ── FIND A BOOK EMBEDDED PANEL ── */
+    #find-a-book { display: none; min-height: calc(100vh - 64px); }
+    .fab-panel-bar {
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 0.5rem 1.25rem;
+      background: var(--navy2); border-bottom: 1px solid var(--border);
+      position: sticky; top: 64px; z-index: 10;
+    }
+    .fab-back-btn {
+      display: flex; align-items: center; gap: 0.35rem;
+      background: none; border: none; color: var(--gold);
+      font-size: 0.85rem; font-weight: 600; cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      padding: 0.3rem 0.75rem 0.3rem 0.4rem;
+      border-radius: 6px; transition: background 0.15s;
+    }
+    .fab-back-btn:hover { background: rgba(201,146,42,0.1); }
+    .fab-panel-bar-title { font-size: 0.9rem; font-weight: 600; color: var(--cream); }
+    .fab-hero {
+      display: flex; align-items: center; justify-content: center;
+      text-align: center; padding: 3.5rem 1.5rem 2rem;
+      position: relative; overflow: hidden;
+      background:
+        radial-gradient(ellipse 90% 70% at 50% 20%, rgba(56,189,178,0.08) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 50% at 80% 80%, rgba(201,146,42,0.1) 0%, transparent 60%);
+    }
+    .fab-hero-content { position: relative; z-index: 1; max-width: 760px; width: 100%; }
+    .ai-badge {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      background: rgba(56,189,178,0.1); border: 1px solid rgba(56,189,178,0.35);
+      color: var(--teal); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em;
+      text-transform: uppercase; padding: 0.4rem 1.1rem; border-radius: 999px;
+      margin-bottom: 1.5rem; animation: fab-pulse-border 3s infinite;
+    }
+    @keyframes fab-pulse-border {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(56,189,178,0.3); }
+      50%       { box-shadow: 0 0 0 6px rgba(56,189,178,0); }
+    }
+    .ai-badge .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--teal); animation: blink 1.4s infinite; }
+    @keyframes blink { 0%,100% { opacity:1; } 50% { opacity:0.2; } }
+    .fab-title {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(2rem, 4vw, 3rem); font-weight: 700; line-height: 1.15; margin-bottom: 1rem;
+    }
+    .fab-title em { font-style: italic; color: var(--gold2); }
+    .fab-sub {
+      font-size: clamp(0.88rem, 1.8vw, 1rem); color: rgba(245,240,232,0.65);
+      line-height: 1.75; max-width: 560px; margin: 0 auto 1.75rem;
+    }
+    .fab-sub strong { color: var(--cream); }
+    .prompt-chips { display: flex; flex-wrap: wrap; gap: 0.55rem; justify-content: center; margin-bottom: 1.75rem; }
+    .chip {
+      background: rgba(201,146,42,0.08); border: 1px solid rgba(201,146,42,0.22);
+      color: rgba(245,240,232,0.8); font-size: 0.78rem; font-weight: 500;
+      padding: 0.4rem 0.9rem; border-radius: 999px; cursor: pointer; transition: all 0.2s;
+    }
+    .chip:hover { background: rgba(201,146,42,0.18); border-color: var(--gold); color: var(--cream); }
+    .fab-search-box { position: relative; width: 100%; max-width: 680px; margin: 0 auto; }
+    .fab-search-wrap {
+      display: flex; align-items: flex-end;
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: 16px; padding: 1rem 1rem 1rem 1.25rem;
+      transition: border-color 0.3s, box-shadow 0.3s;
+    }
+    .fab-search-wrap:focus-within {
+      border-color: var(--teal);
+      box-shadow: 0 0 0 3px rgba(56,189,178,0.12), 0 8px 32px rgba(0,0,0,0.3);
+    }
+    #fab-search-input {
+      flex: 1; background: none; border: none; outline: none;
+      color: var(--cream); font-family: 'Inter', sans-serif;
+      font-size: 1rem; line-height: 1.6; resize: none;
+      min-height: 52px; max-height: 140px; overflow-y: auto;
+    }
+    #fab-search-input::placeholder { color: var(--muted); }
+    #fab-search-btn {
+      flex-shrink: 0; background: linear-gradient(135deg, var(--teal), #2AA89E);
+      border: none; color: #fff; font-family: 'Inter', sans-serif;
+      font-size: 0.9rem; font-weight: 600; padding: 0.65rem 1.4rem;
+      border-radius: 10px; cursor: pointer; transition: all 0.2s; white-space: nowrap;
+      display: flex; align-items: center; gap: 0.4rem;
+    }
+    #fab-search-btn:hover { background: linear-gradient(135deg, #42CFC4, #38BDB2); transform: translateY(-1px); }
+    #fab-search-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .fab-search-hint { font-size: 0.72rem; color: var(--muted); margin-top: 0.6rem; text-align: center; }
+    #fab-results-section { padding: 2.5rem 1.5rem 4rem; max-width: 1200px; margin: 0 auto; }
+    .fab-results-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 0.5rem; }
+    .fab-results-title { font-family: 'Playfair Display', serif; font-size: 1.4rem; font-weight: 600; }
+    .fab-results-count { font-size: 0.82rem; color: var(--muted); }
+    .fab-ai-explanation {
+      background: rgba(56,189,178,0.07); border: 1px solid rgba(56,189,178,0.2);
+      border-radius: 10px; padding: 0.75rem 1.1rem; font-size: 0.85rem;
+      color: rgba(245,240,232,0.8); margin-bottom: 1.5rem;
+      display: flex; align-items: flex-start; gap: 0.6rem;
+    }
+    .fab-books-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.25rem; }
+    .fab-book-card {
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: 14px; display: flex; gap: 1rem; padding: 1.1rem;
+      transition: border-color 0.25s, transform 0.25s, box-shadow 0.25s;
+    }
+    .fab-book-card:hover { border-color: rgba(201,146,42,0.4); transform: translateY(-3px); box-shadow: 0 8px 28px rgba(0,0,0,0.35); }
+    .fab-book-cover {
+      flex-shrink: 0; width: 80px; height: 116px; border-radius: 8px; overflow: hidden;
+      background: var(--navy3); display: flex; align-items: center; justify-content: center;
+    }
+    .fab-book-cover img { width: 100%; height: 100%; object-fit: cover; }
+    .fab-book-cover-placeholder { font-size: 2rem; opacity: 0.3; }
+    .fab-book-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.3rem; }
+    .fab-book-title { font-family: 'Playfair Display', serif; font-size: 1rem; font-weight: 600; line-height: 1.3; color: var(--cream); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .fab-book-author { font-size: 0.8rem; color: var(--gold); font-weight: 500; }
+    .fab-book-meta { font-size: 0.72rem; color: var(--muted); }
+    .fab-book-desc { font-size: 0.78rem; color: rgba(245,240,232,0.6); line-height: 1.55; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; flex: 1; }
+    .fab-book-source-badge { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.65rem; font-weight: 700; padding: 0.22rem 0.6rem; border-radius: 999px; background: rgba(56,189,178,0.1); border: 1px solid rgba(56,189,178,0.25); color: var(--teal); white-space: nowrap; }
+    .fab-yfb-badge { font-size: 0.65rem; font-weight: 700; padding: 0.22rem 0.6rem; border-radius: 999px; background: rgba(34,197,94,0.12); border: 1px solid rgba(34,197,94,0.3); color: #4ade80; white-space: nowrap; }
+    .fab-book-btns { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.5rem; }
+    .fab-btn-buy { background: linear-gradient(135deg, var(--gold), #E8A830); border: none; color: #fff; font-family: 'Inter', sans-serif; font-size: 0.72rem; font-weight: 600; padding: 0.38rem 0.85rem; border-radius: 7px; cursor: pointer; white-space: nowrap; transition: all 0.2s; text-decoration: none; display: inline-block; }
+    .fab-btn-buy:hover { background: linear-gradient(135deg, var(--gold2), var(--gold)); transform: translateY(-1px); }
+    .fab-btn-view-source { background: none; border: 1px solid rgba(56,189,178,0.35); color: var(--teal); font-family: 'Inter', sans-serif; font-size: 0.72rem; font-weight: 600; padding: 0.38rem 0.85rem; border-radius: 7px; cursor: pointer; white-space: nowrap; transition: all 0.2s; text-decoration: none; display: inline-block; }
+    .fab-btn-view-source:hover { border-color: var(--teal); background: rgba(56,189,178,0.08); }
+    .fab-btn-request { background: none; border: 1px solid rgba(201,146,42,0.35); color: var(--gold); font-family: 'Inter', sans-serif; font-size: 0.72rem; font-weight: 600; padding: 0.38rem 0.85rem; border-radius: 7px; cursor: pointer; white-space: nowrap; transition: all 0.2s; }
+    .fab-btn-request:hover { border-color: var(--gold); background: rgba(201,146,42,0.08); }
+    .fab-skeleton-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.25rem; }
+    .fab-skeleton-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 14px; padding: 1.1rem; display: flex; gap: 1rem; }
+    .fab-skel-cover { width: 80px; height: 116px; border-radius: 8px; flex-shrink: 0; }
+    .fab-skel-body { flex: 1; display: flex; flex-direction: column; gap: 0.55rem; padding-top: 0.2rem; }
+    .fab-skel-line { height: 12px; border-radius: 4px; background: linear-gradient(90deg, var(--navy3) 25%, #1C2240 50%, var(--navy3) 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; }
+    .fab-skel-line.w70 { width: 70%; } .fab-skel-line.w45 { width: 45%; } .fab-skel-line.w90 { width: 90%; } .fab-skel-line.w60 { width: 60%; }
+    .fab-state-box { text-align: center; padding: 4rem 1rem; color: var(--muted); }
+    .fab-state-box .state-icon { font-size: 3rem; margin-bottom: 1rem; }
+    .fab-state-box h3 { font-family: 'Playfair Display', serif; font-size: 1.3rem; color: var(--cream); margin-bottom: 0.5rem; }
+    .fab-state-box p { font-size: 0.88rem; line-height: 1.65; }
+    #fab-request-modal { position: fixed; inset: 0; z-index: 500; background: rgba(0,0,0,0.7); backdrop-filter: blur(6px); display: flex; align-items: center; justify-content: center; padding: 1.5rem; opacity: 0; pointer-events: none; transition: opacity 0.25s; }
+    #fab-request-modal.open { opacity: 1; pointer-events: all; }
+    .fab-modal-card { background: var(--navy2); border: 1px solid var(--border); border-radius: 18px; padding: 2rem; width: 100%; max-width: 480px; transform: translateY(24px); transition: transform 0.3s ease; }
+    #fab-request-modal.open .fab-modal-card { transform: translateY(0); }
+    .fab-modal-title { font-family: 'Playfair Display', serif; font-size: 1.35rem; margin-bottom: 0.4rem; }
+    .fab-modal-subtitle { font-size: 0.83rem; color: var(--muted); margin-bottom: 1.5rem; }
+    .fab-modal-book-info { background: rgba(201,146,42,0.06); border: 1px solid rgba(201,146,42,0.15); border-radius: 10px; padding: 0.75rem 1rem; margin-bottom: 1.25rem; }
+    .fab-modal-book-info strong { color: var(--gold2); font-size: 0.92rem; display: block; margin-bottom: 0.2rem; }
+    .fab-modal-book-info span { font-size: 0.78rem; color: var(--muted); }
+    .fab-form-group { margin-bottom: 1rem; }
+    .fab-form-group label { display: block; font-size: 0.78rem; font-weight: 600; color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 0.4rem; }
+    .fab-form-input { width: 100%; background: var(--navy3); border: 1px solid var(--border); border-radius: 9px; color: var(--cream); font-family: 'Inter', sans-serif; font-size: 0.9rem; padding: 0.7rem 0.9rem; outline: none; transition: border-color 0.2s; }
+    .fab-form-input:focus { border-color: var(--gold); }
+    .fab-form-input::placeholder { color: var(--muted); }
+    textarea.fab-form-input { resize: vertical; min-height: 70px; }
+    .fab-modal-actions { display: flex; gap: 0.75rem; margin-top: 1.5rem; }
+    .fab-btn-modal-submit { flex: 1; background: linear-gradient(135deg, var(--gold), #E8A830); border: none; color: #fff; font-family: 'Inter', sans-serif; font-size: 0.9rem; font-weight: 600; padding: 0.75rem; border-radius: 9px; cursor: pointer; transition: all 0.2s; }
+    .fab-btn-modal-submit:hover { background: linear-gradient(135deg, var(--gold2), var(--gold)); }
+    .fab-btn-modal-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+    .fab-btn-modal-cancel { background: none; border: 1px solid var(--border); color: var(--muted); font-family: 'Inter', sans-serif; font-size: 0.9rem; font-weight: 500; padding: 0.75rem 1.25rem; border-radius: 9px; cursor: pointer; transition: all 0.2s; }
+    .fab-btn-modal-cancel:hover { border-color: var(--muted); color: var(--cream); }
+    .fab-modal-success { text-align: center; padding: 1.5rem 0; }
+    .fab-modal-success h3 { font-family: 'Playfair Display', serif; font-size: 1.2rem; margin-bottom: 0.5rem; }
+    .fab-modal-success p { font-size: 0.85rem; color: var(--muted); line-height: 1.65; }
+
+    /* ── PAGE CONTENT (right of sidebar on desktop) ── */
+    #page-content { display: block; }
+
+    @media (min-width: 769px) {
+      #desktop-sidebar { display: flex; }
+      #page-content { margin-left: 220px; }
+      .hero { display: none !important; }
+    }
+
     /* ── RESPONSIVE ── */
     @media (max-width: 768px) {
-      .nav-links { display: none; }
+      .nav-hamburger { display: flex; }
+      /* Mobile nav: hamburger left | logo center | profile right */
+      nav { justify-content: space-between; }
+      .nav-logo { position: absolute; left: 50%; transform: translateX(-50%); }
+      /* Hide everything in nav-cta except account button */
+      .nav-cta .btn-outline-sm  { display: none; }
+      .nav-cta .nav-cart-btn    { display: none; }
+      .nav-cta a.nav-icon-btn   { display: none; }
+      .nav-cta { gap: 0; }
       .carousel-arrow { display: none; }
       .authors-banner { flex-direction: column; text-align: center; }
       .authors-banner-text p { max-width: 100%; }
@@ -1561,69 +2061,81 @@
     /* ── MOBILE (≤ 480px) ── */
     @media (max-width: 480px) {
       .footer-inner { grid-template-columns: 1fr; }
-      .hero { padding: 5rem 1.25rem 3rem; }
+      .hero { padding: 5.5rem 1.25rem 3.5rem; }
       section { padding: 2rem 0; }
+
+      /* Base font */
+      body { font-size: 15px; }
 
       /* Hero logo */
       .hero-content img[alt="Yellow Feather Books"] { width: 120px !important; height: 120px !important; }
 
+      /* Hero headline */
+      .hero-content h1 { font-size: 1.9rem !important; }
+      .hero-content p  { font-size: 1rem !important; }
+
       /* Hero stats */
       .hero-stats { gap: 1.5rem; }
-      .hero-stats .hero-stat .num { font-size: 1.6rem; }
-      .hero-stats .hero-stat .lbl { font-size: 0.74rem; }
+      .hero-stats .hero-stat .num { font-size: 1.8rem; }
+      .hero-stats .hero-stat .lbl { font-size: 0.8rem; }
 
       /* Hero CTA buttons — stack vertically, full width */
-      .hero-btns { flex-direction: column; align-items: stretch; gap: 0.75rem; }
+      .hero-btns { flex-direction: column; align-items: stretch; gap: 0.85rem; }
       .hero-btns .btn-primary,
-      .hero-btns .btn-secondary { justify-content: center; font-size: 1rem; padding: 0.9rem 1.5rem; }
+      .hero-btns .btn-secondary { justify-content: center; font-size: 1.05rem; padding: 1rem 1.5rem; min-height: 52px; border-radius: 12px; }
 
-      /* Nav — tighten right-side buttons */
-      .nav-cta { gap: 0.4rem; }
-      .btn-outline-sm { font-size: 0.78rem; padding: 0.4rem 0.7rem; }
-      .nav-icon-btn { padding: 0.25rem 0.5rem; }
-      .nav-icon-btn .ni-icon { font-size: 0.95rem; }
-      .nav-icon-btn .ni-label { font-size: 0.52rem; }
+      /* Nav — hide search/account/author buttons (in bottom nav instead) */
+      .nav-cta .btn-outline-sm  { display: none; }
+      .nav-cta .nav-icon-btn    { display: none; }
+      .nav-cta .nav-cart-btn    { display: none; }
+      .nav-cta { gap: 0.5rem; }
 
-      /* Section titles */
-      .section-title { font-size: 1.35rem; }
-      .section-see-all { font-size: 0.8rem; }
+      /* Section titles — larger */
+      .section-title { font-size: 1.5rem; }
+      .section-see-all { font-size: 0.85rem; padding: 0.5rem 1rem; min-height: 36px; }
 
       /* Book cards — wider & bigger text on mobile */
-      .book-card  { flex: 0 0 148px; }
-      .skeleton   { flex: 0 0 148px; }
-      .book-info  { padding: 0.7rem 0.8rem 0.8rem; }
-      .book-title { font-size: 0.85rem; }
-      .book-author{ font-size: 0.76rem; }
-      .price-curr { font-size: 0.88rem; }
-      .price-orig { font-size: 0.74rem; }
+      .book-card  { flex: 0 0 158px; }
+      .skeleton   { flex: 0 0 158px; }
+      .book-info  { padding: 0.75rem 0.85rem 0.9rem; }
+      .book-title { font-size: 0.9rem; }
+      .book-author{ font-size: 0.8rem; }
+      .price-curr { font-size: 0.95rem; }
+      .price-orig { font-size: 0.78rem; }
       .book-carousel { gap: 0.9rem; }
+      .book-add-btn { font-size: 0.82rem; padding: 0.45rem 0.7rem; min-height: 34px; }
 
       /* Genre grid — 2 columns, bigger tap targets */
-      .genre-grid { grid-template-columns: repeat(2, 1fr); gap: 0.85rem; }
-      .genre-card { padding: 1.1rem 0.75rem; }
-      .genre-emoji{ font-size: 2rem; }
-      .genre-label{ font-size: 0.88rem; }
+      .genre-grid { grid-template-columns: repeat(2, 1fr); gap: 0.9rem; }
+      .genre-card { padding: 1.25rem 0.75rem; min-height: 90px; }
+      .genre-emoji{ font-size: 2.1rem; }
+      .genre-label{ font-size: 0.95rem; font-weight: 600; }
 
       /* Search results grid */
       .search-results-grid { grid-template-columns: repeat(2, 1fr); gap: 0.9rem; }
 
       /* Browse tab pills */
-      .browse-pill { font-size: 0.82rem; padding: 0.45rem 0.9rem; }
+      .browse-pill { font-size: 0.88rem; padding: 0.55rem 1rem; min-height: 40px; }
 
       /* Cart items */
-      .order-item-title { font-size: 0.88rem; }
-      .order-item-qty   { font-size: 0.8rem; }
-      .cart-price-breakdown { font-size: 0.9rem; }
-      .cart-price-row.you-pay { font-size: 1rem; }
+      .order-item-title { font-size: 0.95rem; }
+      .order-item-qty   { font-size: 0.85rem; }
+      .cart-price-breakdown { font-size: 0.95rem; }
+      .cart-price-row.you-pay { font-size: 1.05rem; }
 
       /* Authors banner */
       .authors-banner { padding: 2rem 1.25rem; }
-      .authors-banner-text h2 { font-size: 1.45rem; }
-      .authors-banner-text p  { font-size: 0.88rem; }
+      .authors-banner-text h2 { font-size: 1.55rem; }
+      .authors-banner-text p  { font-size: 0.95rem; }
+      .nav-club-btn { font-size: 1rem; padding: 0.85rem 1.75rem; min-height: 50px; }
 
       /* Book club section */
-      .book-club-title { font-size: 1.7rem; }
-      .book-club-desc  { font-size: 0.94rem; }
+      .book-club-title { font-size: 1.8rem; }
+      .book-club-desc  { font-size: 1rem; }
+
+      /* Footer */
+      .footer-inner { font-size: 0.9rem; }
+      .footer-section-title { font-size: 1rem; }
 
       /* Book modal cover */
       .book-modal-cover,
@@ -2049,6 +2561,141 @@
       .hpc-title        { font-size: 1rem; }
       .hpc-perks li     { font-size: 0.72rem; }
     }
+
+    /* ══ MOBILE TILE NAV ══ */
+    .mobile-tile-bar {
+      display: none;
+      overflow-x: auto; overflow-y: hidden;
+      padding: 0.55rem 0.75rem;
+      background: #0b0d1a;
+      border-bottom: 1px solid rgba(201,146,42,0.2);
+      position: sticky; top: 60px;
+      z-index: 500;
+      scrollbar-width: none;
+      -webkit-overflow-scrolling: touch;
+      gap: 0.45rem;
+    }
+    .mobile-tile-bar::-webkit-scrollbar { display: none; }
+    .mobile-tile {
+      display: inline-flex; flex-direction: column;
+      align-items: center; gap: 3px;
+      padding: 0.45rem 0.85rem;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.09);
+      cursor: pointer;
+      transition: all 0.18s;
+      text-decoration: none;
+      color: var(--muted);
+      flex-shrink: 0;
+    }
+    .mobile-tile.active {
+      background: rgba(201,146,42,0.18);
+      border-color: rgba(201,146,42,0.5);
+      color: var(--gold);
+    }
+    .mobile-tile-icon { font-size: 1.25rem; line-height: 1; }
+    .mobile-tile-label { font-size: 0.6rem; font-weight: 700; color: inherit; letter-spacing: 0.02em; text-transform: uppercase; }
+
+    /* ══ MOBILE HOME PANEL ══ */
+    .mobile-home-panel {
+      display: none;
+      padding: 1.25rem 1rem 2rem;
+    }
+    .mhp-welcome {
+      text-align: center; margin-bottom: 1.25rem;
+    }
+    .mhp-welcome img { height: 56px; object-fit: contain; margin-bottom: 0.5rem; filter: brightness(1.3) drop-shadow(0 0 10px rgba(245,184,0,0.4)); }
+    .mhp-welcome h2 { font-family: 'Playfair Display', serif; font-size: 1.35rem; color: var(--cream); margin-bottom: 0.25rem; }
+    .mhp-welcome p { font-size: 0.82rem; color: var(--muted); }
+    .mhp-cards { display: flex; flex-direction: column; gap: 0.9rem; margin-bottom: 1.25rem; }
+    .mhp-card {
+      border-radius: 14px; padding: 1.25rem 1.1rem;
+      cursor: pointer; transition: transform 0.18s;
+      border: 1px solid rgba(255,255,255,0.09);
+      position: relative; overflow: hidden;
+    }
+    .mhp-card:active { transform: scale(0.985); }
+    .mhp-card.club { background: linear-gradient(135deg, rgba(201,146,42,0.14) 0%, rgba(201,146,42,0.04) 100%); border-color: rgba(201,146,42,0.35); }
+    .mhp-card.author { background: linear-gradient(135deg, rgba(42,196,183,0.12) 0%, rgba(42,196,183,0.03) 100%); border-color: rgba(42,196,183,0.3); }
+    .mhp-card-row { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.6rem; }
+    .mhp-card-icon { font-size: 1.8rem; line-height: 1; }
+    .mhp-card-tag { font-size: 0.62rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; padding: 0.2rem 0.6rem; border-radius: 100px; }
+    .mhp-card.club  .mhp-card-tag { background: rgba(201,146,42,0.2); color: var(--gold); }
+    .mhp-card.author .mhp-card-tag { background: rgba(42,196,183,0.2); color: var(--teal); }
+    .mhp-card-title { font-size: 1rem; font-weight: 700; color: var(--cream); margin-bottom: 0.35rem; }
+    .mhp-card-perks { list-style: none; padding: 0; margin: 0 0 0.75rem; display: flex; flex-direction: column; gap: 0.2rem; }
+    .mhp-card-perks li { font-size: 0.78rem; color: var(--muted); display: flex; align-items: center; gap: 0.4rem; }
+    .mhp-card-perks li::before { content: '✓'; color: var(--gold); font-weight: 700; font-size: 0.7rem; }
+    .mhp-card.author .mhp-card-perks li::before { color: var(--teal); }
+    .mhp-card-price { font-size: 0.8rem; color: var(--muted); margin-bottom: 0.75rem; }
+    .mhp-card-cta {
+      display: inline-flex; align-items: center; gap: 0.35rem;
+      padding: 0.55rem 1.2rem; border-radius: 8px;
+      font-size: 0.88rem; font-weight: 700;
+      border: none; cursor: pointer; text-decoration: none;
+    }
+    .mhp-card.club  .mhp-card-cta { background: var(--gold); color: #111; }
+    .mhp-card.author .mhp-card-cta { background: var(--teal); color: #111; }
+    .mhp-stats {
+      display: grid; grid-template-columns: repeat(2,1fr); gap: 0.65rem;
+    }
+    .mhp-stat {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 10px; padding: 0.8rem; text-align: center;
+    }
+    .mhp-stat .num { font-size: 1.4rem; font-weight: 800; color: var(--gold); line-height: 1; margin-bottom: 0.2rem; }
+    .mhp-stat .lbl { font-size: 0.65rem; color: var(--muted); }
+
+    /* ══ MOBILE PANEL VISIBILITY ══ */
+    @media (max-width: 768px) {
+      .mobile-tile-bar { display: flex; }
+      body { padding-bottom: 0; }
+
+      /* ── Panel sections: compact, no overflow ── */
+      #trending, #best-sellers, #genres, .book-club-section {
+        padding: 1rem 0 1.5rem !important;
+      }
+
+      /* Section headers */
+      .section-header { padding: 0 1rem; margin-bottom: 0.6rem !important; }
+      .section-title  { font-size: 1.1rem !important; }
+      .section-see-all{ font-size: 0.8rem; }
+
+      /* Book cards — smaller on mobile panels */
+      .book-card  { flex: 0 0 128px !important; }
+      .skeleton   { flex: 0 0 128px !important; }
+      .book-cover { height: 150px !important; }
+      .book-info  { padding: 0.6rem 0.65rem 0.7rem !important; }
+      .book-title { font-size: 0.8rem !important; line-height: 1.3; }
+      .book-author{ font-size: 0.72rem !important; }
+      .price-curr { font-size: 0.82rem !important; }
+      .price-orig { font-size: 0.7rem !important; }
+      .book-add-btn { font-size: 0.72rem !important; padding: 0.35rem 0.5rem !important; }
+      .book-carousel {
+        gap: 0.65rem !important;
+        padding: 0.25rem 1rem 0.5rem !important;
+        /* smooth horizontal scroll */
+        -webkit-overflow-scrolling: touch;
+        scroll-snap-type: x mandatory;
+      }
+      .book-card  { scroll-snap-align: start; }
+
+      /* Genre grid */
+      .genre-grid  { grid-template-columns: repeat(2,1fr) !important; gap: 0.65rem !important; padding: 0 1rem !important; }
+      .genre-card  { padding: 0.85rem 0.6rem !important; min-height: 80px !important; }
+      .genre-emoji { font-size: 1.7rem !important; }
+      .genre-label { font-size: 0.82rem !important; }
+
+      /* Book club section */
+      .book-club-inner { grid-template-columns: 1fr !important; gap: 1.5rem !important; padding: 0 1rem !important; }
+      .book-club-title { font-size: 1.4rem !important; }
+      .book-club-desc  { font-size: 0.88rem !important; }
+      .book-club-benefits { grid-template-columns: 1fr 1fr !important; gap: 0.5rem !important; }
+      .bcb-item { padding: 0.65rem !important; }
+      .bcb-label{ font-size: 0.78rem !important; }
+    }
   </style>
 </head>
 <body>
@@ -2059,10 +2706,22 @@
       <img src="TransparentLogo.png" alt="Yellow Feather Books" />
     </a>
 
+    <!-- Stats bar — desktop only, centred via absolute positioning -->
+    <div class="nav-stats">
+      <div class="nav-stat-item"><div class="ns-num">1500+</div><div class="ns-lbl">Books Available</div></div>
+      <div class="nav-stat-sep"></div>
+      <div class="nav-stat-item"><div class="ns-num">11</div><div class="ns-lbl">Curated Collections</div></div>
+      <div class="nav-stat-sep"></div>
+      <div class="nav-stat-item"><div class="ns-num">3</div><div class="ns-lbl">Author Plans</div></div>
+      <div class="nav-stat-sep"></div>
+      <div class="nav-stat-item"><div class="ns-num">🇮🇳</div><div class="ns-lbl">Delivering Across India</div></div>
+    </div>
+
     <ul class="nav-links">
       <li><a href="#trending">Trending</a></li>
       <li><a href="#best-sellers">Best Sellers</a></li>
       <li><a href="#genres">Browse Genres</a></li>
+      <li><a href="search.html" style="color:var(--teal);opacity:1;font-weight:600;">✨ Find a Book</a></li>
 
       <li style="display:flex;align-items:center;gap:0.4rem;">
         <a href="tel:+919605689946" class="nav-support-link">
@@ -2079,7 +2738,11 @@
       </li>
     </ul>
 
-    <div class="nav-cta">
+    <button class="nav-hamburger" id="nav-hamburger" onclick="openMobileDrawer()" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+
+    <div class="nav-cta" style="margin-left:auto;">
       <button class="btn-outline-sm" onclick="openSearch()" style="display:flex;align-items:center;gap:0.4rem;">🔍 Search</button>
       <button id="nav-cart-btn" class="nav-cart-btn" onclick="openCart()" title="My Cart">
         🛒<span id="nav-cart-count" class="nav-cart-count" style="display:none;"></span>
@@ -2096,6 +2759,362 @@
       </a>
     </div>
   </nav>
+
+  <!-- ══ MOBILE LEFT SIDEBAR ══ -->
+  <div class="mobile-drawer-overlay" id="mobile-drawer-overlay" onclick="closeMobileDrawer()"></div>
+  <div class="mobile-drawer" id="mobile-drawer">
+    <div class="mobile-drawer-header">
+      <img src="TransparentLogo.png" alt="Yellow Feather Books" />
+      <button class="mobile-drawer-close" onclick="closeMobileDrawer()">✕</button>
+    </div>
+    <nav class="mobile-drawer-nav">
+      <div class="drawer-section-label">Shop</div>
+      <button onclick="closeMobileDrawer();showMobilePanel('trending',document.querySelector('[data-panel=trending]'))">📈&nbsp; Trending</button>
+      <button onclick="closeMobileDrawer();showMobilePanel('bestsellers',document.querySelector('[data-panel=bestsellers]'))">⭐&nbsp; Best Sellers</button>
+      <button onclick="closeMobileDrawer();showMobilePanel('browse',document.querySelector('[data-panel=browse]'))">📚&nbsp; Browse Genres</button>
+      <div class="drawer-section-label">Discover</div>
+      <a href="search.html" class="find-book">✨&nbsp; Find a Book (AI)</a>
+      <button onclick="closeMobileDrawer();openSearch();">🔍&nbsp; Search Store</button>
+      <div class="drawer-section-label">Account</div>
+      <button onclick="closeMobileDrawer();openCart();">🛒&nbsp; My Cart</button>
+      <button onclick="closeMobileDrawer();(readerToken||isBookClubMember)?openOrdersPanel():openLoginModal();">🙋&nbsp; My Account</button>
+      <button onclick="closeMobileDrawer();showMobilePanel('bookclub',document.querySelector('[data-panel=bookclub]'))">🎖️&nbsp; Book Club</button>
+      <div class="drawer-section-label">More</div>
+      <a href="https://yellowfeatherbooks.netlify.app" target="_blank">✍️&nbsp; Author's Space</a>
+    </nav>
+    <div class="mobile-drawer-contact">
+      <a href="tel:+919605689946">📞&nbsp; +91 96056 89946</a>
+      <a href="https://wa.me/919605689946" target="_blank">💬&nbsp; Chat on WhatsApp</a>
+    </div>
+  </div>
+
+  <!-- ══ DESKTOP SIDEBAR ══ -->
+  <div id="desktop-sidebar">
+    <div class="ds-nav">
+      <div class="ds-section-label">Shop</div>
+      <a href="#trending" class="ds-nav-link">📈&nbsp; Trending</a>
+      <a href="#best-sellers" class="ds-nav-link">⭐&nbsp; Best Sellers</a>
+      <a href="#genres" class="ds-nav-link">📚&nbsp; Browse Genres</a>
+      <div class="ds-section-label">Discover</div>
+      <button class="ds-nav-link" onclick="openSearch()">🔍&nbsp; Search Books</button>
+      <a href="search.html" class="ds-nav-link highlight" onclick="if(window.innerWidth>768){event.preventDefault();showFindABook();}">✨&nbsp; Find a Book (AI)</a>
+      <div class="ds-section-label">Account</div>
+      <button class="ds-nav-link" onclick="openCart()">🛒&nbsp; My Cart</button>
+      <button class="ds-nav-link" onclick="(readerToken||isBookClubMember)?openOrdersPanel():openLoginModal()">🙋&nbsp; My Account</button>
+      <div class="ds-section-label">Community</div>
+      <button class="ds-nav-link" onclick="handleBookClubNav()">🎖️&nbsp; Book Club</button>
+      <a href="https://yellowfeatherbooks.netlify.app" class="ds-nav-link" onclick="if(window.innerWidth>768){event.preventDefault();showAuthorLogin();}">✍️&nbsp; Author's Space</a>
+    </div>
+    <div id="desktop-sidebar-footer">
+      <a href="tel:+919605689946">📞&nbsp; +91 96056 89946</a>
+      <a href="https://wa.me/919605689946" target="_blank">💬&nbsp; WhatsApp</a>
+    </div>
+  </div>
+
+  <!-- ══ MOBILE TILE BAR ══ -->
+  <div class="mobile-tile-bar" id="mobile-tile-bar">
+    <button class="mobile-tile active" data-panel="home" onclick="showMobilePanel('home',this)">
+      <div class="mobile-tile-icon">🏠</div>
+      <div class="mobile-tile-label">Home</div>
+    </button>
+    <button class="mobile-tile" data-panel="trending" onclick="showMobilePanel('trending',this)">
+      <div class="mobile-tile-icon">📈</div>
+      <div class="mobile-tile-label">Trending</div>
+    </button>
+    <button class="mobile-tile" data-panel="bestsellers" onclick="showMobilePanel('bestsellers',this)">
+      <div class="mobile-tile-icon">⭐</div>
+      <div class="mobile-tile-label">Best Sellers</div>
+    </button>
+    <button class="mobile-tile" data-panel="browse" onclick="showMobilePanel('browse',this)">
+      <div class="mobile-tile-icon">📚</div>
+      <div class="mobile-tile-label">Browse</div>
+    </button>
+    <a class="mobile-tile" href="search.html">
+      <div class="mobile-tile-icon">✨</div>
+      <div class="mobile-tile-label">Find a Book</div>
+    </a>
+    <button class="mobile-tile" data-panel="bookclub" onclick="showMobilePanel('bookclub',this)">
+      <div class="mobile-tile-icon">🎖️</div>
+      <div class="mobile-tile-label">Book Club</div>
+    </button>
+    <button class="mobile-tile" data-panel="search" onclick="openSearch()">
+      <div class="mobile-tile-icon">🔍</div>
+      <div class="mobile-tile-label">Search</div>
+    </button>
+  </div>
+
+  <!-- ══ MAIN CONTENT (offset right by desktop sidebar) ══ -->
+  <div id="page-content">
+
+  <!-- ══ INLINE IFRAME PANE ══ -->
+  <div id="iframe-panel">
+    <div class="iframe-panel-bar">
+      <button class="iframe-panel-back" onclick="closeIframePanel()">← Back</button>
+      <span id="iframe-panel-title"></span>
+    </div>
+    <iframe id="iframe-panel-frame" src="" allowfullscreen></iframe>
+  </div>
+
+  <!-- ══ FIND A BOOK PANEL ══ -->
+  <section id="find-a-book">
+    <div class="fab-panel-bar">
+      <button class="fab-back-btn" onclick="closeFindABook()">← Back</button>
+      <span class="fab-panel-bar-title">✨ Find a Book (AI)</span>
+    </div>
+    <div class="fab-hero">
+      <div class="fab-hero-content">
+        <div class="ai-badge"><span class="dot"></span> Powered by Claude AI</div>
+        <h1 class="fab-title">Discover Any<br/><em>Malayalam Book</em></h1>
+        <p class="fab-sub">Don&rsquo;t just search by title — <strong>describe what you&rsquo;re looking for</strong> in your own words. A theme, a mood, an author, a story you half-remember, or even a feeling. Our AI understands you and finds the right books.</p>
+        <div class="prompt-chips">
+          <span class="chip" onclick="fabSetPrompt(this)">Novels by MT Vasudevan Nair</span>
+          <span class="chip" onclick="fabSetPrompt(this)">A mystery set in Kerala backwaters</span>
+          <span class="chip" onclick="fabSetPrompt(this)">Award-winning Malayalam fiction</span>
+          <span class="chip" onclick="fabSetPrompt(this)">Books about Naxal movement in Kerala</span>
+          <span class="chip" onclick="fabSetPrompt(this)">Short stories by Basheer</span>
+          <span class="chip" onclick="fabSetPrompt(this)">Coming-of-age stories set in a village</span>
+        </div>
+        <div class="fab-search-box">
+          <div class="fab-search-wrap">
+            <textarea id="fab-search-input" placeholder="Try: 'a suspenseful thriller set in Kochi' or 'books similar to Aadujeevitham'…" rows="2" onkeydown="fabHandleKey(event)"></textarea>
+            <button id="fab-search-btn" onclick="fabDoSearch()">
+              <span id="fab-search-btn-text">✨ Search</span>
+            </button>
+          </div>
+          <div class="fab-search-hint">Press Enter to search &nbsp;·&nbsp; Shift+Enter for new line</div>
+        </div>
+      </div>
+    </div>
+    <div id="fab-results-section" style="display:none;">
+      <div class="fab-results-header">
+        <div class="fab-results-title" id="fab-results-title">Search Results</div>
+        <div class="fab-results-count" id="fab-results-count"></div>
+      </div>
+      <div id="fab-ai-explanation" class="fab-ai-explanation" style="display:none;">
+        <span>🤖</span><span id="fab-explanation-text"></span>
+      </div>
+      <div id="fab-books-container"></div>
+    </div>
+  </section>
+
+  <!-- ══ FIND A BOOK REQUEST MODAL ══ -->
+  <div id="fab-request-modal" onclick="fabHandleOverlayClick(event)">
+    <div class="fab-modal-card">
+      <div id="fab-modal-form-view">
+        <div class="fab-modal-title">Request This Book</div>
+        <div class="fab-modal-subtitle">We&rsquo;ll try to source it for you and notify you when it&rsquo;s available.</div>
+        <div class="fab-modal-book-info">
+          <strong id="fab-modal-book-title"></strong>
+          <span id="fab-modal-book-author"></span>
+        </div>
+        <div class="fab-form-group"><label>Your Name</label><input type="text" id="fab-req-name" class="fab-form-input" placeholder="Full name"/></div>
+        <div class="fab-form-group"><label>Email Address *</label><input type="email" id="fab-req-email" class="fab-form-input" placeholder="you@example.com"/></div>
+        <div class="fab-form-group"><label>Notes (optional)</label><textarea id="fab-req-notes" class="fab-form-input" placeholder="Any specific edition or details…"></textarea></div>
+        <div class="fab-modal-actions">
+          <button class="fab-btn-modal-cancel" onclick="fabCloseModal()">Cancel</button>
+          <button class="fab-btn-modal-submit" id="fab-submit-req-btn" onclick="fabSubmitRequest()">Send Request</button>
+        </div>
+      </div>
+      <div id="fab-modal-success-view" class="fab-modal-success" style="display:none;">
+        <div style="font-size:3rem;margin-bottom:0.75rem;">📬</div>
+        <h3>Request Sent!</h3>
+        <p>We&rsquo;ve received your request for <strong id="fab-success-book-title"></strong>. Our team will reach out once we source it.</p>
+        <button class="fab-btn-modal-submit" style="margin-top:1.25rem;max-width:200px;" onclick="fabCloseModal()">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ AUTHOR LOGIN PANEL ══ -->
+  <section id="author-login-panel">
+    <div class="alp-bar">
+      <button class="alp-back-btn" onclick="closeAuthorLogin()">← Back</button>
+      <span class="alp-bar-title">✍️ Author's Space</span>
+    </div>
+    <div class="alp-body">
+      <!-- Plans column -->
+      <div class="alp-plans-col">
+        <div class="alp-plans-heading">List Your Book. Reach Readers.</div>
+        <div class="alp-plans-sub">Choose a plan and start showcasing your books across our website, app &amp; social channels.</div>
+
+        <div class="alp-plan-tile">
+          <div class="alp-plan-header">
+            <span class="alp-plan-name">Starter</span>
+            <span class="alp-plan-price">₹99 / month</span>
+          </div>
+          <ul class="alp-plan-features">
+            <li>1 book submission per month</li>
+            <li>Listing on website, app &amp; Instagram</li>
+            <li>1 digital poster per book</li>
+            <li>2 reel collab opportunities</li>
+            <li>1 book review support</li>
+          </ul>
+        </div>
+
+        <div class="alp-plan-tile popular">
+          <div class="alp-plan-header">
+            <span class="alp-plan-name">Growth</span>
+            <span class="alp-popular-tag">Popular</span>
+            <span class="alp-plan-price">₹199 / month</span>
+          </div>
+          <ul class="alp-plan-features">
+            <li>3 book submissions per month</li>
+            <li>Listing on website, app &amp; Instagram</li>
+            <li>1 digital poster per book</li>
+            <li>5 reel collab opportunities</li>
+            <li>1 book review support per book</li>
+          </ul>
+        </div>
+
+        <div class="alp-plan-tile">
+          <div class="alp-plan-header">
+            <span class="alp-plan-name">Publisher</span>
+            <span class="alp-plan-price">₹399 / month</span>
+          </div>
+          <ul class="alp-plan-features">
+            <li>10 book submissions per month</li>
+            <li>Listing on website, app &amp; Instagram</li>
+            <li>10 reel collab opportunities</li>
+            <li>Dedicated account support</li>
+            <li>Monthly analytics report</li>
+          </ul>
+        </div>
+
+        <a href="https://yellowfeatherbooks.netlify.app" target="_blank" class="alp-plans-link">View full plan details &amp; subscribe →</a>
+      </div>
+
+      <!-- Login column -->
+      <div class="alp-login-col">
+        <div class="alp-card">
+          <div class="alp-logo"><span>✍️</span></div>
+          <div class="alp-title">Author's Space</div>
+          <div class="alp-sub">Sign in to manage your book listings and publisher profile.</div>
+          <div class="alp-field">
+            <label>Email Address</label>
+            <input type="email" id="alp-email" class="alp-input" placeholder="you@example.com" onkeydown="if(event.key==='Enter')alpSubmit()"/>
+          </div>
+          <div class="alp-field">
+            <label>Password</label>
+            <div class="pw-wrap">
+              <input type="password" id="alp-password" class="alp-input" placeholder="••••••••" onkeydown="if(event.key==='Enter')alpSubmit()"/>
+              <button type="button" class="pw-eye" onclick="togglePw('alp-password',this)" tabindex="-1" aria-label="Show password">👁</button>
+            </div>
+          </div>
+          <div class="alp-error" id="alp-error"></div>
+          <button class="alp-btn" id="alp-btn" onclick="alpSubmit()">Sign In</button>
+          <div class="alp-footer-note">
+            Don't have an account? <a href="https://yellowfeatherbooks.netlify.app" target="_blank">Visit Author's Space</a> to register.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ BOOK CLUB LOGIN PANEL ══ -->
+  <section id="bc-login-panel">
+    <div class="alp-bar">
+      <button class="alp-back-btn" onclick="closeBcLoginPanel()">← Back</button>
+      <span class="alp-bar-title">🏆 Book Club</span>
+    </div>
+    <div class="alp-body">
+      <!-- Benefits column -->
+      <div class="bcp-benefits-col">
+        <div class="bcp-benefits-card">
+          <div class="bcp-badge">🏆 Member Benefits</div>
+          <div class="bcp-card-title">Yellow Feather Book Club</div>
+          <div class="bcp-card-price">₹99 <span>/ year</span></div>
+          <div class="bcp-card-sub">One annual fee. Unlock all member perks instantly.</div>
+          <ul class="bcp-perks">
+            <li><span class="pi">🏷️</span><span><strong>CLUB10</strong> — Extra 10% discount on every order</span></li>
+            <li><span class="pi">📦</span><span>My Orders — track all your purchases</span></li>
+            <li><span class="pi">🎁</span><span>Surprise gifts &amp; exclusive member deals</span></li>
+            <li><span class="pi">📖</span><span>Early access to new titles &amp; launches</span></li>
+            <li><span class="pi">🚀</span><span>High speed delivery across India</span></li>
+            <li><span class="pi">✍️</span><span>Signed copy pre-booking access</span></li>
+          </ul>
+          <button class="bcp-join-btn" onclick="closeBcLoginPanel(); openBookClubModal();">Join Now — ₹99 →</button>
+        </div>
+      </div>
+
+      <!-- Login column -->
+      <div class="alp-login-col">
+        <div class="alp-card">
+          <div class="alp-logo"><span>🏆</span></div>
+          <div class="alp-title">Club Member Login</div>
+          <div class="alp-sub">Sign in with your Yellow Feather Book Club account.</div>
+          <div class="alp-field">
+            <label>Email Address</label>
+            <input type="email" id="bcp-email" class="alp-input" placeholder="your@email.com" onkeydown="if(event.key==='Enter')bcPaneLogin()"/>
+          </div>
+          <div class="alp-field">
+            <label>Password</label>
+            <div class="pw-wrap">
+              <input type="password" id="bcp-password" class="alp-input" placeholder="••••••••" onkeydown="if(event.key==='Enter')bcPaneLogin()"/>
+              <button type="button" class="pw-eye" onclick="togglePw('bcp-password',this)" tabindex="-1" aria-label="Show password">👁</button>
+            </div>
+          </div>
+          <div class="alp-error" id="bcp-error"></div>
+          <button class="alp-btn" id="bcp-btn" onclick="bcPaneLogin()">Sign In</button>
+          <div class="alp-footer-note">
+            <a href="https://yellowfeatherbookstore.in/account/login#recover" target="_blank">Forgot password?</a>
+            &nbsp;·&nbsp;
+            <a href="#" onclick="closeBcLoginPanel();openBookClubModal();return false;">Not a member? Join ₹99 →</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ MOBILE HOME PANEL ══ -->
+  <div class="mobile-home-panel" id="mobile-home-panel">
+    <div class="mhp-welcome">
+      <img src="TransparentLogo.png" alt="Yellow Feather Books" />
+      <h2>Yellow Feather Books</h2>
+      <p>Your one-stop destination for Malayalam literature</p>
+    </div>
+    <div class="mhp-cards">
+
+      <!-- Book Club -->
+      <div class="mhp-card club" onclick="showMobilePanel('bookclub', document.querySelector('[data-panel=bookclub]'))">
+        <div class="mhp-card-row">
+          <div class="mhp-card-icon">🏆</div>
+          <span class="mhp-card-tag">Book Club</span>
+        </div>
+        <div class="mhp-card-title">Join &amp; Save on Every Order</div>
+        <ul class="mhp-card-perks">
+          <li>Attractive discounts on all purchases</li>
+          <li>Surprise gifts &amp; member deals</li>
+          <li>Early access to new titles</li>
+          <li>High speed delivery across India</li>
+        </ul>
+        <div class="mhp-card-price">₹99 / year</div>
+        <button class="mhp-card-cta" onclick="event.stopPropagation();handleBookClubNav()">Join Now →</button>
+      </div>
+
+      <!-- Author's Space -->
+      <div class="mhp-card author" onclick="window.open('https://yellowfeatherbooks.netlify.app','_blank')">
+        <div class="mhp-card-row">
+          <div class="mhp-card-icon">✍️</div>
+          <span class="mhp-card-tag">For Authors</span>
+        </div>
+        <div class="mhp-card-title">List Your Book &amp; Reach Readers</div>
+        <ul class="mhp-card-perks">
+          <li>3 flexible listing plans</li>
+          <li>Reach thousands of readers</li>
+          <li>Instagram &amp; digital promotion</li>
+          <li>Author dashboard &amp; analytics</li>
+        </ul>
+        <div class="mhp-card-price">Plans from ₹99 / month · Cancel anytime</div>
+        <a class="mhp-card-cta" href="https://yellowfeatherbooks.netlify.app" target="_blank" onclick="event.stopPropagation()">Get Started →</a>
+      </div>
+
+    </div>
+    <div class="mhp-stats">
+      <div class="mhp-stat"><div class="num">1500+</div><div class="lbl">Books Available</div></div>
+      <div class="mhp-stat"><div class="num">11</div><div class="lbl">Collections</div></div>
+      <div class="mhp-stat"><div class="num">3</div><div class="lbl">Author Plans</div></div>
+      <div class="mhp-stat"><div class="num">🇮🇳</div><div class="lbl">Pan India Delivery</div></div>
+    </div>
+  </div>
 
   <!-- ══ HERO ══ -->
   <section class="hero">
@@ -2518,6 +3537,8 @@
     </div>
   </footer>
 
+  </div><!-- /#page-content -->
+
   <!-- ══ SEARCH OVERLAY ══ -->
   <div id="search-overlay" class="search-overlay">
     <div class="search-header">
@@ -2623,7 +3644,10 @@
         </div>
         <div class="sf-field">
           <label class="sf-label">Password</label>
-          <input id="reader-password" type="password" class="sf-input" placeholder="••••••••" onkeydown="if(event.key==='Enter') readerLogin()" />
+          <div class="pw-wrap">
+            <input id="reader-password" type="password" class="sf-input" placeholder="••••••••" onkeydown="if(event.key==='Enter') readerLogin()" />
+            <button type="button" class="pw-eye" onclick="togglePw('reader-password',this)" tabindex="-1" aria-label="Show password">👁</button>
+          </div>
         </div>
         <button class="login-submit-btn" id="reader-login-btn" onclick="readerLogin()">Sign In →</button>
 
@@ -3261,6 +4285,8 @@
     function handleBookClubNav() {
       if (readerToken && isBookClubMember) {
         openOrdersPanel();
+      } else if (window.innerWidth > 768) {
+        showBcLoginPanel();
       } else {
         openLoginModal();
       }
@@ -3422,8 +4448,8 @@
                 id name processedAt
                 financialStatus fulfillmentStatus
                 currentTotalPrice { amount currencyCode }
-                fulfillments(first: 1) {
-                  trackingInfo(first: 1) { number url company }
+                successfulFulfillments(first: 1) {
+                  trackingInfo(first: 1) { number url }
                 }
                 lineItems(first: 5) {
                   edges {
@@ -3453,7 +4479,7 @@
         const res  = await fetch(API_URL, {
           method:  'POST',
           headers: { 'Content-Type': 'application/json', 'X-Shopify-Storefront-Access-Token': STOREFRONT_TOKEN },
-          body:    JSON.stringify({ query: ORDERS_QUERY, variables: { token: readerToken, first: 3 } }),
+          body:    JSON.stringify({ query: ORDERS_QUERY, variables: { token: readerToken, first: 50 } }),
           signal:  controller.signal
         });
         clearTimeout(timeout);
@@ -3539,7 +4565,7 @@
         const date     = new Date(order.processedAt).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' });
         const amount   = parseFloat(order.currentTotalPrice?.amount || 0).toFixed(2);
         const items    = order.lineItems?.edges?.map(e => e.node) || [];
-        const tracking = order.fulfillments?.[0]?.trackingInfo?.[0] || null;
+        const tracking = order.successfulFulfillments?.[0]?.trackingInfo?.[0] || null;
 
         const itemsHtml = items.map(item => {
           const img     = item.variant?.image?.url;
@@ -4696,31 +5722,55 @@
     // openCheckout(url, preOpenedPopup) — navigates an already-open blank popup
     //   (used by prepareAndCheckout so the popup opens before any async work,
     //    keeping the user-gesture context alive and defeating popup blockers)
+    var _checkoutOpenTime = 0;
+
+    function _checkoutReturnUrl(url) {
+      // Ask Shopify to send users back to the landing portal after purchase
+      var ret = encodeURIComponent('https://yellowfeatherbooks.com');
+      return url + (url.includes('?') ? '&' : '?') + 'return_to=' + ret;
+    }
+
+    function _onLandingFocus() {
+      // If the checkout popup is still open and enough time has passed, close it
+      // and treat it as "checkout complete / user came back"
+      if (_checkoutPopup && !_checkoutPopup.closed && Date.now() - _checkoutOpenTime > 8000) {
+        _checkoutPopup.close();
+        clearInterval(_checkoutTimer);
+        _checkoutTimer = null;
+        _checkoutPopup = null;
+        window.removeEventListener('focus', _onLandingFocus);
+        hideCheckoutToast();
+        showContinueToast();
+        prefetchOrders();
+      }
+    }
+
     function openCheckout(url, preOpenedPopup) {
+      const checkoutUrl = _checkoutReturnUrl(url);
       const w    = Math.min(500, screen.availWidth  - 40);
       const h    = Math.min(780, screen.availHeight - 60);
       const left = Math.round((screen.availWidth  - w) / 2);
       const top  = Math.round((screen.availHeight - h) / 2);
 
       if (preOpenedPopup && !preOpenedPopup.closed) {
-        // Reuse the pre-opened blank window; navigate it to the final URL
         _checkoutPopup = preOpenedPopup;
-        try { _checkoutPopup.location.href = url; } catch(e) {}
+        try { _checkoutPopup.location.href = checkoutUrl; } catch(e) {}
       } else {
         _checkoutPopup = window.open(
-          url, 'yfb_checkout',
+          checkoutUrl, 'yfb_checkout',
           `width=${w},height=${h},left=${left},top=${top},scrollbars=yes,resizable=yes,toolbar=no,menubar=no`
         );
       }
 
       if (!_checkoutPopup || _checkoutPopup.closed || typeof _checkoutPopup.closed === 'undefined') {
-        // Popup blocked — fall back to new tab gracefully
-        window.open(url, '_blank');
+        window.open(checkoutUrl, '_blank');
         return;
       }
 
+      _checkoutOpenTime = Date.now();
       _checkoutPopup.focus();
       showCheckoutToast();
+      window.addEventListener('focus', _onLandingFocus);
 
       // Poll every 600 ms to detect popup close
       _checkoutTimer = setInterval(() => {
@@ -4728,10 +5778,23 @@
           clearInterval(_checkoutTimer);
           _checkoutTimer = null;
           _checkoutPopup = null;
+          window.removeEventListener('focus', _onLandingFocus);
           hideCheckoutToast();
           showContinueToast();
+          prefetchOrders();
         }
       }, 600);
+    }
+
+    function doneCheckout() {
+      if (_checkoutPopup && !_checkoutPopup.closed) _checkoutPopup.close();
+      clearInterval(_checkoutTimer);
+      _checkoutTimer = null;
+      _checkoutPopup = null;
+      window.removeEventListener('focus', _onLandingFocus);
+      hideCheckoutToast();
+      showContinueToast();
+      prefetchOrders();
     }
 
     function showCheckoutToast() {
@@ -4741,10 +5804,11 @@
           <div class="checkout-toast-icon">🛒</div>
           <div class="checkout-toast-body">
             <div class="checkout-toast-title">Checkout is open</div>
-            <div class="checkout-toast-sub">Complete your payment in the checkout window</div>
+            <div class="checkout-toast-sub">Complete your payment, then click <strong>Done</strong> to return here</div>
           </div>
           <div class="checkout-toast-actions">
-            <button class="checkout-focus-btn" onclick="focusCheckout()">Open window</button>
+            <button class="checkout-focus-btn" onclick="focusCheckout()">View Checkout</button>
+            <button class="checkout-focus-btn" style="background:#22c55e;" onclick="doneCheckout()">✓ Done</button>
             <button class="checkout-cancel-btn" onclick="cancelCheckout()">Cancel</button>
           </div>
         </div>`;
@@ -4858,6 +5922,365 @@
         window.open(target.href, '_blank');
       }
     }, true);
+
+    // ── Mobile Panel System ────────────────────────────────────────────────
+    const _MOBILE_PANEL_SELECTORS = {
+      home:        '#mobile-home-panel',
+      trending:    '#trending',
+      bestsellers: '#best-sellers',
+      browse:      '#genres',
+      bookclub:    '.book-club-section',
+    };
+
+    function _isMobile() { return window.innerWidth <= 768; }
+
+    function _hideAllForMobile() {
+      // Hide every <section> and footer — catches ALL sections regardless of ID
+      document.querySelectorAll('section, footer').forEach(el => el.style.display = 'none');
+      // Also hide home panel
+      const hp = document.getElementById('mobile-home-panel');
+      if (hp) hp.style.display = 'none';
+    }
+
+    function _restoreDesktop() {
+      document.querySelectorAll('section, footer').forEach(el => el.style.display = '');
+      const hp = document.getElementById('mobile-home-panel');
+      if (hp) hp.style.display = 'none';
+    }
+
+    function showMobilePanel(name, tileEl) {
+      if (!_isMobile()) return;
+
+      // Hide everything
+      _hideAllForMobile();
+
+      // Show only the target panel
+      const sel = _MOBILE_PANEL_SELECTORS[name];
+      if (sel) {
+        const el = document.querySelector(sel);
+        if (el) el.style.display = 'block';
+      }
+
+      // Sync tile highlight
+      document.querySelectorAll('.mobile-tile').forEach(t => t.classList.remove('active'));
+      if (tileEl) tileEl.classList.add('active');
+
+      // Scroll to top
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function _initMobilePanels() {
+      if (!_isMobile()) return;
+      _hideAllForMobile();
+      const hp = document.getElementById('mobile-home-panel');
+      if (hp) hp.style.display = 'block';
+    }
+    _initMobilePanels();
+
+    window.addEventListener('resize', () => {
+      if (_isMobile()) _initMobilePanels();
+      else _restoreDesktop();
+    });
+
+    // ── Mobile Drawer ──────────────────────────────────────────────────────
+    function openMobileDrawer() {
+      document.getElementById('mobile-drawer').classList.add('open');
+      document.getElementById('mobile-drawer-overlay').classList.add('open');
+      document.getElementById('nav-hamburger').classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+    function closeMobileDrawer() {
+      document.getElementById('mobile-drawer').classList.remove('open');
+      document.getElementById('mobile-drawer-overlay').classList.remove('open');
+      document.getElementById('nav-hamburger').classList.remove('open');
+      document.body.style.overflow = '';
+    }
+
+    // ── FIND A BOOK PANEL ─────────────────────────────────────────────────────
+    var fabPendingBook = {};
+
+    function showFindABook() {
+      closeIframePanel();
+      document.getElementById('page-content').classList.add('pane-mode');
+      document.getElementById('find-a-book').style.display = 'block';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    function closeFindABook() {
+      document.getElementById('find-a-book').style.display = 'none';
+      document.getElementById('page-content').classList.remove('pane-mode');
+    }
+    function fabSetPrompt(el) {
+      document.getElementById('fab-search-input').value = el.textContent;
+      document.getElementById('fab-search-input').focus();
+    }
+    function fabHandleKey(e) {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); fabDoSearch(); }
+    }
+    async function fabDoSearch() {
+      const prompt = document.getElementById('fab-search-input').value.trim();
+      if (!prompt) return;
+      const btn = document.getElementById('fab-search-btn');
+      const btnT = document.getElementById('fab-search-btn-text');
+      btn.disabled = true; btnT.textContent = 'Searching…';
+      fabShowLoading();
+      try {
+        const res  = await fetch('/.netlify/functions/book-search', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt })
+        });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        fabRenderResults(data);
+      } catch(err) { fabShowError(err.message); }
+      finally { btn.disabled = false; btnT.textContent = '✨ Search'; }
+    }
+    function fabShowLoading() {
+      const s = document.getElementById('fab-results-section');
+      s.style.display = 'block';
+      s.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      document.getElementById('fab-results-title').textContent = 'Searching…';
+      document.getElementById('fab-results-count').textContent = '';
+      document.getElementById('fab-ai-explanation').style.display = 'none';
+      const sk = Array.from({ length: 6 }, () => `<div class="fab-skeleton-card"><div class="fab-skel-line fab-skel-cover"></div><div class="fab-skel-body"><div class="fab-skel-line w70"></div><div class="fab-skel-line w45"></div><div class="fab-skel-line w90"></div><div class="fab-skel-line w60"></div></div></div>`).join('');
+      document.getElementById('fab-books-container').innerHTML = `<div class="fab-skeleton-grid">${sk}</div>`;
+    }
+    function fabRenderResults(data) {
+      const { books, explanation, total } = data;
+      document.getElementById('fab-results-title').textContent = 'Books Found';
+      document.getElementById('fab-results-count').textContent = `${total} result${total !== 1 ? 's' : ''}`;
+      if (explanation) {
+        document.getElementById('fab-explanation-text').textContent = explanation;
+        document.getElementById('fab-ai-explanation').style.display = 'flex';
+      }
+      if (!books || books.length === 0) {
+        const dbg = data.debug ? `<p style="font-size:0.75rem;color:#e63946;margin-top:0.5rem;">${fabEscHtml(data.debug)}</p>` : '';
+        document.getElementById('fab-books-container').innerHTML = `<div class="fab-state-box"><div class="state-icon">📭</div><h3>No books found</h3><p>Try a different search — describe a theme, character, or author you enjoy.</p>${dbg}</div>`;
+        return;
+      }
+      const cards = books.map(book => {
+        const cov = book.coverUrl
+          ? `<img src="${book.coverUrl}" alt="${fabEscHtml(book.title)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/><div class="fab-book-cover-placeholder" style="display:none;">📖</div>`
+          : `<div class="fab-book-cover-placeholder">📖</div>`;
+        const src  = book.source   ? `<span class="fab-book-source-badge">📚 ${fabEscHtml(book.source)}</span>` : '';
+        const yfb  = book.inStore  ? `<span class="fab-yfb-badge">✦ In Yellow Feather</span>` : '';
+        const act  = book.inStore
+          ? `<a href="${book.shopifyUrl}" target="_blank" class="fab-btn-buy">Buy Now${book.price ? ' · '+book.price : ''}</a>`
+          : `<button class="fab-btn-request" onclick="fabOpenRequest(${JSON.stringify(book).replace(/'/g,"&#39;")})">Request from Us</button>`;
+        const ext  = book.shopLink ? `<a href="${book.shopLink}" target="_blank" class="fab-btn-view-source">View on ${fabEscHtml(book.source||'Site')} →</a>` : '';
+        return `<div class="fab-book-card"><div class="fab-book-cover">${cov}</div><div class="fab-book-info"><div class="fab-book-title">${fabEscHtml(book.title)}</div>${book.author?`<div class="fab-book-author">${fabEscHtml(book.author)}</div>`:''} ${book.source?`<div class="fab-book-meta">${fabEscHtml(book.source)}${book.year?' · '+book.year:''}</div>`:''} ${book.description?`<div class="fab-book-desc">${fabEscHtml(book.description)}</div>`:''}<div style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-top:0.4rem;">${src}${yfb}</div><div class="fab-book-btns">${act}${ext}</div></div></div>`;
+      }).join('');
+      document.getElementById('fab-books-container').innerHTML = `<div class="fab-books-grid">${cards}</div>`;
+    }
+    function fabShowError(msg) {
+      document.getElementById('fab-results-title').textContent = 'Something went wrong';
+      document.getElementById('fab-books-container').innerHTML = `<div class="fab-state-box"><div class="state-icon">⚠️</div><h3>Search failed</h3><p>${fabEscHtml(msg||'Please try again.')}</p></div>`;
+    }
+    function fabOpenRequest(book) {
+      fabPendingBook = book;
+      document.getElementById('fab-modal-book-title').textContent  = book.title;
+      document.getElementById('fab-modal-book-author').textContent = book.author || '';
+      document.getElementById('fab-modal-form-view').style.display  = 'block';
+      document.getElementById('fab-modal-success-view').style.display = 'none';
+      document.getElementById('fab-req-name').value  = '';
+      document.getElementById('fab-req-email').value = '';
+      document.getElementById('fab-req-notes').value = '';
+      document.getElementById('fab-request-modal').classList.add('open');
+    }
+    function fabCloseModal() { document.getElementById('fab-request-modal').classList.remove('open'); }
+    function fabHandleOverlayClick(e) { if (e.target === document.getElementById('fab-request-modal')) fabCloseModal(); }
+    async function fabSubmitRequest() {
+      const name  = document.getElementById('fab-req-name').value.trim();
+      const email = document.getElementById('fab-req-email').value.trim();
+      const notes = document.getElementById('fab-req-notes').value.trim();
+      if (!email) { alert('Please enter your email address.'); return; }
+      const btn = document.getElementById('fab-submit-req-btn');
+      btn.disabled = true; btn.textContent = 'Sending…';
+      try {
+        const res = await fetch('/.netlify/functions/request-book', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, book_title: fabPendingBook.title, author_name: fabPendingBook.author, publisher: fabPendingBook.publisher, year: fabPendingBook.year, notes })
+        });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        document.getElementById('fab-modal-form-view').style.display    = 'none';
+        document.getElementById('fab-modal-success-view').style.display = 'block';
+        document.getElementById('fab-success-book-title').textContent   = fabPendingBook.title;
+      } catch(err) { alert('Could not send request: ' + err.message); }
+      finally { btn.disabled = false; btn.textContent = 'Send Request'; }
+    }
+    function fabEscHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+    function openInPane(url, title) {
+      document.getElementById('iframe-panel-title').textContent = title;
+      document.getElementById('iframe-panel-frame').src = url;
+      document.getElementById('iframe-panel').classList.add('active');
+      document.getElementById('page-content').classList.add('pane-mode');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    function closeIframePanel() {
+      document.getElementById('page-content').classList.remove('pane-mode');
+      document.getElementById('iframe-panel').classList.remove('active');
+      document.getElementById('iframe-panel-frame').src = '';
+    }
+
+    // ── PASSWORD VISIBILITY TOGGLE ────────────────────────────────────────────
+    function togglePw(id, btn) {
+      var inp = document.getElementById(id);
+      var show = inp.type === 'password';
+      inp.type = show ? 'text' : 'password';
+      btn.textContent = show ? '🙈' : '👁';
+    }
+
+    // ── AUTO-SCROLL TO TRENDING ON LOAD (desktop) ────────────────────────────
+    document.addEventListener('DOMContentLoaded', function() {
+      if (window.innerWidth > 768) {
+        var t = document.getElementById('trending');
+        if (t) t.scrollIntoView();
+      }
+    });
+
+    // ── BOOK CLUB LOGIN PANEL ─────────────────────────────────────────────────
+    function showBcLoginPanel() {
+      closeFindABook(); closeIframePanel(); closeAuthorLogin();
+      document.getElementById('bcp-email').value = '';
+      document.getElementById('bcp-password').value = '';
+      document.getElementById('bcp-error').textContent = '';
+      document.getElementById('bcp-btn').disabled = false;
+      document.getElementById('bcp-btn').textContent = 'Sign In';
+      document.getElementById('bc-login-panel').style.display = 'block';
+      document.getElementById('page-content').classList.add('pane-mode');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    function closeBcLoginPanel() {
+      document.getElementById('bc-login-panel').style.display = 'none';
+      document.getElementById('page-content').classList.remove('pane-mode');
+    }
+    async function bcPaneLogin() {
+      const email    = document.getElementById('bcp-email').value.trim();
+      const password = document.getElementById('bcp-password').value;
+      const errEl    = document.getElementById('bcp-error');
+      const btn      = document.getElementById('bcp-btn');
+      errEl.textContent = '';
+      if (!email || !password) { errEl.textContent = 'Please enter your email and password.'; return; }
+      btn.disabled = true; btn.textContent = 'Signing in…';
+
+      const mutation = `mutation Login($email:String!,$password:String!){customerAccessTokenCreate(input:{email:$email,password:$password}){customerAccessToken{accessToken}customerUserErrors{code message}}}`;
+
+      const doLogin = async (e, p) => {
+        const r = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Shopify-Storefront-Access-Token': STOREFRONT_TOKEN },
+          body: JSON.stringify({ query: mutation, variables: { email: e, password: p } })
+        });
+        return (await r.json())?.data?.customerAccessTokenCreate;
+      };
+
+      const finishLogin = async (token) => {
+        readerToken = token; readerEmail = email;
+        sessionStorage.setItem('yfb_reader_token', token);
+        sessionStorage.setItem('yfb_reader_email', email);
+        prefetchOrders();
+        btn.textContent = 'Checking membership…';
+        await checkAndSetMembership(email);
+        if (!isBookClubMember) {
+          errEl.textContent = 'You\'re signed in but don\'t have an active Book Club membership.';
+          btn.disabled = false; btn.textContent = 'Sign In';
+          return;
+        }
+        closeBcLoginPanel();
+        updateNavForLoggedIn();
+        openOrdersPanel();
+      };
+
+      try {
+        const result = await doLogin(email, password);
+        const errors = result?.customerUserErrors || [];
+        const token  = result?.customerAccessToken?.accessToken;
+        if (token) { await finishLogin(token); return; }
+
+        if (errors[0]?.message?.toLowerCase().includes('unidentified')) {
+          btn.textContent = 'Checking account…';
+          const chk  = await fetch('/.netlify/functions/check-book-club-member', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email })
+          });
+          const chkData = await chk.json();
+          if (chkData.member) {
+            btn.textContent = 'Setting up account…';
+            const parts = (chkData.name || '').trim().split(' ');
+            const createMutation = `mutation customerCreate($input:CustomerCreateInput!){customerCreate(input:$input){customer{id}customerUserErrors{code message}}}`;
+            const cr = await fetch(API_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'X-Shopify-Storefront-Access-Token': STOREFRONT_TOKEN },
+              body: JSON.stringify({ query: createMutation, variables: { input: { firstName: parts[0]||'Member', lastName: parts.slice(1).join(' ')||'.', email, password, acceptsMarketing: true } } })
+            });
+            const crData = await (cr.json());
+            const crErrors = crData?.data?.customerCreate?.customerUserErrors || [];
+            if (!crErrors.length || crErrors[0]?.code === 'TAKEN') {
+              btn.textContent = 'Signing in…';
+              const retry = await doLogin(email, password);
+              const rt = retry?.customerAccessToken?.accessToken;
+              if (rt) { await finishLogin(rt); return; }
+            }
+          }
+          errEl.textContent = errors[0]?.message || 'Invalid email or password.';
+        } else {
+          errEl.textContent = errors[0]?.message || 'Login failed. Please try again.';
+        }
+      } catch(e) {
+        errEl.textContent = 'Connection error. Please try again.';
+      }
+      btn.disabled = false; btn.textContent = 'Sign In';
+    }
+
+    // ── AUTHOR LOGIN PANEL ────────────────────────────────────────────────────
+    function showAuthorLogin() {
+      closeFindABook();
+      closeIframePanel();
+      document.getElementById('alp-email').value = '';
+      document.getElementById('alp-password').value = '';
+      document.getElementById('alp-error').textContent = '';
+      document.getElementById('alp-btn').disabled = false;
+      document.getElementById('alp-btn').textContent = 'Sign In';
+      document.getElementById('author-login-panel').style.display = 'block';
+      document.getElementById('page-content').classList.add('pane-mode');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    function closeAuthorLogin() {
+      document.getElementById('author-login-panel').style.display = 'none';
+      document.getElementById('page-content').classList.remove('pane-mode');
+    }
+    async function alpSubmit() {
+      const email    = document.getElementById('alp-email').value.trim();
+      const password = document.getElementById('alp-password').value;
+      const errEl    = document.getElementById('alp-error');
+      const btn      = document.getElementById('alp-btn');
+      errEl.textContent = '';
+      if (!email || !password) { errEl.textContent = 'Please enter your email and password.'; return; }
+      btn.disabled = true; btn.textContent = 'Signing in…';
+      try {
+        const res  = await fetch('https://yellowfeatherbooks.netlify.app/.netlify/functions/login-user', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+        if (!data.success) {
+          errEl.textContent = data.error || 'Invalid email or password.';
+          btn.disabled = false; btn.textContent = 'Sign In';
+          return;
+        }
+        // Store session so author portal recognises the user
+        localStorage.setItem('authorSession', JSON.stringify({ email: data.email, name: data.name }));
+        window.open('https://yellowfeatherbooks.netlify.app', '_blank');
+        closeAuthorLogin();
+      } catch(e) {
+        errEl.textContent = 'Connection error. Please try again.';
+        btn.disabled = false; btn.textContent = 'Sign In';
+      }
+    }
+
   </script>
+
+
 </body>
 </html>

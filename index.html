@@ -2903,10 +2903,9 @@
       <div id="fab-modal-form-view">
         <div class="fab-modal-title">Request This Book</div>
         <div class="fab-modal-subtitle">We&rsquo;ll try to source it for you and notify you when it&rsquo;s available.</div>
-        <div class="fab-modal-book-info">
-          <strong id="fab-modal-book-title"></strong>
-          <span id="fab-modal-book-author"></span>
-        </div>
+        <div class="fab-form-group"><label>Book Title *</label><input type="text" id="fab-req-book-title" class="fab-form-input" placeholder="Book title"/></div>
+        <div class="fab-form-group"><label>Author</label><input type="text" id="fab-req-author" class="fab-form-input" placeholder="Author name"/></div>
+        <div class="fab-form-group"><label>Publisher</label><input type="text" id="fab-req-publisher" class="fab-form-input" placeholder="Publisher"/></div>
         <div class="fab-form-group"><label>Your Name</label><input type="text" id="fab-req-name" class="fab-form-input" placeholder="Full name"/></div>
         <div class="fab-form-group"><label>Email Address *</label><input type="email" id="fab-req-email" class="fab-form-input" placeholder="you@example.com"/></div>
         <div class="fab-form-group"><label>Phone Number</label><input type="tel" id="fab-req-phone" class="fab-form-input" placeholder="+91 98765 43210"/></div>
@@ -6085,8 +6084,9 @@
     }
     function fabOpenRequest(book) {
       fabPendingBook = book;
-      document.getElementById('fab-modal-book-title').textContent  = book.title;
-      document.getElementById('fab-modal-book-author').textContent = book.author || '';
+      document.getElementById('fab-req-book-title').value = book.title || '';
+      document.getElementById('fab-req-author').value     = book.author || '';
+      document.getElementById('fab-req-publisher').value  = book.publisher || book.source || '';
       document.getElementById('fab-modal-form-view').style.display  = 'block';
       document.getElementById('fab-modal-success-view').style.display = 'none';
       document.getElementById('fab-req-name').value  = '';
@@ -6098,23 +6098,27 @@
     function fabCloseModal() { document.getElementById('fab-request-modal').classList.remove('open'); }
     function fabHandleOverlayClick(e) { if (e.target === document.getElementById('fab-request-modal')) fabCloseModal(); }
     async function fabSubmitRequest() {
-      const name  = document.getElementById('fab-req-name').value.trim();
-      const email = document.getElementById('fab-req-email').value.trim();
-      const phone = document.getElementById('fab-req-phone').value.trim();
-      const notes = document.getElementById('fab-req-notes').value.trim();
+      const book_title  = document.getElementById('fab-req-book-title').value.trim();
+      const author_name = document.getElementById('fab-req-author').value.trim();
+      const publisher   = document.getElementById('fab-req-publisher').value.trim();
+      const name        = document.getElementById('fab-req-name').value.trim();
+      const email       = document.getElementById('fab-req-email').value.trim();
+      const phone       = document.getElementById('fab-req-phone').value.trim();
+      const notes       = document.getElementById('fab-req-notes').value.trim();
       if (!email) { alert('Please enter your email address.'); return; }
+      if (!book_title) { alert('Please enter the book title.'); return; }
       const btn = document.getElementById('fab-submit-req-btn');
       btn.disabled = true; btn.textContent = 'Sending…';
       try {
         const res = await fetch('/.netlify/functions/request-book', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, email, phone, book_title: fabPendingBook.title, author_name: fabPendingBook.author, publisher: fabPendingBook.publisher, year: fabPendingBook.year, notes })
+          body: JSON.stringify({ name, email, phone, book_title, author_name, publisher, year: fabPendingBook.year, notes })
         });
         const data = await res.json();
         if (data.error) throw new Error(data.error);
         document.getElementById('fab-modal-form-view').style.display    = 'none';
         document.getElementById('fab-modal-success-view').style.display = 'block';
-        document.getElementById('fab-success-book-title').textContent   = fabPendingBook.title;
+        document.getElementById('fab-success-book-title').textContent   = book_title;
       } catch(err) { alert('Could not send request: ' + err.message); }
       finally { btn.disabled = false; btn.textContent = 'Send Request'; }
     }

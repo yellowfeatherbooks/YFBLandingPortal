@@ -41,8 +41,9 @@ async function searchSerper(query) {
     return { books: [], error: 'Search engine not configured' };
   }
   try {
-    const siteFilter = 'site:dcbooks.com OR site:mathrubhumibooks.com OR site:olivebooks.in OR site:greenbooks.in OR site:currentbooks.in OR site:sahyadribooks.com OR site:manoramaonline.com';
-    const fullQuery  = `${query} buy ${siteFilter}`;
+    const sites      = '(site:dcbooks.com OR site:mathrubhumibooks.com OR site:olivebooks.in OR site:greenbooks.in OR site:currentbooks.in OR site:sahyadribooks.com OR site:manoramaonline.com)';
+    const exclusions = '-inurl:author -inurl:news -inurl:blog -inurl:category -inurl:tag -inurl:about -inurl:contact';
+    const fullQuery  = `${query} book ${exclusions} ${sites}`;
     console.log('Serper query:', fullQuery);
     const res  = await fetch('https://google.serper.dev/search', {
       method:  'POST',

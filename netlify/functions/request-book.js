@@ -38,9 +38,9 @@ exports.handler = async (event) => {
       }).catch(e => console.error('Supabase save failed:', e.message));
     }
 
-    // 2 — Notify via n8n (fire and forget)
+    // 2 — Notify via n8n
     if (N8N_BOOK_REQUEST_URL) {
-      fetch(N8N_BOOK_REQUEST_URL, {
+      await fetch(N8N_BOOK_REQUEST_URL, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ name, email, book_title, author_name, publisher, year, notes })

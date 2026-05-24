@@ -3958,7 +3958,7 @@
         query GetCollection($id: ID!, $first: Int!, $after: String) {
           collection(id: $id) {
             handle
-            products(first: $first, sortKey: BEST_SELLING, after: $after) {
+            products(first: $first, sortKey: COLLECTION_DEFAULT, after: $after) {
               pageInfo { hasNextPage endCursor }
               edges {
                 node {

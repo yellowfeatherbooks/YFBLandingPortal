@@ -8,6 +8,8 @@ const CLAUDE_KEY    = (process.env.ANTHROPIC_API_KEY || '').trim();
 const SERPER_KEY    = (process.env.SERPER_API_KEY    || '').trim();
 const SHOPIFY_STORE = 'zgqk4e-1m.myshopify.com';
 const SHOPIFY_TOKEN = process.env.SHOPIFY_STOREFRONT_TOKEN;
+const SUPABASE_URL  = (process.env.SUPABASE_URL  || '').trim();
+const SUPABASE_KEY  = (process.env.SUPABASE_KEY  || '').trim();
 
 const SOURCE_MAP = {
   'dcbooks.com':          'DC Books',
@@ -105,6 +107,7 @@ exports.handler = async (event) => {
     // ── 1. Claude extracts clean search terms ──────────────────────────────
     let searchQuery = prompt;
     let explanation = '';
+    let claudeInputTokens = 0, claudeOutputTokens = 0;
 
     if (CLAUDE_KEY) {
       try {
@@ -134,6 +137,8 @@ Respond ONLY with valid JSON (no markdown):
         });
         if (claudeRes.ok) {
           const cd  = await claudeRes.json();
+          claudeInputTokens  = cd.usage?.input_tokens  || 0;
+          claudeOutputTokens = cd.usage?.output_tokens || 0;
           const raw = cd.content?.[0]?.text || '{}';
           const parsed = JSON.parse(raw.replace(/```json|```/g, '').trim());
           if (parsed.searchQuery) searchQuery = parsed.searchQuery;
@@ -193,6 +198,38 @@ Respond ONLY with valid JSON (no markdown):
     const books = shopifyTop
       ? [shopifyTop, ...serperBooks.filter(b => b.title.toLowerCase() !== shopifyTop.title.toLowerCase())]
       : serperBooks;
+
+    // ── 4. Log to Supabase (fire-and-forget) ─────────────────────────────
+    const serperCalls    = serperBooks.length === 0 ? 2 : 1;
+    const claudeCostUsd  = (claudeInputTokens / 1_000_000 * 0.80) + (claudeOutputTokens / 1_000_000 * 4.00);
+    const serperCostUsd  = serperCalls * 0.001;
+    const totalCostUsd   = claudeCostUsd + serperCostUsd;
+
+    if (SUPABASE_URL && SUPABASE_KEY) {
+      fetch(`${SUPABASE_URL}/rest/v1/search_logs`, {
+        method:  'POST',
+        headers: {
+          'apikey':        SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`,
+          'Content-Type':  'application/json',
+          'Prefer':        'return=minimal'
+        },
+        body: JSON.stringify({
+          prompt,
+          search_query:          searchQuery,
+          explanation,
+          results_count:         books.length,
+          shopify_match:         !!shopifyTop,
+          has_results:           books.length > 0,
+          claude_input_tokens:   claudeInputTokens,
+          claude_output_tokens:  claudeOutputTokens,
+          claude_cost_usd:       claudeCostUsd.toFixed(6),
+          serper_calls:          serperCalls,
+          serper_cost_usd:       serperCostUsd.toFixed(6),
+          total_cost_usd:        totalCostUsd.toFixed(6)
+        })
+      }).catch(e => console.error('search_logs insert failed:', e.message));
+    }
 
     return {
       statusCode: 200,

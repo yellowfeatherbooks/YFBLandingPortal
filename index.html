@@ -6072,7 +6072,7 @@
         const yfb  = book.inStore  ? `<span class="fab-yfb-badge">✦ In Yellow Feather</span>` : '';
         const act  = book.inStore
           ? `<a href="${book.cartUrl || book.shopifyUrl}" target="_blank" class="fab-btn-buy">Add to Cart${book.price ? ' · '+book.price : ''}</a>`
-          : `<button class="fab-btn-request" onclick="fabOpenRequest(${JSON.stringify(book).replace(/'/g,"&#39;")})">Request from Us</button>`;
+          : `<button class="fab-btn-request" data-book='${JSON.stringify(book).replace(/'/g,"&#39;")}' onclick="fabOpenRequest(JSON.parse(this.dataset.book))">Request from Us</button>`;
         const ext  = book.shopLink ? `<a href="${book.shopLink}" target="_blank" class="fab-btn-view-source">View on ${fabEscHtml(book.source||'Site')} →</a>` : '';
         return `<div class="fab-book-card"><div class="fab-book-cover">${cov}</div><div class="fab-book-info"><div class="fab-book-title">${fabEscHtml(book.title)}</div>${book.author?`<div class="fab-book-author">${fabEscHtml(book.author)}</div>`:''} ${book.source?`<div class="fab-book-meta">${fabEscHtml(book.source)}${book.year?' · '+book.year:''}</div>`:''} ${book.description?`<div class="fab-book-desc">${fabEscHtml(book.description)}</div>`:''}<div style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-top:0.4rem;">${src}${yfb}</div><div class="fab-book-btns">${act}${ext}</div></div></div>`;
       }).join('');

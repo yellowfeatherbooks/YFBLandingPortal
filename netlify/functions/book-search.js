@@ -166,6 +166,7 @@ Respond ONLY with valid JSON (no markdown):
           });
           const sd    = await shopRes.json();
           const edges = sd.data?.products?.edges || [];
+          console.log(`Shopify check — bareTitle:"${bareTitle}" titleSearch:"${titleSearch}" found:${edges.length} edges:${JSON.stringify(edges.map(e=>e.node.title))}`);
           const shortTitle = bareTitle.toLowerCase().substring(0, 15);
           const match = edges.find(e =>
             e.node.title.toLowerCase().includes(shortTitle) ||

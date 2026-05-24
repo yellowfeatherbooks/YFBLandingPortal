@@ -40,23 +40,32 @@ async function searchSerper(query) {
     console.error('Serper: missing SERPER_API_KEY env variable');
     return { books: [], error: 'Search engine not configured' };
   }
-  try {
-    const sites     = '(site:dcbooks.com OR site:mathrubhumibooks.com OR site:olivebooks.in OR site:greenbooks.in OR site:currentbooks.in OR site:sahyadribooks.com OR site:manoramaonline.com)';
-    const fullQuery = `${query} ${sites}`;
-    console.log('Serper query:', fullQuery);
+  async function serperFetch(q, n = 10) {
     const res  = await fetch('https://google.serper.dev/search', {
       method:  'POST',
       headers: { 'X-API-KEY': SERPER_KEY, 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ q: fullQuery, num: 10 })
+      body:    JSON.stringify({ q, num: n })
     });
     const data = await res.json();
+    if (!res.ok) throw new Error(data.message || res.status);
+    return data.organic || [];
+  }
 
-    if (!res.ok) {
-      console.error('Serper API error:', JSON.stringify(data));
-      return { books: [], error: `Serper: ${data.message || res.status}` };
+  try {
+    const sites      = '(site:dcbooks.com OR site:mathrubhumibooks.com OR site:olivebooks.in OR site:greenbooks.in OR site:currentbooks.in OR site:sahyadribooks.com OR site:manoramaonline.com)';
+    const siteQuery  = `${query} ${sites}`;
+    console.log('Serper query (sites):', siteQuery);
+    let organic = await serperFetch(siteQuery);
+    console.log('Serper results count (sites):', organic.length);
+
+    if (organic.length === 0) {
+      const broadQuery = `${query} malayalam book`;
+      console.log('Serper fallback query:', broadQuery);
+      organic = await serperFetch(broadQuery);
+      console.log('Serper results count (fallback):', organic.length);
     }
 
-    console.log('Serper results count:', (data.organic || []).length);
+    const data = { organic };
 
     return {
       books: (data.organic || []).map(item => {

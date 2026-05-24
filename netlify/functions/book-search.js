@@ -142,50 +142,57 @@ Respond ONLY with valid JSON (no markdown):
       } catch(e) { /* use raw prompt */ }
     }
 
-    // ── 2. Search publisher sites via Serper ──────────────────────────────
-    const cseResult = await searchSerper(searchQuery);
-    const books     = cseResult.books;
-    const cseError  = cseResult.error;
-
-    // ── 3. Shopify availability check ─────────────────────────────────────
-    if (SHOPIFY_TOKEN && books.length) {
-      await Promise.all(books.map(async (book) => {
-        try {
-          // Strip " by Author", "– Source", "- Source" suffixes to get the bare title
-          const bareTitle   = book.title.replace(/ by .*/i, '').replace(/\s*[–—-].*/, '').trim();
-          const titleSearch = bareTitle.replace(/"/g, '').substring(0, 30);
-          const shopRes = await fetch(`https://${SHOPIFY_STORE}/api/2024-01/graphql.json`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Shopify-Storefront-Access-Token': SHOPIFY_TOKEN
-            },
-            body: JSON.stringify({
-              query: `{ products(first:3, query:"title:${titleSearch}") { edges { node { title handle availableForSale priceRange { minVariantPrice { amount } } variants(first:1) { edges { node { id } } } } } } }`
-            })
-          });
-          const sd    = await shopRes.json();
-          const edges = sd.data?.products?.edges || [];
-          console.log(`Shopify check — bareTitle:"${bareTitle}" titleSearch:"${titleSearch}" found:${edges.length} edges:${JSON.stringify(edges.map(e=>e.node.title))}`);
-          const shortTitle = bareTitle.toLowerCase().substring(0, 15);
-          const match = edges.find(e =>
-            e.node.title.toLowerCase().includes(shortTitle) ||
-            shortTitle.includes(e.node.title.toLowerCase().substring(0, 15))
-          );
-          if (match) {
-            const variantGid = match.node.variants?.edges?.[0]?.node?.id || '';
-            const variantId  = variantGid.split('/').pop();
-            book.inStore       = match.node.availableForSale;
-            book.shopifyHandle = match.node.handle;
-            book.shopifyUrl    = `https://yellowfeatherbookstore.in/products/${match.node.handle}`;
-            book.variantGid    = variantGid;
-            book.price         = match.node.priceRange?.minVariantPrice?.amount
+    // ── 2. Direct Shopify search using clean query ────────────────────────
+    let shopifyTop = null;
+    if (SHOPIFY_TOKEN) {
+      try {
+        const titleSearch = searchQuery.replace(/"/g, '').substring(0, 40);
+        const shopRes = await fetch(`https://${SHOPIFY_STORE}/api/2024-01/graphql.json`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Shopify-Storefront-Access-Token': SHOPIFY_TOKEN },
+          body: JSON.stringify({
+            query: `{ products(first:5, query:"title:${titleSearch}") { edges { node { title handle availableForSale description priceRange { minVariantPrice { amount } } images(first:1) { edges { node { url } } } variants(first:1) { edges { node { id } } } } } } }`
+          })
+        });
+        const sd = await shopRes.json();
+        const edges = sd.data?.products?.edges || [];
+        const lq = searchQuery.toLowerCase();
+        const match = edges.find(e => {
+          const lt = e.node.title.toLowerCase();
+          return lt.includes(lq.substring(0, 10)) || lq.includes(lt.substring(0, 10));
+        }) || (edges.length ? edges[0] : null);
+        if (match) {
+          const variantGid = match.node.variants?.edges?.[0]?.node?.id || '';
+          shopifyTop = {
+            title:       match.node.title,
+            author:      '',
+            publisher:   'Yellow Feather Books',
+            description: (match.node.description || '').substring(0, 280),
+            coverUrl:    match.node.images?.edges?.[0]?.node?.url || '',
+            year:        '',
+            source:      'Yellow Feather Books',
+            shopLink:    `https://yellowfeatherbookstore.in/products/${match.node.handle}`,
+            inStore:     match.node.availableForSale,
+            shopifyUrl:  `https://yellowfeatherbookstore.in/products/${match.node.handle}`,
+            variantGid,
+            price:       match.node.priceRange?.minVariantPrice?.amount
               ? `₹${parseFloat(match.node.priceRange.minVariantPrice.amount).toFixed(0)}`
-              : null;
-          }
-        } catch(e) { /* skip */ }
-      }));
+              : null
+          };
+          console.log(`Shopify direct match: "${match.node.title}" inStore:${match.node.availableForSale}`);
+        }
+      } catch(e) { console.error('Shopify direct search error:', e.message); }
     }
+
+    // ── 3. Search publisher sites via Serper ──────────────────────────────
+    const cseResult = await searchSerper(searchQuery);
+    const serperBooks = cseResult.books;
+    const cseError    = cseResult.error;
+
+    // Merge: Shopify result at top, then Serper results (deduplicated)
+    const books = shopifyTop
+      ? [shopifyTop, ...serperBooks.filter(b => b.title.toLowerCase() !== shopifyTop.title.toLowerCase())]
+      : serperBooks;
 
     return {
       statusCode: 200,

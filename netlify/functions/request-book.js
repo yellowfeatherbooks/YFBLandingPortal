@@ -21,30 +21,7 @@ exports.handler = async (event) => {
       body: JSON.stringify({ error: 'Email and book title are required' })
     };
 
-    // 1 — Save to Supabase (optional)
-    if (SUPABASE_URL && SUPABASE_KEY) {
-      try {
-        const sbRes = await fetch(`${SUPABASE_URL}/rest/v1/book_requests`, {
-          method: 'POST',
-          headers: {
-            'apikey':        SUPABASE_KEY,
-            'Authorization': `Bearer ${SUPABASE_KEY}`,
-            'Content-Type':  'application/json',
-            'Prefer':        'return=minimal'
-          },
-          body: JSON.stringify({
-            name, email, phone, book_title, author_name, publisher, year, notes,
-            requested_at: new Date().toISOString()
-          })
-        });
-        if (!sbRes.ok) {
-          const sbErr = await sbRes.text();
-          console.error('Supabase save failed:', sbRes.status, sbErr);
-        }
-      } catch(e) { console.error('Supabase save error:', e.message); }
-    }
-
-    // 2 — Notify via n8n
+    // Notify via n8n (n8n handles Supabase insert)
     if (N8N_BOOK_REQUEST_URL) {
       await fetch(N8N_BOOK_REQUEST_URL, {
         method:  'POST',

@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AI Book Finder — Yellow Feather Books</title>
+  <meta name="description" content="Search any Malayalam book using AI. Describe what you are looking for and discover books from our store and beyond."/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    :root {
+      --navy:    #0B0E1A;
+      --navy2:   #111527;
+      --navy3:   #161B30;
+      --gold:    #C9922A;
+      --gold2:   #F5B800;
+      --cream:   #F5F0E8;
+      --muted:   #7A7390;
+      --border:  rgba(201,146,42,0.18);
+      --card-bg: #13172A;
+      --teal:    #38BDB2;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--navy);
+      color: var(--cream);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    a { text-decoration: none; color: inherit; }
+
+    /* ── NAVBAR ── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 2rem; height: 64px;
+      background: rgba(11,14,26,0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-logo img { height: 56px; width: 56px; object-fit: contain; mix-blend-mode: screen; filter: brightness(1.2) saturate(1.3); border-radius: 50%; }
+    .nav-links { display: flex; align-items: center; gap: 0.25rem; list-style: none; }
+    .nav-links a {
+      color: var(--cream); opacity: 0.75; font-size: 0.875rem; font-weight: 500;
+      padding: 0.5rem 0.85rem; border-radius: 6px;
+      transition: opacity 0.2s, background 0.2s;
+    }
+    .nav-links a:hover { opacity: 1; background: rgba(255,255,255,0.06); }
+    .nav-links a.active { opacity: 1; color: var(--gold2); }
+    .nav-support-link { color: var(--gold) !important; opacity: 1 !important; font-weight: 500; }
+    .nav-cta { display: flex; align-items: center; gap: 0.6rem; }
+    .btn-outline-sm {
+      background: none; border: 1px solid var(--border); color: var(--cream);
+      font-family: 'Inter', sans-serif; font-size: 0.82rem; font-weight: 500;
+      padding: 0.45rem 1rem; border-radius: 6px; cursor: pointer;
+      transition: border-color 0.2s, background 0.2s; white-space: nowrap;
+    }
+    .btn-outline-sm:hover { border-color: var(--gold); background: rgba(201,146,42,0.08); }
+    @media (max-width: 768px) { .nav-links { display: none; } }
+
+    /* ── HERO ── */
+    .hero {
+      min-height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+      text-align: center;
+      padding: 7rem 1.5rem 4rem;
+      position: relative; overflow: hidden;
+    }
+    .hero-bg {
+      position: absolute; inset: 0;
+      background:
+        radial-gradient(ellipse 90% 70% at 50% 20%, rgba(56,189,178,0.08) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 50% at 80% 80%, rgba(201,146,42,0.1) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 40% at 10% 60%, rgba(201,146,42,0.07) 0%, transparent 60%);
+    }
+
+    /* floating particles */
+    .particles { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+    .particle {
+      position: absolute; border-radius: 50%;
+      background: var(--gold2); opacity: 0;
+      animation: float-particle 8s infinite ease-in-out;
+    }
+    @keyframes float-particle {
+      0%   { opacity: 0; transform: translateY(0) scale(0.5); }
+      20%  { opacity: 0.6; }
+      80%  { opacity: 0.3; }
+      100% { opacity: 0; transform: translateY(-120px) scale(1.2); }
+    }
+
+    .hero-content { position: relative; z-index: 1; max-width: 760px; width: 100%; }
+
+    .ai-badge {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      background: rgba(56,189,178,0.1);
+      border: 1px solid rgba(56,189,178,0.35);
+      color: var(--teal);
+      font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em;
+      text-transform: uppercase; padding: 0.4rem 1.1rem;
+      border-radius: 999px; margin-bottom: 1.5rem;
+      animation: pulse-border 3s infinite;
+    }
+    @keyframes pulse-border {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(56,189,178,0.3); }
+      50%       { box-shadow: 0 0 0 6px rgba(56,189,178,0); }
+    }
+    .ai-badge .dot {
+      width: 6px; height: 6px; border-radius: 50%; background: var(--teal);
+      animation: blink 1.4s infinite;
+    }
+    @keyframes blink { 0%,100% { opacity:1; } 50% { opacity:0.2; } }
+
+    .hero h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(2.2rem, 5.5vw, 3.8rem);
+      font-weight: 700; line-height: 1.15; margin-bottom: 1.1rem;
+    }
+    .hero h1 em { font-style: italic; color: var(--gold2); }
+
+    .hero-sub {
+      font-size: clamp(0.95rem, 2vw, 1.1rem);
+      color: rgba(245,240,232,0.65);
+      line-height: 1.75; max-width: 560px; margin: 0 auto 2rem;
+    }
+    .hero-sub strong { color: var(--cream); }
+
+    /* ── PROMPT CHIPS ── */
+    .prompt-chips {
+      display: flex; flex-wrap: wrap; gap: 0.55rem;
+      justify-content: center; margin-bottom: 2rem;
+    }
+    .chip {
+      background: rgba(201,146,42,0.08);
+      border: 1px solid rgba(201,146,42,0.22);
+      color: rgba(245,240,232,0.8);
+      font-size: 0.78rem; font-weight: 500;
+      padding: 0.4rem 0.9rem; border-radius: 999px;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .chip:hover { background: rgba(201,146,42,0.18); border-color: var(--gold); color: var(--cream); }
+
+    /* ── SEARCH BOX ── */
+    .search-box {
+      position: relative; width: 100%; max-width: 680px; margin: 0 auto;
+    }
+    .search-wrap {
+      display: flex; align-items: flex-end; gap: 0;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 1rem 1rem 1rem 1.25rem;
+      transition: border-color 0.3s, box-shadow 0.3s;
+    }
+    .search-wrap:focus-within {
+      border-color: var(--teal);
+      box-shadow: 0 0 0 3px rgba(56,189,178,0.12), 0 8px 32px rgba(0,0,0,0.3);
+    }
+    .search-textarea {
+      flex: 1; background: none; border: none; outline: none;
+      color: var(--cream); font-family: 'Inter', sans-serif;
+      font-size: 1rem; line-height: 1.6; resize: none;
+      min-height: 52px; max-height: 140px;
+      overflow-y: auto;
+    }
+    .search-textarea::placeholder { color: var(--muted); }
+    .search-btn {
+      flex-shrink: 0; background: linear-gradient(135deg, var(--teal), #2AA89E);
+      border: none; color: #fff;
+      font-family: 'Inter', sans-serif; font-size: 0.9rem; font-weight: 600;
+      padding: 0.65rem 1.4rem; border-radius: 10px;
+      cursor: pointer; transition: all 0.2s; white-space: nowrap;
+      display: flex; align-items: center; gap: 0.4rem;
+    }
+    .search-btn:hover { background: linear-gradient(135deg, #42CFC4, #38BDB2); transform: translateY(-1px); }
+    .search-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .search-hint {
+      font-size: 0.72rem; color: var(--muted); margin-top: 0.6rem;
+      text-align: center;
+    }
+
+    /* ── RESULTS SECTION ── */
+    #results-section { padding: 3rem 1.5rem 5rem; max-width: 1200px; margin: 0 auto; }
+
+    .results-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 1.5rem; flex-wrap: wrap; gap: 0.5rem;
+    }
+    .results-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.4rem; font-weight: 600;
+    }
+    .results-count { font-size: 0.82rem; color: var(--muted); }
+
+    .ai-explanation {
+      background: rgba(56,189,178,0.07);
+      border: 1px solid rgba(56,189,178,0.2);
+      border-radius: 10px; padding: 0.75rem 1.1rem;
+      font-size: 0.85rem; color: rgba(245,240,232,0.8);
+      margin-bottom: 1.5rem;
+      display: flex; align-items: flex-start; gap: 0.6rem;
+    }
+    .ai-explanation .ai-icon { font-size: 1rem; flex-shrink: 0; margin-top: 1px; }
+
+    /* ── BOOK CARDS GRID ── */
+    .books-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 1.25rem;
+    }
+
+    .book-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      display: flex; gap: 1rem;
+      padding: 1.1rem;
+      transition: border-color 0.25s, transform 0.25s, box-shadow 0.25s;
+    }
+    .book-card:hover {
+      border-color: rgba(201,146,42,0.4);
+      transform: translateY(-3px);
+      box-shadow: 0 8px 28px rgba(0,0,0,0.35);
+    }
+
+    .book-cover {
+      flex-shrink: 0; width: 80px; height: 116px;
+      border-radius: 8px; overflow: hidden;
+      background: var(--navy3);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .book-cover img { width: 100%; height: 100%; object-fit: cover; }
+    .book-cover-placeholder {
+      font-size: 2rem; opacity: 0.3;
+    }
+
+    .book-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.3rem; }
+    .book-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1rem; font-weight: 600; line-height: 1.3;
+      color: var(--cream);
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .book-author { font-size: 0.8rem; color: var(--gold); font-weight: 500; }
+    .book-meta { font-size: 0.72rem; color: var(--muted); }
+    .book-desc {
+      font-size: 0.78rem; color: rgba(245,240,232,0.6); line-height: 1.55;
+      display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+      flex: 1;
+    }
+
+    .book-footer { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-top: 0.5rem; }
+
+    .book-source-badge {
+      display: inline-flex; align-items: center; gap: 0.3rem;
+      font-size: 0.65rem; font-weight: 700; letter-spacing: 0.04em;
+      padding: 0.22rem 0.6rem; border-radius: 999px;
+      background: rgba(56,189,178,0.1); border: 1px solid rgba(56,189,178,0.25); color: var(--teal);
+      white-space: nowrap;
+    }
+    .yfb-badge {
+      font-size: 0.65rem; font-weight: 700; letter-spacing: 0.04em;
+      padding: 0.22rem 0.6rem; border-radius: 999px;
+      background: rgba(34,197,94,0.12); border: 1px solid rgba(34,197,94,0.3); color: #4ade80;
+      white-space: nowrap;
+    }
+
+    .book-btns { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.5rem; }
+
+    .btn-buy {
+      background: linear-gradient(135deg, var(--gold), #E8A830);
+      border: none; color: #fff;
+      font-family: 'Inter', sans-serif; font-size: 0.72rem; font-weight: 600;
+      padding: 0.38rem 0.85rem; border-radius: 7px;
+      cursor: pointer; white-space: nowrap; transition: all 0.2s; text-decoration: none;
+      display: inline-block;
+    }
+    .btn-buy:hover { background: linear-gradient(135deg, var(--gold2), var(--gold)); transform: translateY(-1px); }
+
+    .btn-view-source {
+      background: none; border: 1px solid rgba(56,189,178,0.35);
+      color: var(--teal); font-family: 'Inter', sans-serif;
+      font-size: 0.72rem; font-weight: 600;
+      padding: 0.38rem 0.85rem; border-radius: 7px;
+      cursor: pointer; white-space: nowrap; transition: all 0.2s; text-decoration: none;
+      display: inline-block;
+    }
+    .btn-view-source:hover { border-color: var(--teal); background: rgba(56,189,178,0.08); }
+
+    .btn-request {
+      background: none; border: 1px solid rgba(201,146,42,0.35);
+      color: var(--gold); font-family: 'Inter', sans-serif;
+      font-size: 0.72rem; font-weight: 600;
+      padding: 0.38rem 0.85rem; border-radius: 7px;
+      cursor: pointer; white-space: nowrap; transition: all 0.2s;
+    }
+    .btn-request:hover { border-color: var(--gold); background: rgba(201,146,42,0.08); }
+
+    /* ── LOADING SKELETON ── */
+    .skeleton-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 1.25rem;
+    }
+    .skeleton-card {
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: 14px; padding: 1.1rem;
+      display: flex; gap: 1rem;
+    }
+    .skel-cover { width: 80px; height: 116px; border-radius: 8px; flex-shrink: 0; }
+    .skel-body { flex: 1; display: flex; flex-direction: column; gap: 0.55rem; padding-top: 0.2rem; }
+    .skel-line {
+      height: 12px; border-radius: 4px;
+      background: linear-gradient(90deg, var(--navy3) 25%, #1C2240 50%, var(--navy3) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.4s infinite;
+    }
+    .skel-line.w70 { width: 70%; }
+    .skel-line.w45 { width: 45%; }
+    .skel-line.w90 { width: 90%; }
+    .skel-line.w60 { width: 60%; }
+    @keyframes shimmer { to { background-position: -200% 0; } }
+
+    /* ── EMPTY / ERROR STATES ── */
+    .state-box {
+      text-align: center; padding: 4rem 1rem;
+      color: var(--muted);
+    }
+    .state-box .state-icon { font-size: 3rem; margin-bottom: 1rem; }
+    .state-box h3 { font-family: 'Playfair Display', serif; font-size: 1.3rem; color: var(--cream); margin-bottom: 0.5rem; }
+    .state-box p { font-size: 0.88rem; line-height: 1.65; }
+
+    /* ── REQUEST MODAL ── */
+    .modal-overlay {
+      position: fixed; inset: 0; z-index: 500;
+      background: rgba(0,0,0,0.7); backdrop-filter: blur(6px);
+      display: flex; align-items: center; justify-content: center;
+      padding: 1.5rem;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.25s;
+    }
+    .modal-overlay.open { opacity: 1; pointer-events: all; }
+
+    .modal-card {
+      background: var(--navy2);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 2rem;
+      width: 100%; max-width: 480px;
+      transform: translateY(24px);
+      transition: transform 0.3s ease;
+    }
+    .modal-overlay.open .modal-card { transform: translateY(0); }
+
+    .modal-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.35rem; margin-bottom: 0.4rem;
+    }
+    .modal-subtitle { font-size: 0.83rem; color: var(--muted); margin-bottom: 1.5rem; }
+    .modal-book-info {
+      background: rgba(201,146,42,0.06);
+      border: 1px solid rgba(201,146,42,0.15);
+      border-radius: 10px; padding: 0.75rem 1rem;
+      margin-bottom: 1.25rem;
+    }
+    .modal-book-info strong { color: var(--gold2); font-size: 0.92rem; display: block; margin-bottom: 0.2rem; }
+    .modal-book-info span { font-size: 0.78rem; color: var(--muted); }
+
+    .form-group { margin-bottom: 1rem; }
+    .form-group label { display: block; font-size: 0.78rem; font-weight: 600; color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 0.4rem; }
+    .form-input {
+      width: 100%; background: var(--navy3);
+      border: 1px solid var(--border); border-radius: 9px;
+      color: var(--cream); font-family: 'Inter', sans-serif; font-size: 0.9rem;
+      padding: 0.7rem 0.9rem; outline: none;
+      transition: border-color 0.2s;
+    }
+    .form-input:focus { border-color: var(--gold); }
+    .form-input::placeholder { color: var(--muted); }
+    textarea.form-input { resize: vertical; min-height: 70px; }
+
+    .modal-actions { display: flex; gap: 0.75rem; margin-top: 1.5rem; }
+    .btn-modal-submit {
+      flex: 1; background: linear-gradient(135deg, var(--gold), #E8A830);
+      border: none; color: #fff;
+      font-family: 'Inter', sans-serif; font-size: 0.9rem; font-weight: 600;
+      padding: 0.75rem; border-radius: 9px; cursor: pointer; transition: all 0.2s;
+    }
+    .btn-modal-submit:hover { background: linear-gradient(135deg, var(--gold2), var(--gold)); }
+    .btn-modal-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-modal-cancel {
+      background: none; border: 1px solid var(--border); color: var(--muted);
+      font-family: 'Inter', sans-serif; font-size: 0.9rem; font-weight: 500;
+      padding: 0.75rem 1.25rem; border-radius: 9px; cursor: pointer; transition: all 0.2s;
+    }
+    .btn-modal-cancel:hover { border-color: var(--muted); color: var(--cream); }
+
+    .modal-success {
+      text-align: center; padding: 1.5rem 0;
+    }
+    .modal-success .success-icon { font-size: 3rem; margin-bottom: 0.75rem; }
+    .modal-success h3 { font-family: 'Playfair Display', serif; font-size: 1.2rem; margin-bottom: 0.5rem; }
+    .modal-success p { font-size: 0.85rem; color: var(--muted); line-height: 1.65; }
+  </style>
+</head>
+<body>
+
+<!-- ══ NAVBAR ══ -->
+<nav>
+  <a href="/" class="nav-logo">
+    <img src="TransparentLogo.png" alt="Yellow Feather Books"/>
+  </a>
+  <ul class="nav-links">
+    <li><a href="/">Home</a></li>
+    <li><a href="/#trending">Trending</a></li>
+    <li><a href="/#genres">Browse Genres</a></li>
+    <li><a href="search.html" class="active">✨ Find a Book</a></li>
+    <li style="display:flex;align-items:center;gap:0.4rem;">
+      <a href="tel:+919400448000" class="nav-support-link">📞 +91 94004 48000</a>
+      <a href="https://wa.me/919400448000" target="_blank"
+         style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:50%;background:#25D366;flex-shrink:0;transition:transform 0.2s;"
+         onmouseover="this.style.transform='scale(1.15)'" onmouseout="this.style.transform=''">
+        <img src="https://cdn.simpleicons.org/whatsapp/white" width="18" height="18" alt="WhatsApp" style="display:block;"/>
+      </a>
+    </li>
+  </ul>
+  <div class="nav-cta">
+    <a href="/" class="btn-outline-sm">← Back to Store</a>
+  </div>
+</nav>
+
+<!-- ══ HERO ══ -->
+<section class="hero">
+  <div class="hero-bg"></div>
+  <div class="particles" id="particles"></div>
+
+  <div class="hero-content">
+    <div class="ai-badge">
+      <span class="dot"></span>
+      Powered by Claude AI
+    </div>
+
+    <h1>Discover Any<br/><em>Malayalam Book</em></h1>
+
+    <p class="hero-sub">
+      Don&rsquo;t just search by title — <strong>describe what you&rsquo;re looking for</strong> in your own words.
+      A theme, a mood, an author, a story you half-remember, or even a feeling.
+      Our AI understands you and finds the right books.
+    </p>
+
+    <div class="prompt-chips">
+      <span class="chip" onclick="setPrompt(this)">Novels by MT Vasudevan Nair</span>
+      <span class="chip" onclick="setPrompt(this)">A mystery set in Kerala backwaters</span>
+      <span class="chip" onclick="setPrompt(this)">Award-winning Malayalam fiction</span>
+      <span class="chip" onclick="setPrompt(this)">Books about Naxal movement in Kerala</span>
+      <span class="chip" onclick="setPrompt(this)">Short stories by Basheer</span>
+      <span class="chip" onclick="setPrompt(this)">Coming-of-age stories set in a village</span>
+    </div>
+
+    <div class="search-box">
+      <div class="search-wrap">
+        <textarea
+          id="search-input"
+          class="search-textarea"
+          placeholder="Try: 'a suspenseful thriller set in Kochi' or 'books similar to Aadujeevitham'…"
+          rows="2"
+          onkeydown="handleKey(event)"
+        ></textarea>
+        <button class="search-btn" id="search-btn" onclick="doSearch()">
+          <span id="search-btn-text">✨ Search</span>
+        </button>
+      </div>
+      <div class="search-hint">Press Enter to search &nbsp;·&nbsp; Shift+Enter for new line</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ RESULTS ══ -->
+<section id="results-section" style="display:none;">
+  <div class="results-header">
+    <div class="results-title" id="results-title">Search Results</div>
+    <div class="results-count" id="results-count"></div>
+  </div>
+  <div id="ai-explanation" class="ai-explanation" style="display:none;">
+    <span class="ai-icon">🤖</span>
+    <span id="explanation-text"></span>
+  </div>
+  <div id="books-container"></div>
+</section>
+
+<!-- ══ REQUEST MODAL ══ -->
+<div class="modal-overlay" id="request-modal" onclick="handleOverlayClick(event)">
+  <div class="modal-card">
+    <div id="modal-form-view">
+      <div class="modal-title">Request This Book</div>
+      <div class="modal-subtitle">We&rsquo;ll try to source it for you and notify you when it&rsquo;s available.</div>
+      <div class="modal-book-info">
+        <strong id="modal-book-title"></strong>
+        <span id="modal-book-author"></span>
+      </div>
+      <div class="form-group">
+        <label>Your Name</label>
+        <input type="text" id="req-name" class="form-input" placeholder="Full name"/>
+      </div>
+      <div class="form-group">
+        <label>Email Address *</label>
+        <input type="email" id="req-email" class="form-input" placeholder="you@example.com"/>
+      </div>
+      <div class="form-group">
+        <label>Notes (optional)</label>
+        <textarea id="req-notes" class="form-input" placeholder="Any specific edition, language preference, or other details…"></textarea>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-modal-cancel" onclick="closeModal()">Cancel</button>
+        <button class="btn-modal-submit" id="submit-req-btn" onclick="submitRequest()">Send Request</button>
+      </div>
+    </div>
+    <div id="modal-success-view" class="modal-success" style="display:none;">
+      <div class="success-icon">📬</div>
+      <h3>Request Sent!</h3>
+      <p>We&rsquo;ve received your request for <strong id="success-book-title"></strong>. Our team will reach out once we source it.</p>
+      <button class="btn-modal-submit" style="margin-top:1.25rem;max-width:200px;" onclick="closeModal()">Done</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ── Particles ──────────────────────────────────────────────────────────────
+  (function() {
+    const container = document.getElementById('particles');
+    for (let i = 0; i < 18; i++) {
+      const p = document.createElement('div');
+      p.className = 'particle';
+      const size = Math.random() * 3 + 1;
+      p.style.cssText = `
+        width:${size}px; height:${size}px;
+        left:${Math.random()*100}%;
+        top:${Math.random()*100}%;
+        animation-delay:${Math.random()*8}s;
+        animation-duration:${6 + Math.random()*6}s;
+      `;
+      container.appendChild(p);
+    }
+  })();
+
+  // ── Current request context ────────────────────────────────────────────────
+  let pendingBook = {};
+
+  // ── Chip click ─────────────────────────────────────────────────────────────
+  function setPrompt(el) {
+    document.getElementById('search-input').value = el.textContent;
+    document.getElementById('search-input').focus();
+  }
+
+  // ── Enter key ──────────────────────────────────────────────────────────────
+  function handleKey(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      doSearch();
+    }
+  }
+
+  // ── Search ─────────────────────────────────────────────────────────────────
+  async function doSearch() {
+    const prompt = document.getElementById('search-input').value.trim();
+    if (!prompt) return;
+
+    const btn  = document.getElementById('search-btn');
+    const btnT = document.getElementById('search-btn-text');
+    btn.disabled = true;
+    btnT.textContent = 'Searching…';
+
+    showLoading();
+
+    try {
+      const res  = await fetch('/.netlify/functions/book-search', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ prompt })
+      });
+      const data = await res.json();
+
+      if (data.error) throw new Error(data.error);
+      renderResults(data);
+
+    } catch(err) {
+      showError(err.message);
+    } finally {
+      btn.disabled = false;
+      btnT.textContent = '✨ Search';
+    }
+  }
+
+  // ── Loading state ──────────────────────────────────────────────────────────
+  function showLoading() {
+    const section = document.getElementById('results-section');
+    section.style.display = 'block';
+    section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    document.getElementById('results-title').textContent = 'Searching…';
+    document.getElementById('results-count').textContent = '';
+    document.getElementById('ai-explanation').style.display = 'none';
+
+    const skeletons = Array.from({ length: 6 }, () => `
+      <div class="skeleton-card">
+        <div class="skel-line skel-cover"></div>
+        <div class="skel-body">
+          <div class="skel-line w70"></div>
+          <div class="skel-line w45"></div>
+          <div class="skel-line w90"></div>
+          <div class="skel-line w60"></div>
+        </div>
+      </div>`).join('');
+    document.getElementById('books-container').innerHTML = `<div class="skeleton-grid">${skeletons}</div>`;
+  }
+
+  // ── Render results ─────────────────────────────────────────────────────────
+  function renderResults(data) {
+    const { books, explanation, total } = data;
+
+    document.getElementById('results-title').textContent = 'Books Found';
+    document.getElementById('results-count').textContent = `${total} result${total !== 1 ? 's' : ''}`;
+
+    if (explanation) {
+      document.getElementById('explanation-text').textContent = explanation;
+      document.getElementById('ai-explanation').style.display = 'flex';
+    }
+
+    if (!books || books.length === 0) {
+      const debugMsg = data.debug ? `<p style="font-size:0.75rem;color:#e63946;margin-top:0.5rem;">${escHtml(data.debug)}</p>` : '';
+      document.getElementById('books-container').innerHTML = `
+        <div class="state-box">
+          <div class="state-icon">📭</div>
+          <h3>No books found</h3>
+          <p>Try a different search — describe a theme, character, or author you enjoy.</p>
+          ${debugMsg}
+        </div>`;
+      return;
+    }
+
+    const cards = books.map(book => {
+      const coverHtml = book.coverUrl
+        ? `<img src="${book.coverUrl}" alt="${escHtml(book.title)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/>
+           <div class="book-cover-placeholder" style="display:none;">📖</div>`
+        : `<div class="book-cover-placeholder">📖</div>`;
+
+      const sourceBadge = book.source
+        ? `<span class="book-source-badge">📚 ${escHtml(book.source)}</span>`
+        : '';
+
+      const yfbBadge = book.inStore
+        ? `<span class="yfb-badge">✦ In Yellow Feather</span>`
+        : '';
+
+      const yfbBtn = book.inStore
+        ? `<a href="${book.shopifyUrl}" target="_blank" class="btn-buy">Buy Now${book.price ? ' · ' + book.price : ''}</a>`
+        : `<button class="btn-request" onclick="openRequest(${JSON.stringify(book).replace(/'/g,"&#39;")})">Request from Us</button>`;
+
+      const sourceBtn = book.shopLink
+        ? `<a href="${book.shopLink}" target="_blank" class="btn-view-source">View on ${escHtml(book.source || 'Site')} →</a>`
+        : '';
+
+      const year = book.year ? ` · ${book.year}` : '';
+
+      return `
+        <div class="book-card">
+          <div class="book-cover">${coverHtml}</div>
+          <div class="book-info">
+            <div class="book-title">${escHtml(book.title)}</div>
+            ${book.author ? `<div class="book-author">${escHtml(book.author)}</div>` : ''}
+            ${book.source ? `<div class="book-meta">${escHtml(book.source)}${year}</div>` : ''}
+            ${book.description ? `<div class="book-desc">${escHtml(book.description)}</div>` : ''}
+            <div style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-top:0.4rem;">
+              ${sourceBadge}${yfbBadge}
+            </div>
+            <div class="book-btns">
+              ${yfbBtn}
+              ${sourceBtn}
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+
+    document.getElementById('books-container').innerHTML = `<div class="books-grid">${cards}</div>`;
+  }
+
+  // ── Error state ────────────────────────────────────────────────────────────
+  function showError(msg) {
+    document.getElementById('results-title').textContent = 'Something went wrong';
+    document.getElementById('books-container').innerHTML = `
+      <div class="state-box">
+        <div class="state-icon">⚠️</div>
+        <h3>Search failed</h3>
+        <p>${escHtml(msg || 'Please try again in a moment.')}</p>
+      </div>`;
+  }
+
+  // ── Request modal ──────────────────────────────────────────────────────────
+  function openRequest(book) {
+    pendingBook = book;
+    document.getElementById('modal-book-title').textContent   = book.title;
+    document.getElementById('modal-book-author').textContent  = book.author || '';
+    document.getElementById('modal-form-view').style.display  = 'block';
+    document.getElementById('modal-success-view').style.display = 'none';
+    document.getElementById('req-name').value  = '';
+    document.getElementById('req-email').value = '';
+    document.getElementById('req-notes').value = '';
+    document.getElementById('request-modal').classList.add('open');
+  }
+
+  function closeModal() {
+    document.getElementById('request-modal').classList.remove('open');
+  }
+
+  function handleOverlayClick(e) {
+    if (e.target === document.getElementById('request-modal')) closeModal();
+  }
+
+  async function submitRequest() {
+    const name  = document.getElementById('req-name').value.trim();
+    const email = document.getElementById('req-email').value.trim();
+    const notes = document.getElementById('req-notes').value.trim();
+
+    if (!email) { alert('Please enter your email address.'); return; }
+
+    const btn = document.getElementById('submit-req-btn');
+    btn.disabled = true;
+    btn.textContent = 'Sending…';
+
+    try {
+      const res = await fetch('/.netlify/functions/request-book', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          email,
+          book_title:  pendingBook.title,
+          author_name: pendingBook.author,
+          publisher:   pendingBook.publisher,
+          year:        pendingBook.year,
+          notes
+        })
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+
+      document.getElementById('modal-form-view').style.display    = 'none';
+      document.getElementById('modal-success-view').style.display = 'block';
+      document.getElementById('success-book-title').textContent   = pendingBook.title;
+
+    } catch(err) {
+      alert('Could not send request: ' + err.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Send Request';
+    }
+  }
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  function escHtml(str) {
+    return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+</script>
+</body>
+</html>

@@ -2909,6 +2909,7 @@
         </div>
         <div class="fab-form-group"><label>Your Name</label><input type="text" id="fab-req-name" class="fab-form-input" placeholder="Full name"/></div>
         <div class="fab-form-group"><label>Email Address *</label><input type="email" id="fab-req-email" class="fab-form-input" placeholder="you@example.com"/></div>
+        <div class="fab-form-group"><label>Phone Number</label><input type="tel" id="fab-req-phone" class="fab-form-input" placeholder="+91 98765 43210"/></div>
         <div class="fab-form-group"><label>Notes (optional)</label><textarea id="fab-req-notes" class="fab-form-input" placeholder="Any specific edition or details…"></textarea></div>
         <div class="fab-modal-actions">
           <button class="fab-btn-modal-cancel" onclick="fabCloseModal()">Cancel</button>
@@ -6090,6 +6091,7 @@
       document.getElementById('fab-modal-success-view').style.display = 'none';
       document.getElementById('fab-req-name').value  = '';
       document.getElementById('fab-req-email').value = '';
+      document.getElementById('fab-req-phone').value = '';
       document.getElementById('fab-req-notes').value = '';
       document.getElementById('fab-request-modal').classList.add('open');
     }
@@ -6098,6 +6100,7 @@
     async function fabSubmitRequest() {
       const name  = document.getElementById('fab-req-name').value.trim();
       const email = document.getElementById('fab-req-email').value.trim();
+      const phone = document.getElementById('fab-req-phone').value.trim();
       const notes = document.getElementById('fab-req-notes').value.trim();
       if (!email) { alert('Please enter your email address.'); return; }
       const btn = document.getElementById('fab-submit-req-btn');
@@ -6105,7 +6108,7 @@
       try {
         const res = await fetch('/.netlify/functions/request-book', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, email, book_title: fabPendingBook.title, author_name: fabPendingBook.author, publisher: fabPendingBook.publisher, year: fabPendingBook.year, notes })
+          body: JSON.stringify({ name, email, phone, book_title: fabPendingBook.title, author_name: fabPendingBook.author, publisher: fabPendingBook.publisher, year: fabPendingBook.year, notes })
         });
         const data = await res.json();
         if (data.error) throw new Error(data.error);

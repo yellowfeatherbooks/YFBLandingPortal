@@ -13,7 +13,7 @@ exports.handler = async (event) => {
   if (event.httpMethod !== 'POST')    return { statusCode: 405, headers: cors, body: 'Method Not Allowed' };
 
   try {
-    const { name, email, book_title, author_name, publisher, year, notes } = JSON.parse(event.body || '{}');
+    const { name, email, phone, book_title, author_name, publisher, year, notes } = JSON.parse(event.body || '{}');
 
     if (!email || !book_title) return {
       statusCode: 400,
@@ -33,7 +33,7 @@ exports.handler = async (event) => {
             'Prefer':        'return=minimal'
           },
           body: JSON.stringify({
-            name, email, book_title, author_name, publisher, year, notes,
+            name, email, phone, book_title, author_name, publisher, year, notes,
             requested_at: new Date().toISOString()
           })
         });
@@ -49,7 +49,7 @@ exports.handler = async (event) => {
       await fetch(N8N_BOOK_REQUEST_URL, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ name, email, book_title, author_name, publisher, year, notes })
+        body:    JSON.stringify({ name, email, phone, book_title, author_name, publisher, year, notes })
       }).catch(e => console.error('n8n book-request notify failed:', e.message));
     }
 

@@ -42,7 +42,7 @@ async function searchSerper(query) {
   }
   try {
     const sites     = '(site:dcbooks.com OR site:mathrubhumibooks.com OR site:olivebooks.in OR site:greenbooks.in OR site:currentbooks.in OR site:sahyadribooks.com OR site:manoramaonline.com)';
-    const fullQuery = `"${query}" book price ${sites}`;
+    const fullQuery = `${query} ${sites}`;
     console.log('Serper query:', fullQuery);
     const res  = await fetch('https://google.serper.dev/search', {
       method:  'POST',

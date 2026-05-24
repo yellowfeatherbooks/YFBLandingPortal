@@ -3817,6 +3817,8 @@
       <button class="orders-tab"        id="tab-btn-cart"     onclick="switchOrdersTab('cart')">🛒 My Cart</button>
       <button class="orders-tab"        id="tab-btn-members"  onclick="switchOrdersTab('members')" style="display:none;">🏆 Members</button>
       <button class="orders-tab"        id="tab-btn-browse"   onclick="switchOrdersTab('browse')">📚 Browse Books</button>
+      <button class="orders-tab"        id="tab-btn-ai-search" onclick="closeOrdersPanel();showFindABook();">✨ AI Book Search</button>
+      <button class="orders-tab"        id="tab-btn-req-book"  onclick="closeOrdersPanel();fabOpenRequest({title:'',author:'',publisher:'',source:''});">📬 Request a Book</button>
     </div>
 
     <!-- Orders tab -->

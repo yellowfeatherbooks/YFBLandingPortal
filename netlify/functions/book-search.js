@@ -178,9 +178,7 @@ Respond ONLY with valid JSON (no markdown):
             book.inStore       = match.node.availableForSale;
             book.shopifyHandle = match.node.handle;
             book.shopifyUrl    = `https://yellowfeatherbookstore.in/products/${match.node.handle}`;
-            book.cartUrl       = variantId
-              ? `https://yellowfeatherbookstore.in/cart/add?id=${variantId}&quantity=1`
-              : book.shopifyUrl;
+            book.variantGid    = variantGid;
             book.price         = match.node.priceRange?.minVariantPrice?.amount
               ? `₹${parseFloat(match.node.priceRange.minVariantPrice.amount).toFixed(0)}`
               : null;

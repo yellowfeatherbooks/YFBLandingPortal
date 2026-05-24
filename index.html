@@ -6071,7 +6071,7 @@
         const src  = book.source   ? `<span class="fab-book-source-badge">📚 ${fabEscHtml(book.source)}</span>` : '';
         const yfb  = book.inStore  ? `<span class="fab-yfb-badge">✦ In Yellow Feather</span>` : '';
         const act  = book.inStore
-          ? `<a href="${book.cartUrl || book.shopifyUrl}" target="_blank" class="fab-btn-buy">Add to Cart${book.price ? ' · '+book.price : ''}</a>`
+          ? `<button class="fab-btn-buy card-cart-btn" data-vgid="${book.variantGid || ''}" onclick="fabAddToCart(this.dataset.vgid,this)">🛒 Add to Cart${book.price ? ' · '+book.price : ''}</button>`
           : `<button class="fab-btn-request" data-book='${JSON.stringify(book).replace(/'/g,"&#39;")}' onclick="fabOpenRequest(JSON.parse(this.dataset.book))">Request from Us</button>`;
         const ext  = book.shopLink ? `<a href="${book.shopLink}" target="_blank" class="fab-btn-view-source">View on ${fabEscHtml(book.source||'Site')} →</a>` : '';
         return `<div class="fab-book-card"><div class="fab-book-cover">${cov}</div><div class="fab-book-info"><div class="fab-book-title">${fabEscHtml(book.title)}</div>${book.author?`<div class="fab-book-author">${fabEscHtml(book.author)}</div>`:''} ${book.source?`<div class="fab-book-meta">${fabEscHtml(book.source)}${book.year?' · '+book.year:''}</div>`:''} ${book.description?`<div class="fab-book-desc">${fabEscHtml(book.description)}</div>`:''}<div style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-top:0.4rem;">${src}${yfb}</div><div class="fab-book-btns">${act}${ext}</div></div></div>`;
@@ -6114,6 +6114,28 @@
         document.getElementById('fab-success-book-title').textContent   = fabPendingBook.title;
       } catch(err) { alert('Could not send request: ' + err.message); }
       finally { btn.disabled = false; btn.textContent = 'Send Request'; }
+    }
+    async function fabAddToCart(variantGid, btn) {
+      if (!variantGid) return;
+      if (btn) { btn.textContent = '…'; btn.disabled = true; }
+      try {
+        if (!_cartId) {
+          _cartId = await _createCart(variantGid);
+          localStorage.setItem('yfb_cart_id', _cartId);
+        } else {
+          const j = await sfFetch(`mutation CartLinesAdd($cartId:ID!,$lines:[CartLineInput!]!){cartLinesAdd(cartId:$cartId,lines:$lines){cart{id}userErrors{message}}}`,
+            { cartId: _cartId, lines: [{ merchandiseId: variantGid, quantity: 1 }] });
+          if (!j?.data?.cartLinesAdd?.cart || j?.data?.cartLinesAdd?.userErrors?.length) {
+            localStorage.removeItem('yfb_cart_id');
+            _cartId = await _createCart(variantGid);
+            localStorage.setItem('yfb_cart_id', _cartId);
+          }
+        }
+        if (btn) { btn.textContent = '✓ Added'; btn.classList.add('added'); }
+        refreshCartCount();
+      } catch(e) {
+        if (btn) { btn.disabled = false; btn.textContent = '🛒 Add to Cart'; }
+      }
     }
     function fabEscHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 

@@ -151,7 +151,9 @@ Respond ONLY with valid JSON (no markdown):
     if (SHOPIFY_TOKEN && books.length) {
       await Promise.all(books.map(async (book) => {
         try {
-          const titleSearch = book.title.replace(/"/g, '').substring(0, 40);
+          // Strip " by Author", "– Source", "- Source" suffixes to get the bare title
+          const bareTitle   = book.title.replace(/ by .*/i, '').replace(/\s*[–—-].*/, '').trim();
+          const titleSearch = bareTitle.replace(/"/g, '').substring(0, 30);
           const shopRes = await fetch(`https://${SHOPIFY_STORE}/api/2024-01/graphql.json`, {
             method: 'POST',
             headers: {
@@ -164,10 +166,10 @@ Respond ONLY with valid JSON (no markdown):
           });
           const sd    = await shopRes.json();
           const edges = sd.data?.products?.edges || [];
-          const shortTitle = book.title.toLowerCase().substring(0, 20);
+          const shortTitle = bareTitle.toLowerCase().substring(0, 15);
           const match = edges.find(e =>
             e.node.title.toLowerCase().includes(shortTitle) ||
-            shortTitle.includes(e.node.title.toLowerCase().substring(0, 20))
+            shortTitle.includes(e.node.title.toLowerCase().substring(0, 15))
           );
           if (match) {
             const variantGid = match.node.variants?.edges?.[0]?.node?.id || '';

@@ -42,7 +42,7 @@ async function searchSerper(query) {
   }
   try {
     const siteFilter = 'site:dcbooks.com OR site:mathrubhumibooks.com OR site:olivebooks.in OR site:greenbooks.in OR site:currentbooks.in OR site:sahyadribooks.com OR site:manoramaonline.com';
-    const fullQuery  = `${query} ${siteFilter}`;
+    const fullQuery  = `${query} buy ${siteFilter}`;
     console.log('Serper query:', fullQuery);
     const res  = await fetch('https://google.serper.dev/search', {
       method:  'POST',
@@ -150,7 +150,7 @@ Respond ONLY with valid JSON (no markdown):
               'X-Shopify-Storefront-Access-Token': SHOPIFY_TOKEN
             },
             body: JSON.stringify({
-              query: `{ products(first:3, query:"title:${titleSearch}") { edges { node { title handle availableForSale priceRange { minVariantPrice { amount } } } } } }`
+              query: `{ products(first:3, query:"title:${titleSearch}") { edges { node { title handle availableForSale priceRange { minVariantPrice { amount } } variants(first:1) { edges { node { id } } } } } } }`
             })
           });
           const sd    = await shopRes.json();
@@ -161,9 +161,14 @@ Respond ONLY with valid JSON (no markdown):
             shortTitle.includes(e.node.title.toLowerCase().substring(0, 20))
           );
           if (match) {
+            const variantGid = match.node.variants?.edges?.[0]?.node?.id || '';
+            const variantId  = variantGid.split('/').pop();
             book.inStore       = match.node.availableForSale;
             book.shopifyHandle = match.node.handle;
             book.shopifyUrl    = `https://yellowfeatherbookstore.in/products/${match.node.handle}`;
+            book.cartUrl       = variantId
+              ? `https://yellowfeatherbookstore.in/cart/add?id=${variantId}&quantity=1`
+              : book.shopifyUrl;
             book.price         = match.node.priceRange?.minVariantPrice?.amount
               ? `₹${parseFloat(match.node.priceRange.minVariantPrice.amount).toFixed(0)}`
               : null;

@@ -2930,6 +2930,7 @@
         </div>
         <div class="fab-form-group"><label>Email Address *</label><input type="email" id="fab-req-email" class="fab-form-input" placeholder="you@example.com"/></div>
         <div class="fab-form-group"><label>Notes (optional)</label><textarea id="fab-req-notes" class="fab-form-input" placeholder="Any specific edition or details…"></textarea></div>
+        <div style="display:none;" aria-hidden="true"><input type="text" id="fab-req-website" name="website" tabindex="-1" autocomplete="off" value=""/></div>
         <div class="fab-modal-actions">
           <button class="fab-btn-modal-cancel" onclick="fabCloseModal()">Cancel</button>
           <button class="fab-btn-modal-submit" id="fab-submit-req-btn" onclick="fabSubmitRequest()">Send Request</button>
@@ -6192,6 +6193,7 @@
       const email       = document.getElementById('fab-req-email').value.trim();
       const phone       = document.getElementById('fab-req-phone').value.trim();
       const notes       = document.getElementById('fab-req-notes').value.trim();
+      const website     = document.getElementById('fab-req-website').value.trim();
       if (!email) { alert('Please enter your email address.'); return; }
       if (!book_title) { alert('Please enter the book title.'); return; }
       const btn = document.getElementById('fab-submit-req-btn');
@@ -6199,7 +6201,7 @@
       try {
         const res = await fetch('/.netlify/functions/request-book', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, email, phone, book_title, author_name, publisher, year: fabPendingBook.year, notes })
+          body: JSON.stringify({ name, email, phone, book_title, author_name, publisher, year: fabPendingBook.year, notes, website })
         });
         const data = await res.json();
         if (data.error) throw new Error(data.error);

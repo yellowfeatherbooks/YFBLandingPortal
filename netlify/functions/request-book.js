@@ -24,7 +24,14 @@ exports.handler = async (event) => {
   if (event.httpMethod !== 'POST')    return { statusCode: 405, headers: getCors(event), body: 'Method Not Allowed' };
 
   try {
-    const { name, email, phone, book_title, author_name, publisher, year, notes } = JSON.parse(event.body || '{}');
+    const { name, email, phone, book_title, author_name, publisher, year, notes, website } = JSON.parse(event.body || '{}');
+
+    // Honeypot — bots fill this, humans don't
+    if (website) return {
+      statusCode: 200,
+      headers: { ...getCors(event), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ success: true })
+    };
 
     if (!email || !book_title) return {
       statusCode: 400,

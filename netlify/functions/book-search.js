@@ -92,6 +92,46 @@ async function searchSerper(query) {
   }
 }
 
+// ── Shopify product node → book object ────────────────────────────────────
+function shopifyNodeToBook(node) {
+  const variantGid = node.variants?.edges?.[0]?.node?.id || '';
+  return {
+    title:       node.title,
+    author:      '',
+    publisher:   'Yellow Feather Books',
+    description: (node.description || '').substring(0, 280),
+    coverUrl:    node.images?.edges?.[0]?.node?.url || '',
+    year:        '',
+    source:      'Yellow Feather Books',
+    shopLink:    `https://yellowfeatherbookstore.in/products/${node.handle}`,
+    inStore:     node.availableForSale,
+    shopifyUrl:  `https://yellowfeatherbookstore.in/products/${node.handle}`,
+    variantGid,
+    price:       node.priceRange?.minVariantPrice?.amount
+      ? `₹${parseFloat(node.priceRange.minVariantPrice.amount).toFixed(0)}`
+      : null
+  };
+}
+
+// ── Shopify search ─────────────────────────────────────────────────────────
+async function searchShopify(queryStr, first = 10) {
+  if (!SHOPIFY_TOKEN) return [];
+  const q = queryStr.replace(/"/g, '').substring(0, 60);
+  const gql = `{ products(first:${first}, query:"${q}") { edges { node {
+    title handle availableForSale description
+    priceRange { minVariantPrice { amount } }
+    images(first:1) { edges { node { url } } }
+    variants(first:1) { edges { node { id } } }
+  } } } }`;
+  const res  = await fetch(`https://${SHOPIFY_STORE}/api/2024-01/graphql.json`, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Shopify-Storefront-Access-Token': SHOPIFY_TOKEN },
+    body:    JSON.stringify({ query: gql })
+  });
+  const sd = await res.json();
+  return (sd.data?.products?.edges || []).map(e => e.node);
+}
+
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: cors, body: '' };
   if (event.httpMethod !== 'POST')    return { statusCode: 405, headers: cors, body: 'Method Not Allowed' };
@@ -104,7 +144,10 @@ exports.handler = async (event) => {
       body: JSON.stringify({ error: 'Prompt is required' })
     };
 
-    // ── 1. Claude extracts clean search terms ──────────────────────────────
+    // ── 1. Claude: classify query + extract structured info ────────────────
+    let searchType  = 'topic';
+    let authorName  = '';
+    let bookTitle   = '';
     let searchQuery = prompt;
     let explanation = '';
     let claudeInputTokens = 0, claudeOutputTokens = 0;
@@ -114,96 +157,155 @@ exports.handler = async (event) => {
         const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
           method: 'POST',
           headers: {
-            'x-api-key': CLAUDE_KEY,
-            'anthropic-version': '2023-06-01',
-            'content-type': 'application/json'
+            'x-api-key':          CLAUDE_KEY,
+            'anthropic-version':  '2023-06-01',
+            'content-type':       'application/json'
           },
           body: JSON.stringify({
-            model: 'claude-haiku-4-5-20251001',
-            max_tokens: 300,
+            model:      'claude-haiku-4-5-20251001',
+            max_tokens: 350,
             messages: [{
-              role: 'user',
-              content: `You are a Malayalam book search assistant. Extract clean search keywords from the user's query to search Malayalam publisher websites.
+              role:    'user',
+              content: `You are a Malayalam book search assistant. Analyse the user's query and classify it.
 
 User query: "${prompt}"
 
 Respond ONLY with valid JSON (no markdown):
 {
-  "searchQuery": "short and specific search keywords — if author mentioned use their name, if title use the title, keep it concise (max 5 words)",
+  "searchType": "author" | "title" | "topic",
+  "authorName": "full author name if the query is about an author, else empty string",
+  "bookTitle":  "specific book title if the query is about a title, else empty string",
+  "searchQuery": "2-5 word clean keywords for searching publisher websites",
   "explanation": "one sentence describing what the user is looking for"
-}`
+}
+
+Rules:
+- searchType="author" when the user names a specific author (e.g. "MT Vasudevan Nair books", "works by Basheer")
+- searchType="title" when the user names a specific book (e.g. "Randamoozham", "find Aadujeevitham")
+- searchType="topic" for everything else (genre, mood, theme queries)`
             }]
           })
         });
         if (claudeRes.ok) {
-          const cd  = await claudeRes.json();
+          const cd     = await claudeRes.json();
           claudeInputTokens  = cd.usage?.input_tokens  || 0;
           claudeOutputTokens = cd.usage?.output_tokens || 0;
-          const raw = cd.content?.[0]?.text || '{}';
+          const raw    = cd.content?.[0]?.text || '{}';
           const parsed = JSON.parse(raw.replace(/```json|```/g, '').trim());
-          if (parsed.searchQuery) searchQuery = parsed.searchQuery;
-          if (parsed.explanation) explanation  = parsed.explanation;
+          searchType  = parsed.searchType  || 'topic';
+          authorName  = parsed.authorName  || '';
+          bookTitle   = parsed.bookTitle   || '';
+          searchQuery = parsed.searchQuery || prompt;
+          explanation = parsed.explanation || '';
         }
-      } catch(e) { /* use raw prompt */ }
+      } catch(e) { /* fall through with raw prompt */ }
     }
 
-    // ── 2. Direct Shopify search using clean query ────────────────────────
-    let shopifyTop = null;
+    console.log(`searchType:${searchType} author:"${authorName}" title:"${bookTitle}" query:"${searchQuery}"`);
+
+    // ── 2. Shopify search (strategy depends on type) ───────────────────────
+    let shopifyBooks = [];
     if (SHOPIFY_TOKEN) {
       try {
-        const titleSearch = searchQuery.replace(/"/g, '').substring(0, 40);
-        const shopRes = await fetch(`https://${SHOPIFY_STORE}/api/2024-01/graphql.json`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-Shopify-Storefront-Access-Token': SHOPIFY_TOKEN },
-          body: JSON.stringify({
-            query: `{ products(first:5, query:"title:${titleSearch}") { edges { node { title handle availableForSale description priceRange { minVariantPrice { amount } } images(first:1) { edges { node { url } } } variants(first:1) { edges { node { id } } } } } } }`
-          })
-        });
-        const sd = await shopRes.json();
-        const edges = sd.data?.products?.edges || [];
-        const lq = searchQuery.toLowerCase();
-        const match = edges.find(e => {
-          const lt = e.node.title.toLowerCase();
-          return lt.includes(lq.substring(0, 10)) || lq.includes(lt.substring(0, 10));
-        }) || (edges.length ? edges[0] : null);
-        if (match) {
-          const variantGid = match.node.variants?.edges?.[0]?.node?.id || '';
-          shopifyTop = {
-            title:       match.node.title,
-            author:      '',
-            publisher:   'Yellow Feather Books',
-            description: (match.node.description || '').substring(0, 280),
-            coverUrl:    match.node.images?.edges?.[0]?.node?.url || '',
-            year:        '',
-            source:      'Yellow Feather Books',
-            shopLink:    `https://yellowfeatherbookstore.in/products/${match.node.handle}`,
-            inStore:     match.node.availableForSale,
-            shopifyUrl:  `https://yellowfeatherbookstore.in/products/${match.node.handle}`,
-            variantGid,
-            price:       match.node.priceRange?.minVariantPrice?.amount
-              ? `₹${parseFloat(match.node.priceRange.minVariantPrice.amount).toFixed(0)}`
-              : null
-          };
-          console.log(`Shopify direct match: "${match.node.title}" inStore:${match.node.availableForSale}`);
+        if (searchType === 'author' && authorName) {
+          // Fetch all books by this author (full-text search picks up title/description)
+          const nodes = await searchShopify(authorName, 10);
+          // Sort: in-stock first
+          shopifyBooks = nodes
+            .map(shopifyNodeToBook)
+            .sort((a, b) => (b.inStore ? 1 : 0) - (a.inStore ? 1 : 0));
+          console.log(`Shopify author results: ${shopifyBooks.length} for "${authorName}"`);
+
+        } else if (searchType === 'title' && bookTitle) {
+          // Title-specific search
+          const nodes = await searchShopify(`title:${bookTitle}`, 5);
+          const lq    = bookTitle.toLowerCase();
+          // Prefer exact or close title match
+          const match = nodes.find(n => {
+            const lt = n.title.toLowerCase();
+            return lt.includes(lq.substring(0, 10)) || lq.includes(lt.substring(0, 10));
+          }) || nodes[0] || null;
+          if (match) shopifyBooks = [shopifyNodeToBook(match)];
+          console.log(`Shopify title match: "${match?.title}" for "${bookTitle}"`);
+
+        } else {
+          // Topic: broad search with extracted keywords
+          const nodes = await searchShopify(searchQuery, 5);
+          if (nodes.length) shopifyBooks = [shopifyNodeToBook(nodes[0])];
         }
-      } catch(e) { console.error('Shopify direct search error:', e.message); }
+      } catch(e) { console.error('Shopify search error:', e.message); }
     }
 
-    // ── 3. Search publisher sites via Serper ──────────────────────────────
-    const cseResult = await searchSerper(searchQuery);
-    const serperBooks = cseResult.books;
-    const cseError    = cseResult.error;
+    // ── 3. Claude correlates Shopify results for author searches ───────────
+    // When an author search returns multiple books AND the query has extra context
+    // (e.g. "MT Vasudevan Nair historical novels"), ask Claude to rank/filter them.
+    let correlateTokens = { input: 0, output: 0 };
+    if (
+      CLAUDE_KEY &&
+      searchType === 'author' &&
+      shopifyBooks.length > 1 &&
+      prompt.toLowerCase() !== authorName.toLowerCase()  // user added context beyond just the name
+    ) {
+      try {
+        const catalog = shopifyBooks.map((b, i) => `${i + 1}. "${b.title}"`).join(', ');
+        const corrRes = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'x-api-key':         CLAUDE_KEY,
+            'anthropic-version': '2023-06-01',
+            'content-type':      'application/json'
+          },
+          body: JSON.stringify({
+            model:      'claude-haiku-4-5-20251001',
+            max_tokens: 200,
+            messages: [{
+              role:    'user',
+              content: `User searched: "${prompt}"
+Available books by ${authorName} in store: ${catalog}
 
-    // Merge: Shopify result at top, then Serper results (deduplicated)
-    const books = shopifyTop
-      ? [shopifyTop, ...serperBooks.filter(b => b.title.toLowerCase() !== shopifyTop.title.toLowerCase())]
-      : serperBooks;
+Rank these by relevance to the user's query. Respond ONLY with a JSON array of 1-based indexes in order of relevance, e.g. [2,1,3]. Include all indexes.`
+            }]
+          })
+        });
+        if (corrRes.ok) {
+          const cd  = await corrRes.json();
+          correlateTokens.input  = cd.usage?.input_tokens  || 0;
+          correlateTokens.output = cd.usage?.output_tokens || 0;
+          const raw    = cd.content?.[0]?.text || '[]';
+          const ranked = JSON.parse(raw.replace(/```json|```/g, '').trim());
+          if (Array.isArray(ranked) && ranked.length) {
+            shopifyBooks = ranked
+              .map(i => shopifyBooks[i - 1])
+              .filter(Boolean);
+          }
+        }
+      } catch(e) { /* keep original order */ }
+    }
 
-    // ── 4. Log to Supabase (fire-and-forget) ─────────────────────────────
-    const serperCalls    = serperBooks.length === 0 ? 2 : 1;
-    const claudeCostUsd  = (claudeInputTokens / 1_000_000 * 0.80) + (claudeOutputTokens / 1_000_000 * 4.00);
-    const serperCostUsd  = serperCalls * 0.001;
-    const totalCostUsd   = claudeCostUsd + serperCostUsd;
+    // ── 4. Serper: search publisher sites (skip for pure author searches that hit Shopify) ──
+    let serperBooks = [];
+    let cseError    = null;
+    const skipSerper = searchType === 'author' && shopifyBooks.length >= 3;
+    if (!skipSerper) {
+      const cseResult = await searchSerper(searchQuery);
+      serperBooks = cseResult.books;
+      cseError    = cseResult.error;
+    }
+
+    // ── 5. Merge: Shopify first, then Serper (deduplicated by title) ───────
+    const shopifyTitles = new Set(shopifyBooks.map(b => b.title.toLowerCase()));
+    const books = [
+      ...shopifyBooks,
+      ...serperBooks.filter(b => !shopifyTitles.has(b.title.toLowerCase()))
+    ];
+
+    // ── 6. Log to Supabase (fire-and-forget) ──────────────────────────────
+    const serperCalls   = skipSerper ? 0 : (serperBooks.length === 0 ? 2 : 1);
+    const totalClaudeIn = claudeInputTokens  + correlateTokens.input;
+    const totalClaudeOut= claudeOutputTokens + correlateTokens.output;
+    const claudeCostUsd = (totalClaudeIn / 1_000_000 * 0.80) + (totalClaudeOut / 1_000_000 * 4.00);
+    const serperCostUsd = serperCalls * 0.001;
+    const totalCostUsd  = claudeCostUsd + serperCostUsd;
 
     if (SUPABASE_URL && SUPABASE_KEY) {
       fetch(`${SUPABASE_URL}/rest/v1/search_logs`, {
@@ -216,17 +318,17 @@ Respond ONLY with valid JSON (no markdown):
         },
         body: JSON.stringify({
           prompt,
-          search_query:          searchQuery,
+          search_query:         searchQuery,
           explanation,
-          results_count:         books.length,
-          shopify_match:         !!shopifyTop,
-          has_results:           books.length > 0,
-          claude_input_tokens:   claudeInputTokens,
-          claude_output_tokens:  claudeOutputTokens,
-          claude_cost_usd:       claudeCostUsd.toFixed(6),
-          serper_calls:          serperCalls,
-          serper_cost_usd:       serperCostUsd.toFixed(6),
-          total_cost_usd:        totalCostUsd.toFixed(6)
+          results_count:        books.length,
+          shopify_match:        shopifyBooks.length > 0,
+          has_results:          books.length > 0,
+          claude_input_tokens:  totalClaudeIn,
+          claude_output_tokens: totalClaudeOut,
+          claude_cost_usd:      claudeCostUsd.toFixed(6),
+          serper_calls:         serperCalls,
+          serper_cost_usd:      serperCostUsd.toFixed(6),
+          total_cost_usd:       totalCostUsd.toFixed(6)
         })
       }).catch(e => console.error('search_logs insert failed:', e.message));
     }
@@ -234,7 +336,7 @@ Respond ONLY with valid JSON (no markdown):
     return {
       statusCode: 200,
       headers: { ...cors, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ books, explanation, total: books.length, debug: cseError || null })
+      body: JSON.stringify({ books, explanation, searchType, total: books.length, debug: cseError || null })
     };
 
   } catch(err) {

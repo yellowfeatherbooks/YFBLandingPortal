@@ -113,23 +113,31 @@ function shopifyNodeToBook(node) {
   };
 }
 
-// ── Shopify search ─────────────────────────────────────────────────────────
-async function searchShopify(queryStr, first = 10) {
-  if (!SHOPIFY_TOKEN) return [];
-  const q = queryStr.replace(/"/g, '').substring(0, 60);
-  const gql = `{ products(first:${first}, query:"${q}") { edges { node {
-    title handle availableForSale description
-    priceRange { minVariantPrice { amount } }
-    images(first:1) { edges { node { url } } }
-    variants(first:1) { edges { node { id } } }
-  } } } }`;
-  const res  = await fetch(`https://${SHOPIFY_STORE}/api/2024-01/graphql.json`, {
+// ── Shopify search (with cursor pagination) ────────────────────────────────
+async function searchShopify(queryStr, first = 10, cursor = null) {
+  if (!SHOPIFY_TOKEN) return { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } };
+  const q      = queryStr.replace(/"/g, '').substring(0, 60);
+  const after  = cursor ? `, after:"${cursor}"` : '';
+  const gql = `{ products(first:${first}${after}, query:"${q}") {
+    pageInfo { hasNextPage endCursor }
+    edges { node {
+      title handle availableForSale description
+      priceRange { minVariantPrice { amount } }
+      images(first:1) { edges { node { url } } }
+      variants(first:1) { edges { node { id } } }
+    } }
+  } }`;
+  const res = await fetch(`https://${SHOPIFY_STORE}/api/2024-01/graphql.json`, {
     method:  'POST',
     headers: { 'Content-Type': 'application/json', 'X-Shopify-Storefront-Access-Token': SHOPIFY_TOKEN },
     body:    JSON.stringify({ query: gql })
   });
-  const sd = await res.json();
-  return (sd.data?.products?.edges || []).map(e => e.node);
+  const sd       = await res.json();
+  const products = sd.data?.products;
+  return {
+    nodes:    (products?.edges || []).map(e => e.node),
+    pageInfo: products?.pageInfo || { hasNextPage: false, endCursor: null }
+  };
 }
 
 exports.handler = async (event) => {
@@ -137,22 +145,25 @@ exports.handler = async (event) => {
   if (event.httpMethod !== 'POST')    return { statusCode: 405, headers: cors, body: 'Method Not Allowed' };
 
   try {
-    const { prompt } = JSON.parse(event.body || '{}');
+    const { prompt, cursor = null, searchMeta = null } = JSON.parse(event.body || '{}');
     if (!prompt) return {
       statusCode: 400,
       headers: { ...cors, 'Content-Type': 'application/json' },
       body: JSON.stringify({ error: 'Prompt is required' })
     };
 
+    // On page 2+, searchMeta carries classification from page 1 — skip Claude
+    const isPageTwo = !!(cursor && searchMeta);
+
     // ── 1. Claude: classify query + extract structured info ────────────────
-    let searchType  = 'topic';
-    let authorName  = '';
-    let bookTitle   = '';
-    let searchQuery = prompt;
-    let explanation = '';
+    let searchType  = searchMeta?.searchType  || 'topic';
+    let authorName  = searchMeta?.authorName  || '';
+    let bookTitle   = searchMeta?.bookTitle   || '';
+    let searchQuery = searchMeta?.searchQuery || prompt;
+    let explanation = searchMeta?.explanation || '';
     let claudeInputTokens = 0, claudeOutputTokens = 0;
 
-    if (CLAUDE_KEY) {
+    if (CLAUDE_KEY && !isPageTwo) {
       try {
         const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
           method: 'POST',
@@ -205,22 +216,20 @@ Rules:
 
     // ── 2. Shopify search (strategy depends on type) ───────────────────────
     let shopifyBooks = [];
+    let shopifyPageInfo = { hasNextPage: false, endCursor: null };
     if (SHOPIFY_TOKEN) {
       try {
         if (searchType === 'author' && authorName) {
-          // Fetch all books by this author (full-text search picks up title/description)
-          const nodes = await searchShopify(authorName, 10);
-          // Sort: in-stock first
+          const { nodes, pageInfo } = await searchShopify(authorName, 10, cursor);
+          shopifyPageInfo = pageInfo;
           shopifyBooks = nodes
             .map(shopifyNodeToBook)
             .sort((a, b) => (b.inStore ? 1 : 0) - (a.inStore ? 1 : 0));
-          console.log(`Shopify author results: ${shopifyBooks.length} for "${authorName}"`);
+          console.log(`Shopify author results: ${shopifyBooks.length} for "${authorName}" hasNext:${pageInfo.hasNextPage}`);
 
         } else if (searchType === 'title' && bookTitle) {
-          // Title-specific search
-          const nodes = await searchShopify(`title:${bookTitle}`, 5);
+          const { nodes } = await searchShopify(`title:${bookTitle}`, 5, null);
           const lq    = bookTitle.toLowerCase();
-          // Prefer exact or close title match
           const match = nodes.find(n => {
             const lt = n.title.toLowerCase();
             return lt.includes(lq.substring(0, 10)) || lq.includes(lt.substring(0, 10));
@@ -229,22 +238,19 @@ Rules:
           console.log(`Shopify title match: "${match?.title}" for "${bookTitle}"`);
 
         } else {
-          // Topic: broad search with extracted keywords
-          const nodes = await searchShopify(searchQuery, 5);
+          const { nodes } = await searchShopify(searchQuery, 5, null);
           if (nodes.length) shopifyBooks = [shopifyNodeToBook(nodes[0])];
         }
       } catch(e) { console.error('Shopify search error:', e.message); }
     }
 
     // ── 3. Claude correlates Shopify results for author searches ───────────
-    // When an author search returns multiple books AND the query has extra context
-    // (e.g. "MT Vasudevan Nair historical novels"), ask Claude to rank/filter them.
     let correlateTokens = { input: 0, output: 0 };
     if (
-      CLAUDE_KEY &&
+      CLAUDE_KEY && !isPageTwo &&
       searchType === 'author' &&
       shopifyBooks.length > 1 &&
-      prompt.toLowerCase() !== authorName.toLowerCase()  // user added context beyond just the name
+      prompt.toLowerCase() !== authorName.toLowerCase()
     ) {
       try {
         const catalog = shopifyBooks.map((b, i) => `${i + 1}. "${b.title}"`).join(', ');
@@ -282,10 +288,10 @@ Rank these by relevance to the user's query. Respond ONLY with a JSON array of 1
       } catch(e) { /* keep original order */ }
     }
 
-    // ── 4. Serper: search publisher sites (skip for pure author searches that hit Shopify) ──
+    // ── 4. Serper: only on first page ─────────────────────────────────────
     let serperBooks = [];
     let cseError    = null;
-    const skipSerper = searchType === 'author' && shopifyBooks.length >= 3;
+    const skipSerper = isPageTwo || (searchType === 'author' && shopifyBooks.length >= 3);
     if (!skipSerper) {
       const cseResult = await searchSerper(searchQuery);
       serperBooks = cseResult.books;
@@ -336,7 +342,13 @@ Rank these by relevance to the user's query. Respond ONLY with a JSON array of 1
     return {
       statusCode: 200,
       headers: { ...cors, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ books, explanation, searchType, total: books.length, debug: cseError || null })
+      body: JSON.stringify({
+        books, explanation, searchType,
+        total: books.length,
+        pageInfo: shopifyPageInfo,
+        searchMeta: { searchType, authorName, bookTitle, searchQuery, explanation },
+        debug: cseError || null
+      })
     };
 
   } catch(err) {

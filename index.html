@@ -6031,6 +6031,7 @@
 
     // ── FIND A BOOK PANEL ─────────────────────────────────────────────────────
     var fabPendingBook = {};
+    var fabPageState = { cursorStack: [], currentCursor: null, searchMeta: null, currentPage: 1 };
 
     function showFindABook() {
       closeIframePanel();
@@ -6052,20 +6053,45 @@
     async function fabDoSearch() {
       const prompt = document.getElementById('fab-search-input').value.trim();
       if (!prompt) return;
+      // Reset pagination on a fresh search
+      fabPageState = { cursorStack: [], currentCursor: null, searchMeta: null, currentPage: 1 };
+      await fabFetchPage(prompt, null, null);
+    }
+
+    async function fabFetchPage(prompt, cursor, searchMeta) {
       const btn = document.getElementById('fab-search-btn');
       const btnT = document.getElementById('fab-search-btn-text');
       btn.disabled = true; btnT.textContent = 'Searching…';
       fabShowLoading();
       try {
+        const body = { prompt };
+        if (cursor)     body.cursor     = cursor;
+        if (searchMeta) body.searchMeta = searchMeta;
         const res  = await fetch('/.netlify/functions/book-search', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt })
+          body: JSON.stringify(body)
         });
         const data = await res.json();
         if (data.error) throw new Error(data.error);
+        if (data.searchMeta) fabPageState.searchMeta = data.searchMeta;
         fabRenderResults(data);
       } catch(err) { fabShowError(err.message); }
       finally { btn.disabled = false; btnT.textContent = '✨ Search'; }
+    }
+
+    function fabNextPage() {
+      const prompt = document.getElementById('fab-search-input').value.trim();
+      fabPageState.cursorStack.push(fabPageState.currentCursor);
+      fabPageState.currentPage++;
+      fabFetchPage(prompt, fabPageState.nextCursor, fabPageState.searchMeta);
+    }
+
+    function fabPrevPage() {
+      const prompt = document.getElementById('fab-search-input').value.trim();
+      fabPageState.nextCursor    = fabPageState.currentCursor;
+      fabPageState.currentCursor = fabPageState.cursorStack.pop();
+      fabPageState.currentPage--;
+      fabFetchPage(prompt, fabPageState.currentCursor, fabPageState.searchMeta);
     }
     function fabShowLoading() {
       const s = document.getElementById('fab-results-section');
@@ -6078,9 +6104,19 @@
       document.getElementById('fab-books-container').innerHTML = `<div class="fab-skeleton-grid">${sk}</div>`;
     }
     function fabRenderResults(data) {
-      const { books, explanation, total } = data;
+      const { books, explanation, total, pageInfo } = data;
+      // Store pagination state
+      if (pageInfo) {
+        fabPageState.currentCursor = fabPageState.nextCursor || null;
+        fabPageState.nextCursor    = pageInfo.endCursor;
+        fabPageState.hasNext       = pageInfo.hasNextPage;
+      }
+      const hasPrev = fabPageState.currentPage > 1;
+      const hasNext = !!(pageInfo?.hasNextPage);
+
       document.getElementById('fab-results-title').textContent = 'Books Found';
-      document.getElementById('fab-results-count').textContent = `${total} result${total !== 1 ? 's' : ''}`;
+      const pageLabel = fabPageState.currentPage > 1 ? ` · Page ${fabPageState.currentPage}` : '';
+      document.getElementById('fab-results-count').textContent = `${total} result${total !== 1 ? 's' : ''}${pageLabel}`;
       if (explanation) {
         document.getElementById('fab-explanation-text').textContent = explanation;
         document.getElementById('fab-ai-explanation').style.display = 'flex';
@@ -6105,7 +6141,14 @@
         const ext  = book.shopLink ? `<a href="${book.shopLink}" target="_blank" class="fab-btn-view-source">View on ${fabEscHtml(book.source||'Site')} →</a>` : '';
         return `<div class="fab-book-card"><div class="fab-book-cover" onclick="${covClick}">${cov}</div><div class="fab-book-info"><div class="fab-book-title">${fabEscHtml(book.title)}</div>${book.author?`<div class="fab-book-author">${fabEscHtml(book.author)}</div>`:''} ${book.source?`<div class="fab-book-meta">${fabEscHtml(book.source)}${book.year?' · '+book.year:''}</div>`:''} ${book.description?`<div class="fab-book-desc">${fabEscHtml(book.description)}</div>`:''}<div style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-top:0.4rem;">${src}${yfb}</div><div class="fab-book-btns">${act}${ext}</div></div></div>`;
       }).join('');
-      document.getElementById('fab-books-container').innerHTML = `<div class="fab-books-grid">${cards}</div>`;
+      const pagination = (hasPrev || hasNext) ? `
+        <div style="display:flex;align-items:center;justify-content:center;gap:1rem;margin-top:2rem;padding:1rem 0;">
+          ${hasPrev ? `<button onclick="fabPrevPage()" style="background:var(--navy2);border:1px solid var(--border);color:var(--cream);font-family:Inter,sans-serif;font-size:0.88rem;font-weight:600;padding:0.6rem 1.25rem;border-radius:10px;cursor:pointer;">← Previous</button>` : ''}
+          <span style="font-size:0.82rem;color:var(--muted);">Page ${fabPageState.currentPage}</span>
+          ${hasNext ? `<button onclick="fabNextPage()" style="background:linear-gradient(135deg,var(--gold),#E8A830);border:none;color:#fff;font-family:Inter,sans-serif;font-size:0.88rem;font-weight:600;padding:0.6rem 1.25rem;border-radius:10px;cursor:pointer;">Next →</button>` : ''}
+        </div>` : '';
+
+      document.getElementById('fab-books-container').innerHTML = `<div class="fab-books-grid">${cards}</div>${pagination}`;
     }
     function fabShowError(msg) {
       document.getElementById('fab-results-title').textContent = 'Something went wrong';

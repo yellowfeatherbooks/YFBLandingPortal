@@ -1,8 +1,19 @@
-const cors = {
-  'Access-Control-Allow-Origin':  '*',
-  'Access-Control-Allow-Headers': 'Content-Type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS'
-};
+const ALLOWED_ORIGINS = [
+  'https://yellowfeather.netlify.app',
+  'https://yellowfeatherbooks.com',
+  'https://www.yellowfeatherbooks.com',
+  'https://yellowfeathersbooks.com',
+];
+
+function getCors(event) {
+  const origin  = event.headers?.origin || event.headers?.referer?.replace(/\/$/, '') || '';
+  const allowed = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    'Access-Control-Allow-Origin':  allowed,
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS'
+  };
+}
 
 const CLAUDE_KEY    = (process.env.ANTHROPIC_API_KEY || '').trim();
 const SERPER_KEY    = (process.env.SERPER_API_KEY    || '').trim();
@@ -141,14 +152,14 @@ async function searchShopify(queryStr, first = 10, cursor = null) {
 }
 
 exports.handler = async (event) => {
-  if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: cors, body: '' };
-  if (event.httpMethod !== 'POST')    return { statusCode: 405, headers: cors, body: 'Method Not Allowed' };
+  if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: getCors(event), body: '' };
+  if (event.httpMethod !== 'POST')    return { statusCode: 405, headers: getCors(event), body: 'Method Not Allowed' };
 
   try {
     const { prompt, cursor = null, searchMeta = null } = JSON.parse(event.body || '{}');
     if (!prompt) return {
       statusCode: 400,
-      headers: { ...cors, 'Content-Type': 'application/json' },
+      headers: { ...getCors(event), 'Content-Type': 'application/json' },
       body: JSON.stringify({ error: 'Prompt is required' })
     };
 
@@ -341,7 +352,7 @@ Rank these by relevance to the user's query. Respond ONLY with a JSON array of 1
 
     return {
       statusCode: 200,
-      headers: { ...cors, 'Content-Type': 'application/json' },
+      headers: { ...getCors(event), 'Content-Type': 'application/json' },
       body: JSON.stringify({
         books, explanation, searchType,
         total: books.length,
@@ -355,7 +366,7 @@ Rank these by relevance to the user's query. Respond ONLY with a JSON array of 1
     console.error('book-search error:', err.message);
     return {
       statusCode: 500,
-      headers: { ...cors, 'Content-Type': 'application/json' },
+      headers: { ...getCors(event), 'Content-Type': 'application/json' },
       body: JSON.stringify({ error: err.message })
     };
   }

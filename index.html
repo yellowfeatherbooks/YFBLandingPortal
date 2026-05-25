@@ -1977,9 +1977,17 @@
     .fab-book-cover {
       flex-shrink: 0; width: 80px; height: 116px; border-radius: 8px; overflow: hidden;
       background: var(--navy3); display: flex; align-items: center; justify-content: center;
+      cursor: pointer; position: relative;
     }
-    .fab-book-cover img { width: 100%; height: 100%; object-fit: cover; }
+    .fab-book-cover:hover::after { content: '🔍'; position: absolute; inset: 0; background: rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; font-size: 1.4rem; }
+    .fab-book-cover img { width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
     .fab-book-cover-placeholder { font-size: 2rem; opacity: 0.3; }
+    /* Cover popup lightbox */
+    #fab-cover-popup { position: fixed; inset: 0; z-index: 600; background: rgba(0,0,0,0.82); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+    #fab-cover-popup.open { opacity: 1; pointer-events: all; }
+    #fab-cover-popup img { max-width: min(320px, 80vw); max-height: 80vh; border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.7); object-fit: contain; }
+    #fab-cover-popup-title { position: absolute; bottom: 2rem; left: 0; right: 0; text-align: center; font-family: 'Playfair Display', serif; font-size: 1rem; color: #fff; padding: 0 1.5rem; text-shadow: 0 2px 8px rgba(0,0,0,0.8); }
+    #fab-cover-popup-placeholder { font-size: 8rem; }
     .fab-book-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.3rem; }
     .fab-book-title { font-family: 'Playfair Display', serif; font-size: 1rem; font-weight: 600; line-height: 1.3; color: var(--cream); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
     .fab-book-author { font-size: 0.8rem; color: var(--gold); font-weight: 500; }
@@ -2897,6 +2905,13 @@
       <div id="fab-books-container"></div>
     </div>
   </section>
+
+  <!-- ══ COVER POPUP LIGHTBOX ══ -->
+  <div id="fab-cover-popup" onclick="fabCloseCoverPopup()">
+    <img id="fab-cover-popup-img" src="" alt="" style="display:none;"/>
+    <div id="fab-cover-popup-placeholder" style="display:none;">📖</div>
+    <div id="fab-cover-popup-title"></div>
+  </div>
 
   <!-- ══ FIND A BOOK REQUEST MODAL ══ -->
   <div id="fab-request-modal" onclick="fabHandleOverlayClick(event)">
@@ -6076,6 +6091,9 @@
         return;
       }
       const cards = books.map(book => {
+        const covClick = book.coverUrl
+          ? `fabShowCoverPopup('${book.coverUrl.replace(/'/g,"\\'")}','${fabEscHtml(book.title).replace(/'/g,"\\'")}')`
+          : `fabShowCoverPopup('','${fabEscHtml(book.title).replace(/'/g,"\\'")}')`;
         const cov = book.coverUrl
           ? `<img src="${book.coverUrl}" alt="${fabEscHtml(book.title)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/><div class="fab-book-cover-placeholder" style="display:none;">📖</div>`
           : `<div class="fab-book-cover-placeholder">📖</div>`;
@@ -6085,7 +6103,7 @@
           ? `<button class="fab-btn-buy card-cart-btn" data-vgid="${book.variantGid || ''}" onclick="fabAddToCart(this.dataset.vgid,this)">🛒 Add to Cart${book.price ? ' · '+book.price : ''}</button>`
           : `<button class="fab-btn-request" data-book='${JSON.stringify(book).replace(/'/g,"&#39;")}' onclick="fabOpenRequest(JSON.parse(this.dataset.book))">Request from Us</button>`;
         const ext  = book.shopLink ? `<a href="${book.shopLink}" target="_blank" class="fab-btn-view-source">View on ${fabEscHtml(book.source||'Site')} →</a>` : '';
-        return `<div class="fab-book-card"><div class="fab-book-cover">${cov}</div><div class="fab-book-info"><div class="fab-book-title">${fabEscHtml(book.title)}</div>${book.author?`<div class="fab-book-author">${fabEscHtml(book.author)}</div>`:''} ${book.source?`<div class="fab-book-meta">${fabEscHtml(book.source)}${book.year?' · '+book.year:''}</div>`:''} ${book.description?`<div class="fab-book-desc">${fabEscHtml(book.description)}</div>`:''}<div style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-top:0.4rem;">${src}${yfb}</div><div class="fab-book-btns">${act}${ext}</div></div></div>`;
+        return `<div class="fab-book-card"><div class="fab-book-cover" onclick="${covClick}">${cov}</div><div class="fab-book-info"><div class="fab-book-title">${fabEscHtml(book.title)}</div>${book.author?`<div class="fab-book-author">${fabEscHtml(book.author)}</div>`:''} ${book.source?`<div class="fab-book-meta">${fabEscHtml(book.source)}${book.year?' · '+book.year:''}</div>`:''} ${book.description?`<div class="fab-book-desc">${fabEscHtml(book.description)}</div>`:''}<div style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-top:0.4rem;">${src}${yfb}</div><div class="fab-book-btns">${act}${ext}</div></div></div>`;
       }).join('');
       document.getElementById('fab-books-container').innerHTML = `<div class="fab-books-grid">${cards}</div>`;
     }
@@ -6106,6 +6124,21 @@
       document.getElementById('fab-req-notes').value = '';
       document.getElementById('fab-request-modal').classList.add('open');
     }
+    function fabShowCoverPopup(url, title) {
+      const popup = document.getElementById('fab-cover-popup');
+      const img   = document.getElementById('fab-cover-popup-img');
+      const ph    = document.getElementById('fab-cover-popup-placeholder');
+      document.getElementById('fab-cover-popup-title').textContent = title || '';
+      if (url) {
+        img.src = url; img.style.display = 'block'; ph.style.display = 'none';
+      } else {
+        img.style.display = 'none'; ph.style.display = 'block';
+      }
+      popup.classList.add('open');
+    }
+    function fabCloseCoverPopup() { document.getElementById('fab-cover-popup').classList.remove('open'); }
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') fabCloseCoverPopup(); });
+
     function fabCloseModal() { document.getElementById('fab-request-modal').classList.remove('open'); }
     function fabHandleOverlayClick(e) { if (e.target === document.getElementById('fab-request-modal')) fabCloseModal(); }
     async function fabSubmitRequest() {

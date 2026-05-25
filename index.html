@@ -2004,22 +2004,23 @@
     .fab-state-box .state-icon { font-size: 3rem; margin-bottom: 1rem; }
     .fab-state-box h3 { font-family: 'Playfair Display', serif; font-size: 1.3rem; color: var(--cream); margin-bottom: 0.5rem; }
     .fab-state-box p { font-size: 0.88rem; line-height: 1.65; }
-    #fab-request-modal { position: fixed; inset: 0; z-index: 500; background: rgba(0,0,0,0.7); backdrop-filter: blur(6px); display: flex; align-items: center; justify-content: center; padding: 1.5rem; opacity: 0; pointer-events: none; transition: opacity 0.25s; }
+    #fab-request-modal { position: fixed; inset: 0; z-index: 500; background: rgba(0,0,0,0.7); backdrop-filter: blur(6px); display: flex; align-items: center; justify-content: center; padding: 1rem; opacity: 0; pointer-events: none; transition: opacity 0.25s; }
     #fab-request-modal.open { opacity: 1; pointer-events: all; }
-    .fab-modal-card { background: var(--navy2); border: 1px solid var(--border); border-radius: 18px; padding: 2rem; width: 100%; max-width: 480px; transform: translateY(24px); transition: transform 0.3s ease; }
+    .fab-modal-card { background: var(--navy2); border: 1px solid var(--border); border-radius: 18px; padding: 1.25rem 1.5rem; width: 100%; max-width: 480px; max-height: 92vh; overflow-y: auto; transform: translateY(24px); transition: transform 0.3s ease; display: flex; flex-direction: column; }
     #fab-request-modal.open .fab-modal-card { transform: translateY(0); }
-    .fab-modal-title { font-family: 'Playfair Display', serif; font-size: 1.35rem; margin-bottom: 0.4rem; }
-    .fab-modal-subtitle { font-size: 0.83rem; color: var(--muted); margin-bottom: 1.5rem; }
-    .fab-modal-book-info { background: rgba(201,146,42,0.06); border: 1px solid rgba(201,146,42,0.15); border-radius: 10px; padding: 0.75rem 1rem; margin-bottom: 1.25rem; }
+    .fab-modal-title { font-family: 'Playfair Display', serif; font-size: 1.15rem; margin-bottom: 0.2rem; }
+    .fab-modal-subtitle { font-size: 0.78rem; color: var(--muted); margin-bottom: 1rem; }
+    .fab-modal-book-info { background: rgba(201,146,42,0.06); border: 1px solid rgba(201,146,42,0.15); border-radius: 10px; padding: 0.75rem 1rem; margin-bottom: 1rem; }
     .fab-modal-book-info strong { color: var(--gold2); font-size: 0.92rem; display: block; margin-bottom: 0.2rem; }
     .fab-modal-book-info span { font-size: 0.78rem; color: var(--muted); }
-    .fab-form-group { margin-bottom: 1rem; }
-    .fab-form-group label { display: block; font-size: 0.78rem; font-weight: 600; color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 0.4rem; }
-    .fab-form-input { width: 100%; background: var(--navy3); border: 1px solid var(--border); border-radius: 9px; color: var(--cream); font-family: 'Inter', sans-serif; font-size: 0.9rem; padding: 0.7rem 0.9rem; outline: none; transition: border-color 0.2s; }
+    .fab-form-group { margin-bottom: 0.6rem; }
+    .fab-form-group label { display: block; font-size: 0.72rem; font-weight: 600; color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 0.3rem; }
+    .fab-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; margin-bottom: 0.6rem; }
+    .fab-form-input { width: 100%; background: var(--navy3); border: 1px solid var(--border); border-radius: 9px; color: var(--cream); font-family: 'Inter', sans-serif; font-size: 0.85rem; padding: 0.55rem 0.8rem; outline: none; transition: border-color 0.2s; box-sizing: border-box; }
     .fab-form-input:focus { border-color: var(--gold); }
     .fab-form-input::placeholder { color: var(--muted); }
-    textarea.fab-form-input { resize: vertical; min-height: 70px; }
-    .fab-modal-actions { display: flex; gap: 0.75rem; margin-top: 1.5rem; }
+    textarea.fab-form-input { resize: none; height: 52px; }
+    .fab-modal-actions { display: flex; gap: 0.75rem; margin-top: 1rem; }
     .fab-btn-modal-submit { flex: 1; background: linear-gradient(135deg, var(--gold), #E8A830); border: none; color: #fff; font-family: 'Inter', sans-serif; font-size: 0.9rem; font-weight: 600; padding: 0.75rem; border-radius: 9px; cursor: pointer; transition: all 0.2s; }
     .fab-btn-modal-submit:hover { background: linear-gradient(135deg, var(--gold2), var(--gold)); }
     .fab-btn-modal-submit:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -2904,11 +2905,15 @@
         <div class="fab-modal-title">Request This Book</div>
         <div class="fab-modal-subtitle">We&rsquo;ll try to source it for you and notify you when it&rsquo;s available.</div>
         <div class="fab-form-group"><label>Book Title *</label><input type="text" id="fab-req-book-title" class="fab-form-input" placeholder="Book title"/></div>
-        <div class="fab-form-group"><label>Author</label><input type="text" id="fab-req-author" class="fab-form-input" placeholder="Author name"/></div>
-        <div class="fab-form-group"><label>Publisher</label><input type="text" id="fab-req-publisher" class="fab-form-input" placeholder="Publisher"/></div>
-        <div class="fab-form-group"><label>Your Name</label><input type="text" id="fab-req-name" class="fab-form-input" placeholder="Full name"/></div>
+        <div class="fab-form-row">
+          <div class="fab-form-group" style="margin-bottom:0;"><label>Author</label><input type="text" id="fab-req-author" class="fab-form-input" placeholder="Author name"/></div>
+          <div class="fab-form-group" style="margin-bottom:0;"><label>Publisher</label><input type="text" id="fab-req-publisher" class="fab-form-input" placeholder="Publisher"/></div>
+        </div>
+        <div class="fab-form-row">
+          <div class="fab-form-group" style="margin-bottom:0;"><label>Your Name</label><input type="text" id="fab-req-name" class="fab-form-input" placeholder="Full name"/></div>
+          <div class="fab-form-group" style="margin-bottom:0;"><label>Phone Number</label><input type="tel" id="fab-req-phone" class="fab-form-input" placeholder="+91 98765 43210"/></div>
+        </div>
         <div class="fab-form-group"><label>Email Address *</label><input type="email" id="fab-req-email" class="fab-form-input" placeholder="you@example.com"/></div>
-        <div class="fab-form-group"><label>Phone Number</label><input type="tel" id="fab-req-phone" class="fab-form-input" placeholder="+91 98765 43210"/></div>
         <div class="fab-form-group"><label>Notes (optional)</label><textarea id="fab-req-notes" class="fab-form-input" placeholder="Any specific edition or details…"></textarea></div>
         <div class="fab-modal-actions">
           <button class="fab-btn-modal-cancel" onclick="fabCloseModal()">Cancel</button>

@@ -2955,6 +2955,57 @@
     }
     #admin-login-panel.open { display: flex; }
 
+    /* Admin record modal */
+    #admin-record-modal {
+      display: none; position: fixed; inset: 0;
+      background: rgba(11,14,26,0.85); backdrop-filter: blur(4px);
+      z-index: 300; align-items: center; justify-content: center; padding: 1rem;
+    }
+    #admin-record-modal.open { display: flex; }
+    .admin-modal-card {
+      background: #121628; border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 14px; width: 100%; max-width: 480px;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.6); position: relative;
+      padding: 1.8rem 1.8rem 1.4rem;
+    }
+    .admin-modal-close {
+      position: absolute; top: 1rem; right: 1rem;
+      background: rgba(255,255,255,0.07); border: none; color: var(--muted);
+      width: 28px; height: 28px; border-radius: 50%; cursor: pointer;
+      font-size: 0.75rem; display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s, color 0.15s;
+    }
+    .admin-modal-close:hover { background: rgba(255,255,255,0.14); color: var(--text); }
+    .admin-modal-title {
+      font-size: 1.1rem; font-weight: 700; color: var(--text); margin: 0 0 1.2rem;
+      padding-right: 2rem;
+    }
+    .admin-modal-details { margin-bottom: 1.5rem; }
+    .admin-modal-row {
+      display: flex; gap: 0.5rem; padding: 0.55rem 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.82rem;
+    }
+    .admin-modal-row:last-child { border-bottom: none; }
+    .admin-modal-label { color: var(--muted); min-width: 120px; flex-shrink: 0; }
+    .admin-modal-value { color: var(--text); word-break: break-all; }
+    .admin-modal-actions {
+      display: flex; gap: 0.75rem; flex-wrap: wrap; padding-top: 1rem;
+      border-top: 1px solid rgba(255,255,255,0.07);
+    }
+    .admin-btn-danger {
+      background: rgba(248,113,113,0.15); color: #f87171;
+      border: 1px solid rgba(248,113,113,0.3);
+    }
+    .admin-btn-danger:hover { background: rgba(248,113,113,0.25); }
+    .admin-btn-warning {
+      background: rgba(251,191,36,0.12); color: #fbbf24;
+      border: 1px solid rgba(251,191,36,0.25);
+    }
+    .admin-btn-warning:hover { background: rgba(251,191,36,0.22); }
+    .admin-modal-actions .admin-btn { padding: 0.5rem 1.1rem; font-size: 0.78rem; }
+    .admin-table tr.clickable-row { cursor: pointer; }
+    .admin-table tr.clickable-row:hover td { background: rgba(212,175,55,0.06); }
+
     /* Submission detail expandable */
     .submission-items { font-size: 0.72rem; color: var(--muted); line-height: 1.7; }
 
@@ -4304,6 +4355,17 @@
         <span class="tab-icon">✒️</span>Signed
       </button>
     </div>
+
+    <!-- Admin record detail modal -->
+    <div id="admin-record-modal" onclick="if(event.target===this)closeAdminModal()">
+      <div class="admin-modal-card">
+        <button class="admin-modal-close" onclick="closeAdminModal()">✕</button>
+        <div id="admin-modal-title" class="admin-modal-title"></div>
+        <div id="admin-modal-details" class="admin-modal-details"></div>
+        <div id="admin-modal-actions" class="admin-modal-actions"></div>
+      </div>
+    </div>
+
   </div>
 
   <!-- ══ AUTHOR VIEW — shown when an author logs in (setView('author')) ══ -->
@@ -5483,6 +5545,7 @@
     }
 
     // ── Authors ──
+    var _allAuthors = [];
     async function adminLoadAuthors() {
       const body = document.getElementById('admin-authors-body');
       const stats = document.getElementById('admin-authors-stats');
@@ -5490,16 +5553,16 @@
       try {
         const data = await adminPost('admin-authors', {});
         if (!data.success) { adminError(body, data.error); return; }
-        const rows = data.authors || [];
-        stats.innerHTML = `<div class="admin-stat-card"><div class="admin-stat-num">${rows.length}</div><div class="admin-stat-label">Total Authors</div></div>
-          <div class="admin-stat-card"><div class="admin-stat-num" style="color:#4ade80;">${rows.filter(r=>r.sub_status==='active').length}</div><div class="admin-stat-label">Active Subs</div></div>`;
-        if (!rows.length) { adminError(body, 'No authors found.'); return; }
+        _allAuthors = data.authors || [];
+        stats.innerHTML = `<div class="admin-stat-card"><div class="admin-stat-num">${_allAuthors.length}</div><div class="admin-stat-label">Total Authors</div></div>
+          <div class="admin-stat-card"><div class="admin-stat-num" style="color:#4ade80;">${_allAuthors.filter(r=>r.sub_status==='active').length}</div><div class="admin-stat-label">Active Subs</div></div>`;
+        if (!_allAuthors.length) { adminError(body, 'No authors found.'); return; }
         body.innerHTML = `
           <div class="admin-table-wrap">
             <table class="admin-table">
               <thead><tr><th>Name</th><th>Email</th><th>Joined</th><th>Plan</th><th>Sub Status</th></tr></thead>
-              <tbody>${rows.map(r => `
-                <tr>
+              <tbody>${_allAuthors.map((r, i) => `
+                <tr class="clickable-row" onclick="openAuthorModal(${i})">
                   <td><strong>${r.name || '—'}</strong></td>
                   <td class="muted">${r.email}</td>
                   <td class="muted">${fmtDate(r.joined)}</td>
@@ -5513,6 +5576,7 @@
     }
 
     // ── Members ──
+    var _allMembers = [];
     async function adminLoadMembers() {
       const body = document.getElementById('admin-members-body');
       const stats = document.getElementById('admin-members-stats');
@@ -5520,15 +5584,15 @@
       try {
         const data = await adminPost('admin-members', {});
         if (!data.success) { adminError(body, data.error); return; }
-        const rows = data.members || [];
-        stats.innerHTML = `<div class="admin-stat-card"><div class="admin-stat-num">${rows.length}</div><div class="admin-stat-label">Total Members</div></div>`;
-        if (!rows.length) { adminError(body, 'No members found.'); return; }
+        _allMembers = data.members || [];
+        stats.innerHTML = `<div class="admin-stat-card"><div class="admin-stat-num">${_allMembers.length}</div><div class="admin-stat-label">Total Members</div></div>`;
+        if (!_allMembers.length) { adminError(body, 'No members found.'); return; }
         body.innerHTML = `
           <div class="admin-table-wrap">
             <table class="admin-table">
               <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Joined</th><th>Payment ID</th></tr></thead>
-              <tbody>${rows.map(r => `
-                <tr>
+              <tbody>${_allMembers.map((r, i) => `
+                <tr class="clickable-row" onclick="openMemberModal(${i})">
                   <td><strong>${r.name || '—'}</strong></td>
                   <td class="muted">${r.email}</td>
                   <td class="muted">${r.phone || '—'}</td>
@@ -5717,7 +5781,6 @@
     }
 
     async function adminUpdateRequest(table, id, status, btn) {
-      const sess = JSON.parse(sessionStorage.getItem('yfb_admin_session') || '{}');
       btn.disabled = true;
       btn.textContent = '…';
       try {
@@ -5726,6 +5789,97 @@
         // Reload whichever section is active
         if (table === 'book_requests')        adminLoadBookReqs(_adminBookReqsFilter);
         if (table === 'signed_copy_requests') adminLoadSignedReqs(_adminSignedReqsFilter);
+      } catch(e) { alert(e.message); btn.disabled = false; }
+    }
+
+    // ── Admin record modal ──
+    function closeAdminModal() {
+      document.getElementById('admin-record-modal').classList.remove('open');
+    }
+
+    function _modalRow(label, value) {
+      return `<div class="admin-modal-row">
+        <span class="admin-modal-label">${label}</span>
+        <span class="admin-modal-value">${value || '—'}</span>
+      </div>`;
+    }
+
+    function openMemberModal(idx) {
+      const r = _allMembers[idx];
+      if (!r) return;
+      document.getElementById('admin-modal-title').textContent = '🎖️ Book Club Member';
+      document.getElementById('admin-modal-details').innerHTML =
+        _modalRow('Name',       r.name)               +
+        _modalRow('Email',      r.email)              +
+        _modalRow('Phone',      r.phone)              +
+        _modalRow('Joined',     fmtDate(r.joined_at)) +
+        _modalRow('Payment ID', r.razorpay_payment_id);
+      document.getElementById('admin-modal-actions').innerHTML = `
+        <button class="admin-btn admin-btn-warning" onclick="adminCancelMembership('${r.email}',this)">🚫 Cancel Membership</button>
+        <button class="admin-btn admin-btn-danger"  onclick="adminDeleteMember('${r.email}',this)">🗑️ Delete User</button>
+        <button class="admin-btn" style="background:rgba(255,255,255,0.07);color:var(--muted)" onclick="closeAdminModal()">Close</button>`;
+      document.getElementById('admin-record-modal').classList.add('open');
+    }
+
+    function openAuthorModal(idx) {
+      const r = _allAuthors[idx];
+      if (!r) return;
+      const canCancel = r.sub_status && r.sub_status !== '—' && r.sub_status !== 'cancelled';
+      document.getElementById('admin-modal-title').textContent = '✍️ Author';
+      document.getElementById('admin-modal-details').innerHTML =
+        _modalRow('Name',         r.name)              +
+        _modalRow('Email',        r.email)             +
+        _modalRow('Joined',       fmtDate(r.joined))   +
+        _modalRow('Plan',         r.plan)              +
+        _modalRow('Sub Status',   statusBadge(r.sub_status));
+      document.getElementById('admin-modal-actions').innerHTML = `
+        ${canCancel ? `<button class="admin-btn admin-btn-warning" onclick="adminCancelSubscription('${r.email}',this)">🚫 Cancel Subscription</button>` : ''}
+        <button class="admin-btn admin-btn-danger" onclick="adminDeleteAuthor('${r.email}',this)">🗑️ Delete Author</button>
+        <button class="admin-btn" style="background:rgba(255,255,255,0.07);color:var(--muted)" onclick="closeAdminModal()">Close</button>`;
+      document.getElementById('admin-record-modal').classList.add('open');
+    }
+
+    async function adminCancelMembership(email, btn) {
+      if (!confirm(`Cancel Book Club membership for ${email}?\nThis will remove them from the members list.`)) return;
+      btn.disabled = true; btn.textContent = '…';
+      try {
+        const data = await adminPost('admin-delete-member', { email });
+        if (!data.success) { alert('Failed: ' + data.error); btn.disabled = false; btn.textContent = '🚫 Cancel Membership'; return; }
+        closeAdminModal();
+        adminLoadMembers();
+      } catch(e) { alert(e.message); btn.disabled = false; }
+    }
+
+    async function adminDeleteMember(email, btn) {
+      if (!confirm(`Permanently delete member ${email}?\nThis cannot be undone.`)) return;
+      btn.disabled = true; btn.textContent = '…';
+      try {
+        const data = await adminPost('admin-delete-member', { email });
+        if (!data.success) { alert('Failed: ' + data.error); btn.disabled = false; btn.textContent = '🗑️ Delete User'; return; }
+        closeAdminModal();
+        adminLoadMembers();
+      } catch(e) { alert(e.message); btn.disabled = false; }
+    }
+
+    async function adminCancelSubscription(email, btn) {
+      if (!confirm(`Cancel subscription for author ${email}?`)) return;
+      btn.disabled = true; btn.textContent = '…';
+      try {
+        const data = await adminPost('admin-cancel-subscription', { email });
+        if (!data.success) { alert('Failed: ' + data.error); btn.disabled = false; btn.textContent = '🚫 Cancel Subscription'; return; }
+        closeAdminModal();
+        adminLoadAuthors();
+      } catch(e) { alert(e.message); btn.disabled = false; }
+    }
+
+    async function adminDeleteAuthor(email, btn) {
+      if (!confirm(`Permanently delete author account for ${email}?\nThis removes them from the portal but NOT from Shopify.`)) return;
+      btn.disabled = true; btn.textContent = '…';
+      try {
+        const data = await adminPost('admin-delete-author', { email });
+        if (!data.success) { alert('Failed: ' + data.error); btn.disabled = false; btn.textContent = '🗑️ Delete Author'; return; }
+        closeAdminModal();
+        adminLoadAuthors();
       } catch(e) { alert(e.message); btn.disabled = false; }
     }
 

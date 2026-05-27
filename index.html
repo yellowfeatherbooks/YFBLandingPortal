@@ -2796,6 +2796,28 @@
     #guest-cart-signin-nudge { display: none; }
     body.guest-cart-mode #guest-cart-signin-nudge  { display: block; }
 
+    /* ── Guest wishlist mode — inline wishlist for guest users ── */
+    body.guest-wishlist-mode #orders-panel {
+      top: 64px; left: 0; right: 0; bottom: 0;
+      z-index: 95;
+    }
+    @media (min-width: 769px) {
+      body.guest-wishlist-mode #orders-panel { left: 220px; }
+    }
+    @media (max-width: 768px) {
+      body.guest-wishlist-mode #orders-panel { top: calc(64px + 48px); }
+    }
+    body.guest-wishlist-mode .orders-tab               { display: none !important; }
+    body.guest-wishlist-mode .orders-tabs-bar          { display: none !important; }
+    body.guest-wishlist-mode .orders-topbar-right      { display: none !important; }
+    body.guest-wishlist-mode #orders-user-chip         { display: none !important; }
+    body.guest-wishlist-mode .orders-topbar h2         { font-size: 1rem; }
+    body.guest-wishlist-mode .orders-topbar-left span  { display: none; }
+    body.guest-wishlist-mode #guest-wishlist-close-btn { display: flex !important; }
+    /* Membership nudge shown in guest wishlist */
+    #guest-wishlist-member-nudge { display: none; }
+    body.guest-wishlist-mode #guest-wishlist-member-nudge { display: block; }
+
     /* ── Author cart mode — cart panel shown inside the author layout ── */
     body.author-mode.author-cart-mode #orders-panel {
       display: flex !important;   /* override the author-mode:none rule */
@@ -3347,7 +3369,7 @@
       <button onclick="closeMobileDrawer();openSearch();">🔍&nbsp; Search Store</button>
       <div class="drawer-section-label">Account</div>
       <button onclick="closeMobileDrawer();openCart();">🛒&nbsp; My Cart</button>
-      <button onclick="closeMobileDrawer();(readerToken||isBookClubMember)?openWishlist():openLoginModal();">❤️&nbsp; My Wishlist</button>
+      <button onclick="closeMobileDrawer();(readerToken||isBookClubMember)?openWishlist():openGuestWishlist();">❤️&nbsp; My Wishlist</button>
       <button onclick="closeMobileDrawer();(readerToken||isBookClubMember)?openOrdersPanel():openLoginModal();">🙋&nbsp; My Account</button>
       <button onclick="closeMobileDrawer();showMobilePanel('bookclub',document.querySelector('[data-panel=bookclub]'))">🎖️&nbsp; Book Club</button>
       <button onclick="closeMobileDrawer();fabOpenRequest({title:'',author:'',publisher:'',source:''});">📬&nbsp; Request a Book</button>
@@ -3417,7 +3439,7 @@
       <div class="mobile-tile-icon">🛒</div>
       <div class="mobile-tile-label">Cart</div>
     </button>
-    <button class="mobile-tile" onclick="(readerToken||isBookClubMember)?openWishlist():openLoginModal()">
+    <button class="mobile-tile" id="gtab-guest-wishlist" onclick="(readerToken||isBookClubMember)?openWishlist():openGuestWishlist()">
       <div class="mobile-tile-icon">❤️</div>
       <div class="mobile-tile-label">Wishlist</div>
     </button>
@@ -4721,6 +4743,11 @@
                 style="display:none;background:none;border:1px solid var(--border);color:var(--muted);
                        font-family:Inter,sans-serif;font-size:0.82rem;padding:0.35rem 0.75rem;
                        border-radius:6px;cursor:pointer;align-items:center;gap:0.3rem;">✕ Close</button>
+        <!-- Guest wishlist close — only visible in guest-wishlist-mode -->
+        <button id="guest-wishlist-close-btn" onclick="closeGuestWishlist()"
+                style="display:none;background:none;border:1px solid var(--border);color:var(--muted);
+                       font-family:Inter,sans-serif;font-size:0.82rem;padding:0.35rem 0.75rem;
+                       border-radius:6px;cursor:pointer;align-items:center;gap:0.3rem;">✕ Close</button>
       </div>
     </div>
     <div class="orders-tabs-bar">
@@ -4747,6 +4774,27 @@
 
     <!-- Wishlist tab -->
     <div class="orders-content" id="panel-wishlist" style="display:none;">
+      <!-- Membership upsell — shown only in guest-wishlist-mode -->
+      <div id="guest-wishlist-member-nudge"
+           style="margin:1rem 1.5rem 0;padding:1rem 1.1rem;background:rgba(201,146,42,0.08);
+                  border:1px solid rgba(201,146,42,0.25);border-radius:10px;">
+        <div style="font-size:0.85rem;color:var(--cream);font-weight:600;margin-bottom:0.35rem;">🎖️ Unlock more with Book Club Membership</div>
+        <p style="font-size:0.8rem;color:rgba(245,240,232,0.7);margin:0 0 0.75rem;line-height:1.5;">
+          Join the club to sync your wishlist across devices, get member discounts, request signed copies, and more. Just ₹99/year.
+        </p>
+        <div style="display:flex;gap:0.65rem;flex-wrap:wrap;align-items:center;">
+          <button onclick="closeGuestWishlist(); if(_isMobile()){showMobilePanel('bookclub',document.querySelector('[data-panel=bookclub]'))}else{handleBookClubNav()}"
+                  style="background:var(--gold);border:none;color:#fff;font-family:Inter,sans-serif;
+                         font-size:0.78rem;font-weight:600;padding:0.45rem 1.1rem;border-radius:6px;cursor:pointer;">
+            Join Book Club →
+          </button>
+          <button onclick="closeGuestWishlist();openLoginModal();"
+                  style="background:none;border:1px solid rgba(201,146,42,0.4);color:var(--gold);font-family:Inter,sans-serif;
+                         font-size:0.78rem;font-weight:600;padding:0.45rem 1rem;border-radius:6px;cursor:pointer;">
+            Already a member? Sign In
+          </button>
+        </div>
+      </div>
       <div id="wishlist-container"></div>
     </div>
 
@@ -5123,7 +5171,7 @@
         if (card && !card.contains(e.target) && e.target !== card) closeLoginModal();
       });
     })();
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeLoginModal(); closeSearch(); closeBcLoginPanel(); closeFindABook(); closeIframePanel(); closeAuthorLogin(); closeGuestCart(); closeAuthorCart(); closeAuthorShop(); } });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeLoginModal(); closeSearch(); closeBcLoginPanel(); closeFindABook(); closeIframePanel(); closeAuthorLogin(); closeGuestCart(); closeGuestWishlist(); closeAuthorCart(); closeAuthorShop(); } });
 
     function showRoleStep() {
       document.getElementById('login-step-role').style.display       = '';
@@ -6131,7 +6179,8 @@
       } else if (window.innerWidth > 768) {
         showBcLoginPanel();
       } else {
-        openLoginModal();
+        // Mobile: show the Book Club section with payment CTA
+        showMobilePanel('bookclub', document.querySelector('[data-panel=bookclub]'));
       }
     }
 
@@ -6428,6 +6477,37 @@
       if (topbarH2) topbarH2.textContent = 'My Account';
     }
 
+    function openGuestWishlist() {
+      document.body.classList.remove('guest-cart-mode');
+      document.body.classList.add('guest-wishlist-mode');
+      const topbarH2 = document.querySelector('#orders-panel .orders-topbar h2');
+      if (topbarH2) topbarH2.textContent = '❤️ My Wishlist';
+      document.getElementById('orders-panel').classList.add('active');
+      switchOrdersTab('wishlist');
+      // Mobile: integrate with tile system
+      if (_isMobile()) {
+        _hideAllForMobile();
+        document.querySelectorAll('#mobile-tile-bar .mobile-tile').forEach(t => t.classList.remove('active'));
+        const wlTile = document.getElementById('gtab-guest-wishlist');
+        if (wlTile) wlTile.classList.add('active');
+        window.scrollTo({ top: 0, behavior: 'instant' });
+      }
+    }
+    function closeGuestWishlist() {
+      document.body.classList.remove('guest-wishlist-mode');
+      document.getElementById('orders-panel').classList.remove('active');
+      const topbarH2 = document.querySelector('#orders-panel .orders-topbar h2');
+      if (topbarH2) topbarH2.textContent = 'My Account';
+      // On mobile, restore home panel
+      if (_isMobile() && document.body.classList.contains('guest-mode')) {
+        const hp = document.getElementById('mobile-home-panel');
+        if (hp) hp.style.display = 'block';
+        document.querySelectorAll('#mobile-tile-bar .mobile-tile').forEach(t => t.classList.remove('active'));
+        const homeTile = document.querySelector('#mobile-tile-bar .mobile-tile[data-panel="home"]');
+        if (homeTile) homeTile.classList.add('active');
+      }
+    }
+
     // Author cart — same cart panel recycled, positioned beside the author sidebar
     function authorOpenCart() {
       fabCloseModal();
@@ -6452,7 +6532,7 @@
     }
 
     function openWishlist() {
-      if (!readerToken && !isBookClubMember) { openLoginModal(); return; }
+      if (!readerToken && !isBookClubMember) { openGuestWishlist(); return; }
       document.getElementById('orders-user-chip').textContent = readerEmail || '';
       switchOrdersTab('wishlist');
       setView('member');
@@ -8317,6 +8397,10 @@
       if (authorPane) authorPane.style.display = 'none';
       const iframePanel = document.getElementById('iframe-panel');
       if (iframePanel) iframePanel.classList.remove('active');
+      // Close guest cart/wishlist overlay if open
+      document.body.classList.remove('guest-cart-mode');
+      document.body.classList.remove('guest-wishlist-mode');
+      document.getElementById('orders-panel').classList.remove('active');
 
       // Hide everything
       _hideAllForMobile();

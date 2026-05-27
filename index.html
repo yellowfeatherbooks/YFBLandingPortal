@@ -1901,9 +1901,16 @@
     }
     /* Mobile: push below the 48px tile bar so it stays visible and tappable */
     @media (max-width: 768px) {
-      body.guest-mode   #find-a-book { top: calc(64px + 48px); }
       body.member-mode  #find-a-book { top: calc(64px + 48px); }
       body.author-mode  #find-a-book { top: calc(64px + 48px); }
+      /* Guest mobile: show inline like other panels — not as a fixed overlay */
+      body.guest-mode #find-a-book.overlay-active {
+        position: static;
+        height: auto;
+        min-height: calc(100vh - 112px);
+        overflow-y: visible;
+        z-index: 1;
+      }
     }
     /* Desktop member: keep the orders tab bar above the search overlay so tabs stay clickable */
     body.member-mode .orders-tabs-bar { z-index: 96; }
@@ -3394,7 +3401,7 @@
       <div class="mobile-tile-icon">📚</div>
       <div class="mobile-tile-label">Browse</div>
     </button>
-    <button class="mobile-tile" onclick="closeGuestCart();showFindABook()">
+    <button class="mobile-tile" id="gtab-find-book" onclick="closeGuestCart();showFindABook()">
       <div class="mobile-tile-icon">✨</div>
       <div class="mobile-tile-label">Find a Book</div>
     </button>
@@ -8378,13 +8385,34 @@
       // Close any other open overlays first
       fabCloseModal();  // Request a Book modal
       closeSearch();    // Regular search overlay
-      // Guest / author: show as a full-screen overlay (same experience, no new page)
       if (_fabInPanel) _fabFromPanel();
+      // Mobile guest mode: integrate with the inline panel system (no fixed overlay)
+      if (_isMobile() && document.body.classList.contains('guest-mode')) {
+        document.getElementById('page-content').classList.remove('pane-mode');
+        const bcPane = document.getElementById('bc-login-panel');
+        if (bcPane) bcPane.style.display = 'none';
+        const authorPane = document.getElementById('author-login-panel');
+        if (authorPane) authorPane.style.display = 'none';
+        const iframePane = document.getElementById('iframe-panel');
+        if (iframePane) iframePane.classList.remove('active');
+        _hideAllForMobile();
+        document.querySelectorAll('#mobile-tile-bar .mobile-tile').forEach(t => t.classList.remove('active'));
+        const findTile = document.getElementById('gtab-find-book');
+        if (findTile) findTile.classList.add('active');
+      }
       document.getElementById('find-a-book').classList.add('overlay-active');
       window.scrollTo({ top: 0, behavior: 'instant' });
     }
     function closeFindABook() {
       document.getElementById('find-a-book').classList.remove('overlay-active');
+      // On mobile guest, restore the home panel and tile highlight
+      if (_isMobile() && document.body.classList.contains('guest-mode')) {
+        const hp = document.getElementById('mobile-home-panel');
+        if (hp) hp.style.display = 'block';
+        document.querySelectorAll('#mobile-tile-bar .mobile-tile').forEach(t => t.classList.remove('active'));
+        const homeTile = document.querySelector('#mobile-tile-bar .mobile-tile[data-panel="home"]');
+        if (homeTile) homeTile.classList.add('active');
+      }
     }
     function fabSetPrompt(el) {
       document.getElementById('fab-search-input').value = el.textContent;

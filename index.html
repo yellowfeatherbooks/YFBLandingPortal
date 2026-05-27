@@ -5689,6 +5689,7 @@
     }
 
     // ── Book Requests ──
+    var _allBookReqs = [];
     async function adminLoadBookReqs(status) {
       const body  = document.getElementById('admin-book-reqs-body');
       const stats = document.getElementById('admin-book-reqs-stats');
@@ -5697,33 +5698,25 @@
       try {
         const data = await adminPost('admin-book-requests', { status: s });
         if (!data.success) { adminError(body, data.error); return; }
-        const rows = data.requests || [];
-        const pending   = rows.filter(r => r.status === 'pending').length;
-        const completed = rows.filter(r => r.status === 'completed').length;
-        const rejected  = rows.filter(r => r.status === 'rejected').length;
+        _allBookReqs = data.requests || [];
+        const pending   = _allBookReqs.filter(r => r.status === 'pending').length;
+        const completed = _allBookReqs.filter(r => r.status === 'completed').length;
+        const rejected  = _allBookReqs.filter(r => r.status === 'rejected').length;
         stats.innerHTML = `
-          <div class="admin-stat-card"><div class="admin-stat-num">${rows.length}</div><div class="admin-stat-label">Total</div></div>
+          <div class="admin-stat-card"><div class="admin-stat-num">${_allBookReqs.length}</div><div class="admin-stat-label">Total</div></div>
           <div class="admin-stat-card"><div class="admin-stat-num" style="color:#f59e0b">${pending}</div><div class="admin-stat-label">Pending</div></div>
           <div class="admin-stat-card"><div class="admin-stat-num" style="color:#10b981">${completed}</div><div class="admin-stat-label">Completed</div></div>
           <div class="admin-stat-card"><div class="admin-stat-num" style="color:#f87171">${rejected}</div><div class="admin-stat-label">Rejected</div></div>`;
-        if (!rows.length) { body.innerHTML = '<p class="admin-empty">No book requests found.</p>'; return; }
+        if (!_allBookReqs.length) { body.innerHTML = '<p class="admin-empty">No book requests found.</p>'; return; }
         body.innerHTML = `<div class="admin-table-wrap"><table class="admin-table">
-          <thead><tr><th>Date</th><th>Name</th><th>Email</th><th>Book Title</th><th>Author</th><th>Publisher</th><th>Year</th><th>Notes</th><th>Status</th><th>Action</th></tr></thead>
-          <tbody>${rows.map(r => `<tr>
-            <td>${r.created_at ? r.created_at.slice(0,10) : '—'}</td>
-            <td>${r.name || '—'}</td>
-            <td>${r.email}</td>
+          <thead><tr><th>Date</th><th>Name</th><th>Email</th><th>Book Title</th><th>Author</th><th>Status</th></tr></thead>
+          <tbody>${_allBookReqs.map((r, i) => `<tr class="clickable-row" onclick="openBookReqModal(${i})">
+            <td class="muted">${r.created_at ? r.created_at.slice(0,10) : '—'}</td>
+            <td><strong>${r.name || '—'}</strong></td>
+            <td class="muted">${r.email}</td>
             <td>${r.book_title}</td>
-            <td>${r.author_name || '—'}</td>
-            <td>${r.publisher || '—'}</td>
-            <td>${r.year || '—'}</td>
-            <td style="max-width:160px;white-space:normal">${r.notes || '—'}</td>
-            <td><span class="admin-badge ${r.status === 'completed' ? 'badge-listed' : r.status === 'rejected' ? 'badge-rejected' : 'badge-review'}">${r.status}</span></td>
-            <td class="admin-actions">
-              ${r.status !== 'completed' ? `<button class="admin-btn admin-btn-approve" onclick="adminUpdateRequest('book_requests','${r.id}','completed',this)">✅ Done</button>` : ''}
-              ${r.status !== 'rejected'  ? `<button class="admin-btn admin-btn-reject"  onclick="adminUpdateRequest('book_requests','${r.id}','rejected',this)">❌ Reject</button>` : ''}
-              ${r.status !== 'pending'   ? `<button class="admin-btn" style="background:#334155" onclick="adminUpdateRequest('book_requests','${r.id}','pending',this)">🔄 Pending</button>` : ''}
-            </td>
+            <td class="muted">${r.author_name || '—'}</td>
+            <td>${statusBadge(r.status)}</td>
           </tr>`).join('')}</tbody>
         </table></div>`;
       } catch(e) { adminError(body, e.message); }
@@ -5736,6 +5729,7 @@
     }
 
     // ── Signed Copy Requests ──
+    var _allSignedReqs = [];
     async function adminLoadSignedReqs(status) {
       const body  = document.getElementById('admin-signed-reqs-body');
       const stats = document.getElementById('admin-signed-reqs-stats');
@@ -5744,31 +5738,25 @@
       try {
         const data = await adminPost('admin-signed-requests', { status: s });
         if (!data.success) { adminError(body, data.error); return; }
-        const rows = data.requests || [];
-        const pending   = rows.filter(r => r.status === 'pending').length;
-        const completed = rows.filter(r => r.status === 'completed').length;
-        const rejected  = rows.filter(r => r.status === 'rejected').length;
+        _allSignedReqs = data.requests || [];
+        const pending   = _allSignedReqs.filter(r => r.status === 'pending').length;
+        const completed = _allSignedReqs.filter(r => r.status === 'completed').length;
+        const rejected  = _allSignedReqs.filter(r => r.status === 'rejected').length;
         stats.innerHTML = `
-          <div class="admin-stat-card"><div class="admin-stat-num">${rows.length}</div><div class="admin-stat-label">Total</div></div>
+          <div class="admin-stat-card"><div class="admin-stat-num">${_allSignedReqs.length}</div><div class="admin-stat-label">Total</div></div>
           <div class="admin-stat-card"><div class="admin-stat-num" style="color:#f59e0b">${pending}</div><div class="admin-stat-label">Pending</div></div>
           <div class="admin-stat-card"><div class="admin-stat-num" style="color:#10b981">${completed}</div><div class="admin-stat-label">Completed</div></div>
           <div class="admin-stat-card"><div class="admin-stat-num" style="color:#f87171">${rejected}</div><div class="admin-stat-label">Rejected</div></div>`;
-        if (!rows.length) { body.innerHTML = '<p class="admin-empty">No signed copy requests found.</p>'; return; }
+        if (!_allSignedReqs.length) { body.innerHTML = '<p class="admin-empty">No signed copy requests found.</p>'; return; }
         body.innerHTML = `<div class="admin-table-wrap"><table class="admin-table">
-          <thead><tr><th>Date</th><th>Member</th><th>Email</th><th>Book Title</th><th>Author</th><th>Notes</th><th>Status</th><th>Action</th></tr></thead>
-          <tbody>${rows.map(r => `<tr>
-            <td>${r.created_at ? r.created_at.slice(0,10) : '—'}</td>
-            <td>${r.member_name || '—'}</td>
-            <td>${r.member_email}</td>
+          <thead><tr><th>Date</th><th>Member</th><th>Email</th><th>Book Title</th><th>Author</th><th>Status</th></tr></thead>
+          <tbody>${_allSignedReqs.map((r, i) => `<tr class="clickable-row" onclick="openSignedReqModal(${i})">
+            <td class="muted">${r.created_at ? r.created_at.slice(0,10) : '—'}</td>
+            <td><strong>${r.member_name || '—'}</strong></td>
+            <td class="muted">${r.member_email}</td>
             <td>${r.book_title}</td>
-            <td>${r.author_name || '—'}</td>
-            <td style="max-width:180px;white-space:normal">${r.notes || '—'}</td>
-            <td><span class="admin-badge ${r.status === 'completed' ? 'badge-listed' : r.status === 'rejected' ? 'badge-rejected' : 'badge-review'}">${r.status}</span></td>
-            <td class="admin-actions">
-              ${r.status !== 'completed' ? `<button class="admin-btn admin-btn-approve" onclick="adminUpdateRequest('signed_copy_requests','${r.id}','completed',this)">✅ Done</button>` : ''}
-              ${r.status !== 'rejected'  ? `<button class="admin-btn admin-btn-reject"  onclick="adminUpdateRequest('signed_copy_requests','${r.id}','rejected',this)">❌ Reject</button>` : ''}
-              ${r.status !== 'pending'   ? `<button class="admin-btn" style="background:#334155" onclick="adminUpdateRequest('signed_copy_requests','${r.id}','pending',this)">🔄 Pending</button>` : ''}
-            </td>
+            <td class="muted">${r.author_name || '—'}</td>
+            <td>${statusBadge(r.status)}</td>
           </tr>`).join('')}</tbody>
         </table></div>`;
       } catch(e) { adminError(body, e.message); }
@@ -5778,6 +5766,67 @@
       document.querySelectorAll('#admin-section-signed-requests .admin-filter-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       adminLoadSignedReqs(filter);
+    }
+
+    function _reqActionBtns(table, id, status) {
+      const reload = table === 'book_requests' ? 'adminLoadBookReqs(_adminBookReqsFilter)' : 'adminLoadSignedReqs(_adminSignedReqsFilter)';
+      return `
+        ${status !== 'completed' ? `<button class="admin-btn admin-btn-approve" onclick="adminUpdateRequestModal('${table}','${id}','completed',this)">✅ Mark Completed</button>` : ''}
+        ${status !== 'rejected'  ? `<button class="admin-btn admin-btn-danger"  onclick="adminUpdateRequestModal('${table}','${id}','rejected',this)">❌ Reject</button>` : ''}
+        ${status !== 'pending'   ? `<button class="admin-btn admin-btn-warning" onclick="adminUpdateRequestModal('${table}','${id}','pending',this)">🔄 Reset to Pending</button>` : ''}
+        <button class="admin-btn" style="background:rgba(255,255,255,0.07);color:var(--muted)" onclick="closeAdminModal()">Close</button>`;
+    }
+
+    function openBookReqModal(idx) {
+      const r = _allBookReqs[idx];
+      if (!r) return;
+      document.getElementById('admin-modal-title').textContent = '📬 Book Request';
+      document.getElementById('admin-modal-details').innerHTML =
+        `<p style="font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin:0 0 0.4rem">Requester</p>` +
+        _modalRow('Name',    r.name)                      +
+        _modalRow('Email',   r.email)                     +
+        _modalRow('Phone',   r.phone)                     +
+        _modalRow('Date',    fmtDate(r.created_at))       +
+        `<p style="font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin:1rem 0 0.4rem">Book Details</p>` +
+        _modalRow('Title',     r.book_title)              +
+        _modalRow('Author',    r.author_name)             +
+        _modalRow('Publisher', r.publisher)               +
+        _modalRow('Year',      r.year)                    +
+        _modalRow('Notes',     r.notes)                   +
+        `<p style="font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin:1rem 0 0.4rem">Status</p>` +
+        _modalRow('Current Status', statusBadge(r.status));
+      document.getElementById('admin-modal-actions').innerHTML = _reqActionBtns('book_requests', r.id, r.status);
+      document.getElementById('admin-record-modal').classList.add('open');
+    }
+
+    function openSignedReqModal(idx) {
+      const r = _allSignedReqs[idx];
+      if (!r) return;
+      document.getElementById('admin-modal-title').textContent = '✒️ Signed Copy Request';
+      document.getElementById('admin-modal-details').innerHTML =
+        `<p style="font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin:0 0 0.4rem">Member</p>` +
+        _modalRow('Name',  r.member_name)                 +
+        _modalRow('Email', r.member_email)                +
+        _modalRow('Date',  fmtDate(r.created_at))         +
+        `<p style="font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin:1rem 0 0.4rem">Book Details</p>` +
+        _modalRow('Title',  r.book_title)                 +
+        _modalRow('Author', r.author_name)                +
+        _modalRow('Notes',  r.notes)                      +
+        `<p style="font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin:1rem 0 0.4rem">Status</p>` +
+        _modalRow('Current Status', statusBadge(r.status));
+      document.getElementById('admin-modal-actions').innerHTML = _reqActionBtns('signed_copy_requests', r.id, r.status);
+      document.getElementById('admin-record-modal').classList.add('open');
+    }
+
+    async function adminUpdateRequestModal(table, id, status, btn) {
+      btn.disabled = true; btn.textContent = '…';
+      try {
+        const data = await adminPost('admin-update-request', { table, id, status });
+        if (!data.success) { alert('Update failed: ' + data.error); btn.disabled = false; return; }
+        closeAdminModal();
+        if (table === 'book_requests')        adminLoadBookReqs(_adminBookReqsFilter);
+        if (table === 'signed_copy_requests') adminLoadSignedReqs(_adminSignedReqsFilter);
+      } catch(e) { alert(e.message); btn.disabled = false; }
     }
 
     async function adminUpdateRequest(table, id, status, btn) {

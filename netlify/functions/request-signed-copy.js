@@ -30,7 +30,7 @@ exports.handler = async (event) => {
         'Content-Type':  'application/json',
         'Prefer':        'return=minimal'
       },
-      body: JSON.stringify({ member_email, member_name, book_title, author_name, notes })
+      body: JSON.stringify({ member_email, member_name, book_title, author_name, notes, status: 'pending' })
     });
 
     // 2 — Notify via n8n

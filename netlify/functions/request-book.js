@@ -1,5 +1,6 @@
 const SUPABASE_URL         = process.env.SUPABASE_URL;
 const SUPABASE_KEY         = process.env.SUPABASE_KEY;
+const SERVICE_KEY          = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_KEY;
 const N8N_BOOK_REQUEST_URL = process.env.N8N_BOOK_REQUEST_URL;
 
 const ALLOWED_ORIGINS = [
@@ -40,17 +41,18 @@ exports.handler = async (event) => {
     };
 
     // Save to Supabase
-    if (SUPABASE_URL && SUPABASE_KEY) {
-      await fetch(`${SUPABASE_URL}/rest/v1/book_requests`, {
+    if (SUPABASE_URL && SERVICE_KEY) {
+      const sbRes = await fetch(`${SUPABASE_URL}/rest/v1/book_requests`, {
         method:  'POST',
         headers: {
-          'apikey':        SUPABASE_KEY,
-          'Authorization': `Bearer ${SUPABASE_KEY}`,
+          'apikey':        SERVICE_KEY,
+          'Authorization': `Bearer ${SERVICE_KEY}`,
           'Content-Type':  'application/json',
           'Prefer':        'return=minimal'
         },
         body: JSON.stringify({ name, email, phone, book_title, author_name, publisher, year, notes, status: 'pending' })
-      }).catch(e => console.error('Supabase book-request insert failed:', e.message));
+      });
+      if (!sbRes.ok) console.error('Supabase book-request insert failed:', sbRes.status, await sbRes.text());
     }
 
     // Notify via n8n

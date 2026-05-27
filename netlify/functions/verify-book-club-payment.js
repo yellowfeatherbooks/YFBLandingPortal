@@ -42,10 +42,12 @@ exports.handler = async (event) => {
         body: JSON.stringify({
           email,
           name,
-          phone:      phone || null,
+          phone:               phone || null,
           razorpay_payment_id,
           razorpay_order_id,
-          joined_at:  new Date().toISOString()
+          plan:                'Annual Membership',
+          joined_at:           new Date().toISOString(),
+          valid_until:         new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
         })
       });
     }
@@ -66,6 +68,7 @@ exports.handler = async (event) => {
             phone:                  phone || undefined,
             password,
             password_confirmation:  password,
+            verified_email:         true,
             tags:                   'Book Club',
             send_email_welcome:     false
           }

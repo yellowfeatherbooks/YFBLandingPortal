@@ -5804,6 +5804,18 @@
       </div>`;
     }
 
+    function _validityLabel(iso) {
+      if (!iso) return '—';
+      const d    = new Date(iso);
+      const now  = new Date();
+      const diff = d - now;
+      const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+      const fmt  = fmtDate(iso);
+      if (diff < 0)   return `<span style="color:#f87171">${fmt} <em>(expired)</em></span>`;
+      if (days <= 30) return `<span style="color:#fbbf24">${fmt} <em>(${days}d left)</em></span>`;
+      return `<span style="color:#4ade80">${fmt}</span>`;
+    }
+
     function openMemberModal(idx) {
       const r = _allMembers[idx];
       if (!r) return;
@@ -5813,6 +5825,8 @@
         _modalRow('Email',      r.email)              +
         _modalRow('Phone',      r.phone)              +
         _modalRow('Joined',     fmtDate(r.joined_at)) +
+        _modalRow('Plan',       r.plan || 'Annual Membership') +
+        _modalRow('Valid Until', _validityLabel(r.valid_until)) +
         _modalRow('Payment ID', r.razorpay_payment_id);
       document.getElementById('admin-modal-actions').innerHTML = `
         <button class="admin-btn admin-btn-warning" onclick="adminCancelMembership('${r.email}',this)">🚫 Cancel Membership</button>
@@ -5827,11 +5841,13 @@
       const canCancel = r.sub_status && r.sub_status !== '—' && r.sub_status !== 'cancelled';
       document.getElementById('admin-modal-title').textContent = '✍️ Author';
       document.getElementById('admin-modal-details').innerHTML =
-        _modalRow('Name',         r.name)              +
-        _modalRow('Email',        r.email)             +
-        _modalRow('Joined',       fmtDate(r.joined))   +
-        _modalRow('Plan',         r.plan)              +
-        _modalRow('Sub Status',   statusBadge(r.sub_status));
+        _modalRow('Name',         r.name)                        +
+        _modalRow('Email',        r.email)                       +
+        _modalRow('Joined',       fmtDate(r.joined))             +
+        _modalRow('Plan',         r.plan !== '—' ? `<span class="abadge abadge-approved">${r.plan}</span>` : '—') +
+        _modalRow('Sub Status',   statusBadge(r.sub_status))     +
+        _modalRow('Access Until', _validityLabel(r.access_until)) +
+        _modalRow('Sub ID',       r.sub_id);
       document.getElementById('admin-modal-actions').innerHTML = `
         ${canCancel ? `<button class="admin-btn admin-btn-warning" onclick="adminCancelSubscription('${r.email}',this)">🚫 Cancel Subscription</button>` : ''}
         <button class="admin-btn admin-btn-danger" onclick="adminDeleteAuthor('${r.email}',this)">🗑️ Delete Author</button>

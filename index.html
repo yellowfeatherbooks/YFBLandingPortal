@@ -8453,10 +8453,11 @@
 
     // ── Desktop guest landing ────────────────────────────────────────────────
     function showGuestSection(sectionId) {
-      // Hide landing panel, reveal all sections, scroll to target
+      // Hide landing panel, reveal all sections with explicit inline style
+      // (needed to override the body.guest-mode section { display:none } CSS rule)
       const hp = document.getElementById('mobile-home-panel');
       if (hp) hp.style.display = 'none';
-      document.querySelectorAll('section, footer').forEach(el => el.style.display = '');
+      document.querySelectorAll('section:not(#find-a-book), footer').forEach(el => el.style.display = 'block');
       const target = document.getElementById(sectionId);
       if (target) setTimeout(() => target.scrollIntoView({ behavior: 'smooth' }), 30);
     }

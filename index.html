@@ -2774,6 +2774,14 @@
     /* ── GUEST MODE (default) ── */
     body.guest-mode:not(.guest-cart-mode) #orders-panel { display: none !important; }
 
+    /* Prevent flash of page sections before _initMobilePanels() runs.
+       The <body> already has class="guest-mode" so this CSS is applied
+       before any JS executes — sections are never painted visible. */
+    @media (max-width: 768px) {
+      body.guest-mode section:not(#find-a-book),
+      body.guest-mode footer { display: none; }
+    }
+
     /* ── Guest cart mode — inline within layout (nav + sidebar always visible) ── */
     body.guest-cart-mode #orders-panel {
       top: 64px; left: 0; right: 0; bottom: 0;

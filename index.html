@@ -6447,6 +6447,7 @@
     }
 
     function openCart() {
+      fabCloseModal();  // dismiss Request a Book modal if open
       // ── Member / book-club: open the in-app cart panel ──
       if (readerToken || isBookClubMember) {
         document.getElementById('orders-user-chip').textContent = readerEmail || '';
@@ -6478,6 +6479,7 @@
     }
 
     function openGuestWishlist() {
+      fabCloseModal();  // dismiss Request a Book modal if open
       document.body.classList.remove('guest-cart-mode');
       document.body.classList.add('guest-wishlist-mode');
       const topbarH2 = document.querySelector('#orders-panel .orders-topbar h2');
@@ -7547,6 +7549,7 @@
 
     // ── Search ──
     function openSearch() {
+      fabCloseModal();  // dismiss Request a Book modal if open
       closeFindABook(); // close AI search if open
       document.getElementById('search-overlay').classList.add('active');
       setTimeout(() => document.getElementById('search-input').focus(), 80);
@@ -8383,6 +8386,9 @@
 
     function showMobilePanel(name, tileEl) {
       if (!_isMobile()) return;
+
+      // Dismiss the Request a Book modal if it's open
+      fabCloseModal();
 
       // ── Strip any active pane-mode FIRST ──────────────────────────────────
       // pane-mode uses `display: none !important` which defeats the inline

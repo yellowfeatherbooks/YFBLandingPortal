@@ -2774,12 +2774,29 @@
     /* ── GUEST MODE (default) ── */
     body.guest-mode:not(.guest-cart-mode) #orders-panel { display: none !important; }
 
-    /* Prevent flash of page sections before _initMobilePanels() runs.
+    /* Prevent flash of page sections before JS runs.
        The <body> already has class="guest-mode" so this CSS is applied
        before any JS executes — sections are never painted visible. */
-    @media (max-width: 768px) {
-      body.guest-mode section:not(#find-a-book),
-      body.guest-mode footer { display: none; }
+    body.guest-mode section:not(#find-a-book),
+    body.guest-mode footer { display: none; }
+
+    /* ── Desktop guest landing: show home panel as default view ── */
+    @media (min-width: 769px) {
+      body.guest-mode .mobile-home-panel {
+        display: block !important;
+        max-width: 860px;
+        margin: 3rem auto;
+        padding: 2rem 2rem 3rem;
+      }
+      body.guest-mode .mhp-welcome img { height: 72px; }
+      body.guest-mode .mhp-welcome h2  { font-size: 1.75rem; }
+      body.guest-mode .mhp-welcome p   { font-size: 0.9rem; }
+      body.guest-mode .mhp-cards       { flex-direction: row; gap: 1.5rem; }
+      body.guest-mode .mhp-card        { flex: 1; padding: 1.75rem 1.5rem; }
+      body.guest-mode .mhp-card-title  { font-size: 1.15rem; }
+      body.guest-mode .mhp-card-perks li { font-size: 0.84rem; }
+      body.guest-mode .mhp-stats       { grid-template-columns: repeat(4, 1fr); gap: 1rem; }
+      body.guest-mode .mhp-stat .num   { font-size: 1.6rem; }
     }
 
     /* ── Guest cart mode — inline within layout (nav + sidebar always visible) ── */
@@ -3260,7 +3277,7 @@
 
   <!-- ══ NAVBAR ══ -->
   <nav>
-    <a href="/" class="nav-logo">
+    <a href="/" class="nav-logo" onclick="if(document.body.classList.contains('guest-mode')){event.preventDefault();showGuestLanding();}">
       <img src="TransparentLogo.png" alt="Yellow Feather Books" />
     </a>
 
@@ -3276,9 +3293,9 @@
     </div>
 
     <ul class="nav-links">
-      <li><a href="#trending"    onclick="closeFindABook();closeIframePanel();closeBcLoginPanel();">Trending</a></li>
-      <li><a href="#best-sellers" onclick="closeFindABook();closeIframePanel();closeBcLoginPanel();">Best Sellers</a></li>
-      <li><a href="#genres"      onclick="closeFindABook();closeIframePanel();closeBcLoginPanel();">Browse Genres</a></li>
+      <li><a href="#trending"    onclick="closeFindABook();closeIframePanel();closeBcLoginPanel();if(!_isMobile())showGuestSection('trending');">Trending</a></li>
+      <li><a href="#best-sellers" onclick="closeFindABook();closeIframePanel();closeBcLoginPanel();if(!_isMobile())showGuestSection('best-sellers');">Best Sellers</a></li>
+      <li><a href="#genres"      onclick="closeFindABook();closeIframePanel();closeBcLoginPanel();if(!_isMobile())showGuestSection('genres');">Browse Genres</a></li>
       <li><a href="#" onclick="event.preventDefault();showFindABook();" style="color:var(--teal);opacity:1;font-weight:600;">✨ Find a Book</a></li>
 
       <li style="display:flex;align-items:center;gap:0.4rem;">
@@ -3394,9 +3411,9 @@
   <div id="desktop-sidebar">
     <div class="ds-nav">
       <div class="ds-section-label">Shop</div>
-      <a href="#trending"    class="ds-nav-link" onclick="closeSearch();closeFindABook();closeGuestCart();closeIframePanel();closeAuthorLogin();closeBcLoginPanel();">📈&nbsp; Trending</a>
-      <a href="#best-sellers" class="ds-nav-link" onclick="closeSearch();closeFindABook();closeGuestCart();closeIframePanel();closeAuthorLogin();closeBcLoginPanel();">⭐&nbsp; Best Sellers</a>
-      <a href="#genres"      class="ds-nav-link" onclick="closeSearch();closeFindABook();closeGuestCart();closeIframePanel();closeAuthorLogin();closeBcLoginPanel();">📚&nbsp; Browse Genres</a>
+      <a href="#trending"    class="ds-nav-link" onclick="closeSearch();closeFindABook();closeGuestCart();closeIframePanel();closeAuthorLogin();closeBcLoginPanel();if(!_isMobile())showGuestSection('trending');">📈&nbsp; Trending</a>
+      <a href="#best-sellers" class="ds-nav-link" onclick="closeSearch();closeFindABook();closeGuestCart();closeIframePanel();closeAuthorLogin();closeBcLoginPanel();if(!_isMobile())showGuestSection('best-sellers');">⭐&nbsp; Best Sellers</a>
+      <a href="#genres"      class="ds-nav-link" onclick="closeSearch();closeFindABook();closeGuestCart();closeIframePanel();closeAuthorLogin();closeBcLoginPanel();if(!_isMobile())showGuestSection('genres');">📚&nbsp; Browse Genres</a>
       <div class="ds-section-label">Discover</div>
       <button class="ds-nav-link" onclick="closeGuestCart();closeIframePanel();closeAuthorLogin();closeBcLoginPanel();openSearch()">🔍&nbsp; Search Books</button>
       <a href="#" class="ds-nav-link highlight" onclick="event.preventDefault();closeGuestCart();closeIframePanel();closeAuthorLogin();closeBcLoginPanel();showFindABook();">✨&nbsp; AI Book Search</a>
@@ -8432,6 +8449,23 @@
 
       // Scroll to top
       window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // ── Desktop guest landing ────────────────────────────────────────────────
+    function showGuestSection(sectionId) {
+      // Hide landing panel, reveal all sections, scroll to target
+      const hp = document.getElementById('mobile-home-panel');
+      if (hp) hp.style.display = 'none';
+      document.querySelectorAll('section, footer').forEach(el => el.style.display = '');
+      const target = document.getElementById(sectionId);
+      if (target) setTimeout(() => target.scrollIntoView({ behavior: 'smooth' }), 30);
+    }
+    function showGuestLanding() {
+      if (_isMobile()) { showMobilePanel('home', document.querySelector('#mobile-tile-bar .mobile-tile[data-panel="home"]')); return; }
+      document.querySelectorAll('section:not(#find-a-book), footer').forEach(el => el.style.display = 'none');
+      const hp = document.getElementById('mobile-home-panel');
+      if (hp) hp.style.display = 'block';
+      window.scrollTo({ top: 0, behavior: 'instant' });
     }
 
     function _initMobilePanels() {

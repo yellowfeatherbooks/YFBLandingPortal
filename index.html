@@ -2964,9 +2964,10 @@
     #admin-record-modal.open { display: flex; }
     .admin-modal-card {
       background: #121628; border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 14px; width: 100%; max-width: 480px;
+      border-radius: 14px; width: 100%; max-width: 540px;
       box-shadow: 0 24px 60px rgba(0,0,0,0.6); position: relative;
       padding: 1.8rem 1.8rem 1.4rem;
+      max-height: 90vh; overflow-y: auto;
     }
     .admin-modal-close {
       position: absolute; top: 1rem; right: 1rem;
@@ -5606,6 +5607,7 @@
     }
 
     // ── Subscriptions ──
+    var _allSubs = [];
     async function adminLoadSubscriptions(status) {
       const body = document.getElementById('admin-subs-body');
       const stats = document.getElementById('admin-subs-stats');
@@ -5613,26 +5615,24 @@
       try {
         const data = await adminPost('admin-subscriptions', { status: status || 'all' });
         if (!data.success) { adminError(body, data.error); return; }
-        const rows = data.subscriptions || [];
-        const active = rows.filter(r=>r.status==='active').length;
-        const cancel = rows.filter(r=>r.status==='cancelling').length;
+        _allSubs = data.subscriptions || [];
+        const active = _allSubs.filter(r=>r.status==='active').length;
+        const cancel = _allSubs.filter(r=>r.status==='cancelling').length;
         stats.innerHTML = `
-          <div class="admin-stat-card"><div class="admin-stat-num">${rows.length}</div><div class="admin-stat-label">Total</div></div>
+          <div class="admin-stat-card"><div class="admin-stat-num">${_allSubs.length}</div><div class="admin-stat-label">Total</div></div>
           <div class="admin-stat-card"><div class="admin-stat-num" style="color:#4ade80;">${active}</div><div class="admin-stat-label">Active</div></div>
           <div class="admin-stat-card"><div class="admin-stat-num" style="color:#fbbf24;">${cancel}</div><div class="admin-stat-label">Cancelling</div></div>`;
-        if (!rows.length) { adminError(body, 'No subscriptions found.'); return; }
+        if (!_allSubs.length) { adminError(body, 'No subscriptions found.'); return; }
         body.innerHTML = `
           <div class="admin-table-wrap">
             <table class="admin-table">
-              <thead><tr><th>Email</th><th>Plan</th><th>Status</th><th>Subscription ID</th><th>Access Until</th><th>Extra Quota</th><th>Created</th></tr></thead>
-              <tbody>${rows.map(r => `
-                <tr>
+              <thead><tr><th>Email</th><th>Plan</th><th>Status</th><th>Access Until</th><th>Created</th></tr></thead>
+              <tbody>${_allSubs.map((r, i) => `
+                <tr class="clickable-row" onclick="openSubModal(${i})">
                   <td class="muted">${r.email}</td>
                   <td><span class="abadge abadge-approved">${r.plan_name || '—'}</span></td>
                   <td>${statusBadge(r.status)}</td>
-                  <td class="muted" style="font-size:0.7rem;">${r.subscription_id || '—'}</td>
                   <td class="muted">${fmtDate(r.access_until)}</td>
-                  <td class="muted">${r.extra_quota || 0}</td>
                   <td class="muted">${fmtDate(r.created_at)}</td>
                 </tr>`).join('')}
               </tbody>
@@ -5647,6 +5647,7 @@
     }
 
     // ── Orders ──
+    var _allOrders = [];
     async function adminLoadOrders(status) {
       const body = document.getElementById('admin-orders-body');
       const stats = document.getElementById('admin-orders-stats');
@@ -5655,21 +5656,20 @@
       try {
         const data = await adminPost('admin-orders', { status: s, limit: 50 });
         if (!data.success) { adminError(body, data.error); return; }
-        const rows = data.orders || [];
-        const total = rows.reduce((sum, o) => sum + parseFloat(o.total_price || 0), 0);
+        _allOrders = data.orders || [];
+        const total = _allOrders.reduce((sum, o) => sum + parseFloat(o.total_price || 0), 0);
         stats.innerHTML = `
-          <div class="admin-stat-card"><div class="admin-stat-num">${rows.length}</div><div class="admin-stat-label">Orders</div></div>
+          <div class="admin-stat-card"><div class="admin-stat-num">${_allOrders.length}</div><div class="admin-stat-label">Orders</div></div>
           <div class="admin-stat-card"><div class="admin-stat-num">₹${Math.round(total).toLocaleString('en-IN')}</div><div class="admin-stat-label">Total Value</div></div>`;
-        if (!rows.length) { adminError(body, 'No orders found.'); return; }
+        if (!_allOrders.length) { adminError(body, 'No orders found.'); return; }
         body.innerHTML = `
           <div class="admin-table-wrap">
             <table class="admin-table">
-              <thead><tr><th>Order</th><th>Customer</th><th>Email</th><th>Date</th><th>Items</th><th>Total</th><th>Payment</th><th>Fulfillment</th></tr></thead>
-              <tbody>${rows.map(o => `
-                <tr>
+              <thead><tr><th>Order</th><th>Customer</th><th>Date</th><th>Items</th><th>Total</th><th>Payment</th><th>Fulfillment</th></tr></thead>
+              <tbody>${_allOrders.map((o, i) => `
+                <tr class="clickable-row" onclick="openOrderModal(${i})">
                   <td><strong>${o.name}</strong></td>
-                  <td>${o.customer || '—'}</td>
-                  <td class="muted">${o.email || '—'}</td>
+                  <td>${o.customer || '—'}<br><span class="muted" style="font-size:0.72rem">${o.email || ''}</span></td>
                   <td class="muted">${fmtDate(o.created_at)}</td>
                   <td class="muted">${(o.items||[]).map(i=>`${i.title} ×${i.quantity}`).join('<br>')}</td>
                   <td>₹${parseFloat(o.total_price||0).toLocaleString('en-IN')}</td>
@@ -5851,6 +5851,69 @@
       document.getElementById('admin-modal-actions').innerHTML = `
         ${canCancel ? `<button class="admin-btn admin-btn-warning" onclick="adminCancelSubscription('${r.email}',this)">🚫 Cancel Subscription</button>` : ''}
         <button class="admin-btn admin-btn-danger" onclick="adminDeleteAuthor('${r.email}',this)">🗑️ Delete Author</button>
+        <button class="admin-btn" style="background:rgba(255,255,255,0.07);color:var(--muted)" onclick="closeAdminModal()">Close</button>`;
+      document.getElementById('admin-record-modal').classList.add('open');
+    }
+
+    function openSubModal(idx) {
+      const r = _allSubs[idx];
+      if (!r) return;
+      const canCancel = r.status && r.status !== 'cancelled';
+      document.getElementById('admin-modal-title').textContent = '💳 Subscription';
+      document.getElementById('admin-modal-details').innerHTML =
+        _modalRow('Email',       r.email)                         +
+        _modalRow('Plan',        r.plan_name ? `<span class="abadge abadge-approved">${r.plan_name}</span>` : '—') +
+        _modalRow('Status',      statusBadge(r.status))           +
+        _modalRow('Access Until', _validityLabel(r.access_until)) +
+        _modalRow('Extra Quota', r.extra_quota != null ? `${r.extra_quota} extra submissions` : '—') +
+        _modalRow('Sub ID',      r.subscription_id)               +
+        _modalRow('Created',     fmtDate(r.created_at));
+      document.getElementById('admin-modal-actions').innerHTML = `
+        ${canCancel ? `<button class="admin-btn admin-btn-warning" onclick="adminCancelSubFromModal('${r.email}',this)">🚫 Cancel Subscription</button>` : ''}
+        <button class="admin-btn" style="background:rgba(255,255,255,0.07);color:var(--muted)" onclick="closeAdminModal()">Close</button>`;
+      document.getElementById('admin-record-modal').classList.add('open');
+    }
+
+    async function adminCancelSubFromModal(email, btn) {
+      if (!confirm(`Cancel subscription for ${email}?`)) return;
+      btn.disabled = true; btn.textContent = '…';
+      try {
+        const data = await adminPost('admin-cancel-subscription', { email });
+        if (!data.success) { alert('Failed: ' + data.error); btn.disabled = false; btn.textContent = '🚫 Cancel Subscription'; return; }
+        closeAdminModal();
+        adminLoadSubscriptions();
+      } catch(e) { alert(e.message); btn.disabled = false; }
+    }
+
+    function openOrderModal(idx) {
+      const o = _allOrders[idx];
+      if (!o) return;
+      const itemsHtml = (o.items || []).map(item =>
+        `<div style="display:flex;justify-content:space-between;padding:0.4rem 0;border-bottom:1px solid rgba(255,255,255,0.05);font-size:0.8rem;">
+          <span style="color:var(--text);flex:1">${item.title}</span>
+          <span style="color:var(--muted);margin:0 1rem;">×${item.quantity}</span>
+          <span style="color:var(--text);">₹${parseFloat(item.price || 0).toLocaleString('en-IN')}</span>
+        </div>`
+      ).join('');
+      document.getElementById('admin-modal-title').textContent = `📦 Order ${o.name}`;
+      document.getElementById('admin-modal-details').innerHTML =
+        `<p style="font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin:0 0 0.4rem">Customer</p>` +
+        _modalRow('Name',    o.customer)                        +
+        _modalRow('Email',   o.email)                           +
+        _modalRow('Phone',   o.phone)                          +
+        _modalRow('Address', o.shipping_address)               +
+        `<p style="font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin:1rem 0 0.4rem">Order</p>` +
+        _modalRow('Date',        fmtDate(o.created_at))         +
+        _modalRow('Payment',     statusBadge(o.financial_status)) +
+        _modalRow('Fulfillment', statusBadge(o.fulfillment_status)) +
+        (o.note ? _modalRow('Note', o.note) : '')               +
+        `<p style="font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin:1rem 0 0.4rem">Items</p>` +
+        `<div style="margin-bottom:0.5rem">${itemsHtml || '<span class="muted">No items</span>'}</div>` +
+        `<div style="display:flex;justify-content:space-between;padding:0.6rem 0 0;font-size:0.85rem;font-weight:700;">
+          <span style="color:var(--muted)">Total</span>
+          <span style="color:var(--gold)">₹${parseFloat(o.total_price||0).toLocaleString('en-IN')}</span>
+        </div>`;
+      document.getElementById('admin-modal-actions').innerHTML = `
         <button class="admin-btn" style="background:rgba(255,255,255,0.07);color:var(--muted)" onclick="closeAdminModal()">Close</button>`;
       document.getElementById('admin-record-modal').classList.add('open');
     }

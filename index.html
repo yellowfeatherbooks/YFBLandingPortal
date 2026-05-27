@@ -5479,31 +5479,87 @@
     function _renderSubmissions(el, rows, filter) {
       const filtered = filter === 'all' ? rows : rows.filter(r => r.status === filter);
       if (!filtered.length) { el.innerHTML = '<div style="padding:2rem;text-align:center;color:var(--muted);">No submissions found.</div>'; return; }
+      // Store filtered indices back to _allSubmissions for modal lookup
       el.innerHTML = `
         <div class="admin-table-wrap">
           <table class="admin-table">
             <thead><tr>
               <th>Title</th><th>Author</th><th>Genre</th><th>Submitted By</th>
-              <th>Date</th><th>Status</th><th>Shopify ID</th><th>Actions</th>
+              <th>Date</th><th>Status</th>
             </tr></thead>
             <tbody>
-              ${filtered.map(s => `
-                <tr>
+              ${filtered.map(s => {
+                const idx = _allSubmissions.indexOf(s);
+                return `<tr class="clickable-row" onclick="openSubmissionModal(${idx})">
                   <td><strong>${s.title || '—'}</strong></td>
                   <td>${s.author || '—'}</td>
                   <td class="muted">${s.genre || '—'}</td>
                   <td class="muted">${s.submitted_by || '—'}</td>
                   <td class="muted">${fmtDate(s.submitted_date)}</td>
                   <td>${statusBadge(s.status)}</td>
-                  <td class="muted">${s.shopify_id || '—'}</td>
-                  <td style="white-space:nowrap;">
-                    ${s.status !== 'listed' ? `<button class="admin-btn admin-btn-approve" onclick="adminApprove('${s.id}','${s.shopify_id||''}',this)">Approve</button> ` : ''}
-                    ${s.status !== 'rejected' ? `<button class="admin-btn admin-btn-reject" onclick="adminReject('${s.id}',this)">Reject</button>` : ''}
-                  </td>
-                </tr>`).join('')}
+                </tr>`;
+              }).join('')}
             </tbody>
           </table>
         </div>`;
+    }
+
+    function openSubmissionModal(idx) {
+      const s = _allSubmissions[idx];
+      if (!s) return;
+      document.getElementById('admin-modal-title').textContent = '📋 Book Submission';
+      document.getElementById('admin-modal-details').innerHTML =
+        `<p style="font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin:0 0 0.4rem">Book Details</p>` +
+        _modalRow('Title',       s.title)                  +
+        _modalRow('Author',      s.author)                 +
+        _modalRow('Genre',       s.genre)                  +
+        _modalRow('Language',    s.language)               +
+        _modalRow('ISBN',        s.isbn)                   +
+        _modalRow('Price',       s.price ? `₹${s.price}` : null) +
+        (s.description ? _modalRow('Description', `<span style="white-space:normal;line-height:1.5">${s.description}</span>`) : '') +
+        `<p style="font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin:1rem 0 0.4rem">Submission</p>` +
+        _modalRow('Submitted By',  s.submitted_by)         +
+        _modalRow('Date',          fmtDate(s.submitted_date)) +
+        _modalRow('Shopify ID',    s.shopify_id)           +
+        _modalRow('Status',        statusBadge(s.status));
+      const canApprove = s.status !== 'listed';
+      const canReject  = s.status !== 'rejected';
+      document.getElementById('admin-modal-actions').innerHTML = `
+        ${canApprove ? `<button class="admin-btn admin-btn-approve" onclick="adminApproveModal('${s.id}','${s.shopify_id||''}',this)">✅ Approve &amp; Publish</button>` : ''}
+        ${canReject  ? `<button class="admin-btn admin-btn-danger"  onclick="adminRejectModal('${s.id}',this)">❌ Reject</button>` : ''}
+        <button class="admin-btn" style="background:rgba(255,255,255,0.07);color:var(--muted)" onclick="closeAdminModal()">Close</button>`;
+      document.getElementById('admin-record-modal').classList.add('open');
+    }
+
+    async function adminApproveModal(id, shopifyId, btn) {
+      if (!confirm('Approve this submission and publish it on Shopify?')) return;
+      btn.disabled = true; btn.textContent = '…';
+      try {
+        const data = await adminPost('admin-update-submission', { submissionId: id, action: 'approve', shopifyProductId: shopifyId || undefined });
+        if (data.success) {
+          const sub = _allSubmissions.find(s => s.id === id);
+          if (sub) sub.status = 'listed';
+          closeAdminModal();
+          _renderSubmissions(document.getElementById('admin-submissions-body'), _allSubmissions, _adminSubsFilter);
+          _renderSubmissionsStats(document.getElementById('admin-submissions-stats'), _allSubmissions);
+          if (data.warning) alert('⚠️ ' + data.warning);
+        } else { alert('Error: ' + data.error); btn.disabled = false; btn.textContent = '✅ Approve & Publish'; }
+      } catch(e) { alert('Error: ' + e.message); btn.disabled = false; btn.textContent = '✅ Approve & Publish'; }
+    }
+
+    async function adminRejectModal(id, btn) {
+      if (!confirm('Reject this submission?')) return;
+      btn.disabled = true; btn.textContent = '…';
+      try {
+        const data = await adminPost('admin-update-submission', { submissionId: id, action: 'reject' });
+        if (data.success) {
+          const sub = _allSubmissions.find(s => s.id === id);
+          if (sub) sub.status = 'rejected';
+          closeAdminModal();
+          _renderSubmissions(document.getElementById('admin-submissions-body'), _allSubmissions, _adminSubsFilter);
+          _renderSubmissionsStats(document.getElementById('admin-submissions-stats'), _allSubmissions);
+        } else { alert('Error: ' + data.error); btn.disabled = false; btn.textContent = '❌ Reject'; }
+      } catch(e) { alert('Error: ' + e.message); btn.disabled = false; btn.textContent = '❌ Reject'; }
     }
     function adminFilterSubmissions(filter, btn) {
       _adminSubsFilter = filter;

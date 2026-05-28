@@ -1,0 +1,879 @@
+{
+  "name": "Book Submission Flow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "385b2c73-aefa-4bdc-9dbd-2616a5993644",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        464,
+        80
+      ],
+      "id": "1af26e6f-50ce-4ef9-80fe-c7677e860515",
+      "name": "Webhook",
+      "webhookId": "c2e539da-51d2-4423-a339-f188884e9f8b"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"status\": \"success\",\n  \"message\": \"Title is successfully submitted!\",\n  \"shopifyId\": \"{{ $('Create Shopify Product').item.json.id }}\",\n  \"book\": \"{{ $('Webhook').item.json.body.book }}\",\n  \"author\": \"{{ $('Webhook').item.json.body.author }}\"\n}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        3152,
+        176
+      ],
+      "id": "d68ca563-603b-4cb2-a197-3eac6c21e5cc",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "authentication": "accessToken",
+        "resource": "product",
+        "operation": "getAll",
+        "limit": 1,
+        "additionalFields": {
+          "title": "={{ $(\"Webhook\").item.json.body.book }}"
+        }
+      },
+      "id": "58474f15-cb7a-457e-9240-30223207d2c3",
+      "name": "Search Shopify Product",
+      "type": "n8n-nodes-base.shopify",
+      "typeVersion": 1,
+      "position": [
+        912,
+        80
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "shopifyAccessTokenApi": {
+          "id": "CYq9OapFWJZHRwNT",
+          "name": "Shopify Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "any",
+                "operation": "exists"
+              },
+              "id": "d43975d4-e0f7-49b5-b8f1-441f2d6f6e51"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "fc2af7c8-e5de-4ad0-a1f2-62a8ed958d0e",
+      "name": "Check Product Exists",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1136,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1",
+              "name": "productId",
+              "value": "={{ $json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "2",
+              "name": "title",
+              "value": "={{ $(\"Webhook\").item.json.book }}",
+              "type": "string"
+            },
+            {
+              "id": "3",
+              "name": "vendor",
+              "value": "={{ $(\"Webhook\").item.json.author }}",
+              "type": "string"
+            },
+            {
+              "id": "4",
+              "name": "product_type",
+              "value": "Books",
+              "type": "string"
+            },
+            {
+              "id": "5",
+              "name": "tags",
+              "value": "={{ $(\"Webhook\").item.json.genre }}",
+              "type": "string"
+            },
+            {
+              "id": "6",
+              "name": "price",
+              "value": "={{ $(\"Webhook\").item.json.mrp }}",
+              "type": "number"
+            },
+            {
+              "id": "7",
+              "name": "compare_at_price",
+              "value": "={{ $(\"Webhook\").item.json.mrp }}",
+              "type": "number"
+            },
+            {
+              "id": "8",
+              "name": "author",
+              "value": "={{ $(\"Webhook\").item.json.author }}",
+              "type": "string"
+            },
+            {
+              "id": "9",
+              "name": "barcode",
+              "value": "={{ $(\"Webhook\").item.json.barcode }}",
+              "type": "string"
+            },
+            {
+              "id": "10",
+              "name": "publisher",
+              "value": "={{ $(\"Webhook\").item.json.body.publisher }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "499f3fc7-90ce-47c2-a374-3418696e3b59",
+      "name": "Prepare Update Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1360,
+        -16
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "accessToken",
+        "resource": "product",
+        "operation": "update",
+        "productId": "={{ $('Search Shopify Product').item.json.id }}",
+        "updateFields": {
+          "tags": "={{ [$('Webhook').item.json.body.author, $('Webhook').item.json.body.publisher, $('Webhook').item.json.body.genre, ...($('Webhook').item.json.body.shopifyTags || [])].filter(t => t).join(', ') }}",
+          "title": "={{ $('Webhook').item.json.body.book }}",
+          "vendor": "={{ $('Webhook').item.json.body.publisher }}"
+        }
+      },
+      "id": "01692b69-9629-4490-b0ac-5a0468bc38d4",
+      "name": "Update Shopify Product",
+      "type": "n8n-nodes-base.shopify",
+      "typeVersion": 1,
+      "position": [
+        1584,
+        -16
+      ],
+      "credentials": {
+        "shopifyAccessTokenApi": {
+          "id": "CYq9OapFWJZHRwNT",
+          "name": "Shopify Access Token account"
+        }
+      },
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1",
+              "name": "title",
+              "value": "={{ $(\"Webhook\").item.json.book }}",
+              "type": "string"
+            },
+            {
+              "id": "2",
+              "name": "vendor",
+              "value": "={{ $(\"Webhook\").item.json.body.publisher }}",
+              "type": "string"
+            },
+            {
+              "id": "3",
+              "name": "product_type",
+              "value": "Books",
+              "type": "string"
+            },
+            {
+              "id": "4",
+              "name": "tags",
+              "value": "={{ $(\"Webhook\").item.json.genre }}",
+              "type": "string"
+            },
+            {
+              "id": "5",
+              "name": "price",
+              "value": "={{ $(\"Webhook\").item.json.mrp }}",
+              "type": "number"
+            },
+            {
+              "id": "6",
+              "name": "compare_at_price",
+              "value": "={{ $(\"Webhook\").item.json.mrp }}",
+              "type": "number"
+            },
+            {
+              "id": "7",
+              "name": "author",
+              "value": "={{ $(\"Webhook\").item.json.author }}",
+              "type": "string"
+            },
+            {
+              "id": "8",
+              "name": "barcode",
+              "value": "={{ $(\"Webhook\").item.json.barcode }}",
+              "type": "string"
+            },
+            {
+              "id": "9",
+              "name": "description",
+              "value": "={{ $(\"Webhook\").item.json.description }}",
+              "type": "string"
+            },
+            {
+              "id": "10",
+              "name": "publisher",
+              "value": "={{ $(\"Webhook\").item.json.body.publisher }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c8cd6126-7058-404e-9738-f13abd40d4c4",
+      "name": "Prepare Create Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1360,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "accessToken",
+        "resource": "product",
+        "title": "={{ $(\"Webhook\").item.json.body.book }}",
+        "additionalFields": {
+          "body_html": "={{ $(\"Webhook\").item.json.body.description }}",
+          "product_type": "Print Books",
+          "tags": "={{ [$('Webhook').item.json.body.author, $('Webhook').item.json.body.publisher, $('Webhook').item.json.body.genre, ...($('Webhook').item.json.body.shopifyTags || [])].filter(t => t).join(', ') }}",
+          "vendor": "={{ $(\"Webhook\").item.json.body.publisher }}"
+        }
+      },
+      "id": "acc9893d-ff60-48ac-9c10-3aad30f6ac12",
+      "name": "Create Shopify Product",
+      "type": "n8n-nodes-base.shopify",
+      "typeVersion": 1,
+      "position": [
+        1584,
+        176
+      ],
+      "credentials": {
+        "shopifyAccessTokenApi": {
+          "id": "CYq9OapFWJZHRwNT",
+          "name": "Shopify Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1GlPY3yFA_AAb_Wx7bxjCE3UFxLWmRcP9_g_L9F5sv_w",
+          "mode": "list",
+          "cachedResultName": "List of Submissions",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1GlPY3yFA_AAb_Wx7bxjCE3UFxLWmRcP9_g_L9F5sv_w/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Submissions",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1GlPY3yFA_AAb_Wx7bxjCE3UFxLWmRcP9_g_L9F5sv_w/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "title": "={{ $('Webhook').item.json.body.book }}",
+            "author": "={{ $('Webhook').item.json.body.author }}",
+            "publisher": "={{ $('Webhook').item.json.body.publisher }}",
+            "category": "Print Books",
+            "genre": "={{ $('Webhook').item.json.body.genre }}",
+            "mrp": "={{ $('Webhook').item.json.body.mrp }}",
+            "price": "={{ $('Webhook').item.json.body.mrp * 0.85 }}",
+            "status": "success",
+            "submittted_date": "={{ $now }}",
+            "submitted_by": "={{ $('Webhook').item.json.body.email }}",
+            "shopify_Id": "={{ $('Create Shopify Product').item.json.id }}"
+          },
+          "matchingColumns": [
+            "title"
+          ],
+          "schema": [
+            {
+              "id": "title",
+              "displayName": "title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "author",
+              "displayName": "author",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "publisher",
+              "displayName": "publisher",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "category",
+              "displayName": "category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "genre",
+              "displayName": "genre",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "mrp",
+              "displayName": "mrp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "price",
+              "displayName": "price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "submittted_date",
+              "displayName": "submittted_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "submitted_by",
+              "displayName": "submitted_by",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "shopify_Id",
+              "displayName": "shopify_Id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2480,
+        176
+      ],
+      "id": "a195d643-7132-4ea1-9b07-d41cc45d6554",
+      "name": "Append or update row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "3N8oxMNftkYFNvct",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"status\": \"failed\",\n  \"message\": \"Title already registered in the system\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1808,
+        -16
+      ],
+      "id": "ad9690b9-e7a2-4c10-8e4f-99f24bf8d432",
+      "name": "Respond to Webhook1"
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "=https://{{ $(\"Global Config\").item.json.shopifyStore }}.myshopify.com/admin/api/{{ $(\"Global Config\").item.json.shopifyApiVersion }}/variants/{{ $(\"Create Shopify Product\").item.json.variants?.[0]?.id }}.json",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"variant\": { \"id\": $(\"Create Shopify Product\").item.json.variants[0].id, \"price\": ($(\"Webhook\").item.json.body.mrp * 0.85).toFixed(2), \"compare_at_price\": $(\"Webhook\").item.json.body.mrp, \"inventory_management\": \"shopify\", \"inventory_quantity\": 0, \"barcode\": $(\"Webhook\").item.json.body.barcode } } }}",
+        "options": {}
+      },
+      "id": "3762f809-6f34-4bd0-a476-6362d0d757a8",
+      "name": "Update Product Variant",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        2032,
+        176
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "AOGNXco56PBSbL4l",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const variantId1 = $(\"Create Shopify Product\").item.json.variants?.[0]?.id;\nconst variantId2 = $(\"Create Shopify Product\").item.json.product?.variants?.[0]?.id;\n\nreturn $input.all().map(item => ({\n  json: {\n    ...item.json,\n    debug_variantId1: variantId1,\n    debug_variantId2: variantId2\n  }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1808,
+        176
+      ],
+      "id": "88043c0d-17c0-42aa-b2e0-a1ab16fc139b",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://{{ $(\"Global Config\").item.json.shopifyStore }}.myshopify.com/admin/api/{{ $(\"Global Config\").item.json.shopifyApiVersion }}/inventory_levels/set.json",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"location_id\": $(\"Global Config\").item.json.shopifyLocationId, \"inventory_item_id\": $(\"Create Shopify Product\").item.json.variants[0].inventory_item_id, \"available\": 0 } }}",
+        "options": {}
+      },
+      "id": "5d9caaf3-10eb-42e5-bbda-7d19f9d41351",
+      "name": "Set Inventory Level",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        2256,
+        176
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "AOGNXco56PBSbL4l",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Webhook').item.json.body.email }}",
+        "subject": "=Book Submission Successful - {{ $('Webhook').item.json.body.book }}",
+        "message": "=<div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;\">\n  <div style=\"background-color: #ffffff; padding: 30px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);\">\n    <h2 style=\"color: #2c3e50; margin-bottom: 20px;\">Book Submission Successful! ✓</h2>\n    <p style=\"color: #34495e; font-size: 16px; line-height: 1.6;\">Dear <strong>{{ $('Webhook').item.json.body.name }}</strong>,</p>\n    <p style=\"color: #34495e; font-size: 16px; line-height: 1.6;\">Thank you for submitting your book to <strong>Yellow Feather Bookstore</strong>! We are excited to have your book in our catalog.</p>\n    <div style=\"background-color: #f8f9fa; padding: 20px; border-left: 4px solid #3498db; margin: 20px 0;\">\n      <h3 style=\"color: #2c3e50; margin-top: 0;\">Book Details</h3>\n      <table style=\"width: 100%; border-collapse: collapse;\">\n        <tr><td style=\"padding: 8px 0; color: #7f8c8d; width: 40%;\"><strong>Title:</strong></td><td style=\"padding: 8px 0; color: #2c3e50;\">{{ $('Webhook').item.json.body.book }}</td></tr>\n        <tr><td style=\"padding: 8px 0; color: #7f8c8d;\"><strong>Author:</strong></td><td style=\"padding: 8px 0; color: #2c3e50;\">{{ $('Webhook').item.json.body.author }}</td></tr>\n        <tr><td style=\"padding: 8px 0; color: #7f8c8d;\"><strong>Publisher:</strong></td><td style=\"padding: 8px 0; color: #2c3e50;\">{{ $('Webhook').item.json.body.publisher }}</td></tr>\n        <tr><td style=\"padding: 8px 0; color: #7f8c8d;\"><strong>Genre:</strong></td><td style=\"padding: 8px 0; color: #2c3e50;\">{{ $('Webhook').item.json.body.genre }}</td></tr>\n        <tr><td style=\"padding: 8px 0; color: #7f8c8d;\"><strong>MRP:</strong></td><td style=\"padding: 8px 0; color: #2c3e50;\">₹{{ $('Webhook').item.json.body.mrp }}</td></tr>\n        <tr><td style=\"padding: 8px 0; color: #7f8c8d;\"><strong>Shopify ID:</strong></td><td style=\"padding: 8px 0; color: #2c3e50;\">{{ $('Create Shopify Product').item.json.id }}</td></tr>\n      </table>\n    </div>\n    <p style=\"color: #27ae60; font-size: 16px; font-weight: bold; margin: 20px 0;\">✓ Your book has been successfully added to our catalog!</p>\n    <hr style=\"border: none; border-top: 1px solid #ecf0f1; margin: 30px 0;\">\n    <p style=\"color: #7f8c8d; font-size: 14px; line-height: 1.6; margin-bottom: 5px;\">With warm regards,</p>\n    <p style=\"color: #2c3e50; font-size: 16px; font-weight: bold; margin-top: 0;\">Team Yellow Feather</p>\n  </div>\n</div>",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "9128b739-ce3d-4da9-ae44-88460a9b4afe",
+      "name": "Send Email to Submitter",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        2704,
+        176
+      ],
+      "webhookId": "ccd18497-d2ea-4c8c-b303-400525c07ca3",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "n4S10HXIC145nr8L",
+          "name": "Gmail account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "yellowfeatherbookstore@gmail.com",
+        "subject": "=New Book Submission - {{ $('Webhook').item.json.body.book }}",
+        "message": "=<div style=\"font-family: Arial, sans-serif; max-width: 700px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;\">\n  <div style=\"background-color: #ffffff; padding: 30px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);\">\n    <h2 style=\"color: #2c3e50; margin-bottom: 10px;\">📚 New Book Submission Received</h2>\n    <p style=\"color: #27ae60; font-size: 14px; margin-top: 0;\">A new book has been successfully added to the Shopify catalog.</p>\n    <div style=\"background-color: #fff3cd; padding: 15px; border-left: 4px solid #ffc107; margin: 20px 0;\">\n      <h3 style=\"color: #856404; margin-top: 0; font-size: 16px;\">👤 Submitter Details</h3>\n      <table style=\"width: 100%; border-collapse: collapse;\">\n        <tr><td style=\"padding: 6px 0; color: #856404; width: 30%;\"><strong>Name:</strong></td><td style=\"padding: 6px 0; color: #856404;\">{{ $('Webhook').item.json.body.name }}</td></tr>\n        <tr><td style=\"padding: 6px 0; color: #856404;\"><strong>Email:</strong></td><td style=\"padding: 6px 0; color: #856404;\">{{ $('Webhook').item.json.body.email }}</td></tr>\n        <tr><td style=\"padding: 6px 0; color: #856404;\"><strong>Phone:</strong></td><td style=\"padding: 6px 0; color: #856404;\">{{ $('Webhook').item.json.body.phone }}</td></tr>\n      </table>\n    </div>\n    <div style=\"background-color: #d1ecf1; padding: 15px; border-left: 4px solid #17a2b8; margin: 20px 0;\">\n      <h3 style=\"color: #0c5460; margin-top: 0; font-size: 16px;\">📖 Book Details</h3>\n      <table style=\"width: 100%; border-collapse: collapse;\">\n        <tr><td style=\"padding: 6px 0; color: #0c5460; width: 30%;\"><strong>Title:</strong></td><td style=\"padding: 6px 0; color: #0c5460;\">{{ $('Webhook').item.json.body.book }}</td></tr>\n        <tr><td style=\"padding: 6px 0; color: #0c5460;\"><strong>Author:</strong></td><td style=\"padding: 6px 0; color: #0c5460;\">{{ $('Webhook').item.json.body.author }}</td></tr>\n        <tr><td style=\"padding: 6px 0; color: #0c5460;\"><strong>Publisher:</strong></td><td style=\"padding: 6px 0; color: #0c5460;\">{{ $('Webhook').item.json.body.publisher }}</td></tr>\n        <tr><td style=\"padding: 6px 0; color: #0c5460;\"><strong>Genre:</strong></td><td style=\"padding: 6px 0; color: #0c5460;\">{{ $('Webhook').item.json.body.genre }}</td></tr>\n        <tr><td style=\"padding: 6px 0; color: #0c5460;\"><strong>MRP:</strong></td><td style=\"padding: 6px 0; color: #0c5460;\">₹{{ $('Webhook').item.json.body.mrp }}</td></tr>\n        <tr><td style=\"padding: 6px 0; color: #0c5460;\"><strong>Barcode:</strong></td><td style=\"padding: 6px 0; color: #0c5460;\">{{ $('Webhook').item.json.body.barcode }}</td></tr>\n        <tr><td style=\"padding: 6px 0; color: #0c5460;\"><strong>Shopify ID:</strong></td><td style=\"padding: 6px 0; color: #0c5460;\">{{ $('Create Shopify Product').item.json.id }}</td></tr>\n      </table>\n    </div>\n    <div style=\"background-color: #f8f9fa; padding: 15px; border-left: 4px solid #6c757d; margin: 20px 0;\">\n      <h3 style=\"color: #495057; margin-top: 0; font-size: 16px;\">📝 Description</h3>\n      <p style=\"color: #495057; margin: 0; line-height: 1.6;\">{{ $('Webhook').item.json.body.description }}</p>\n    </div>\n    <p style=\"color: #27ae60; font-size: 16px; font-weight: bold; margin: 20px 0;\">✓ The book has been successfully added to Shopify!</p>\n    <hr style=\"border: none; border-top: 1px solid #ecf0f1; margin: 30px 0;\">\n    <p style=\"color: #7f8c8d; font-size: 14px; line-height: 1.6; margin-bottom: 5px;\">With warm regards,</p>\n    <p style=\"color: #2c3e50; font-size: 16px; font-weight: bold; margin-top: 0;\">Team Yellow Feather</p>\n  </div>\n</div>",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "03557832-d0d7-45c6-8b2d-51c4a387f764",
+      "name": "Send Email to Store",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        2928,
+        176
+      ],
+      "webhookId": "e1379e4d-539d-4e1d-ae61-0dbe8420ad8a",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "n4S10HXIC145nr8L",
+          "name": "Gmail account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1",
+              "name": "shopifyStore",
+              "value": "zgqk4e-1m",
+              "type": "string"
+            },
+            {
+              "id": "2",
+              "name": "shopifyApiVersion",
+              "value": "2024-01",
+              "type": "string"
+            },
+            {
+              "id": "3",
+              "name": "shopifyLocationId",
+              "value": "106012180784",
+              "type": "string"
+            },
+            {
+              "id": "4",
+              "name": "shopifyCredentialId",
+              "value": "CYq9OapFWJZHRwNT",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "8bc97889-0b08-490b-be2b-33d6bec9abf4",
+      "name": "Global Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        688,
+        80
+      ]
+    }
+  ],
+  "pinData": {
+    "Create Shopify Product": [
+      {
+        "json": {
+          "id": 15094543745328,
+          "title": "Jeevithamenna Athbudham",
+          "body_html": null,
+          "vendor": "Yellow Feather Bookstore",
+          "product_type": "Books",
+          "created_at": "2026-05-07T01:03:15+05:30",
+          "handle": "jeevithamenna-athbudham",
+          "updated_at": "2026-05-07T01:03:15+05:30",
+          "published_at": "2026-05-07T01:03:15+05:30",
+          "template_suffix": null,
+          "published_scope": "global",
+          "tags": "$(\"Webhook\").item.json.body.genre",
+          "status": "active",
+          "admin_graphql_api_id": "gid://shopify/Product/15094543745328",
+          "variants": [
+            {
+              "id": 66729956311344,
+              "product_id": 15094543745328,
+              "title": "Default Title",
+              "price": "0.00",
+              "position": 1,
+              "inventory_policy": "deny",
+              "compare_at_price": null,
+              "option1": "Default Title",
+              "option2": null,
+              "option3": null,
+              "created_at": "2026-05-07T01:03:15+05:30",
+              "updated_at": "2026-05-07T01:03:16+05:30",
+              "taxable": true,
+              "barcode": null,
+              "fulfillment_service": "manual",
+              "grams": 0,
+              "inventory_management": null,
+              "requires_shipping": true,
+              "sku": null,
+              "weight": 0,
+              "weight_unit": "g",
+              "inventory_item_id": 68698817397040,
+              "inventory_quantity": 0,
+              "old_inventory_quantity": 0,
+              "admin_graphql_api_id": "gid://shopify/ProductVariant/66729956311344",
+              "image_id": null
+            }
+          ],
+          "options": [
+            {
+              "id": 17520414687536,
+              "product_id": 15094543745328,
+              "name": "Title",
+              "position": 1,
+              "values": [
+                "Default Title"
+              ]
+            }
+          ],
+          "images": [],
+          "image": null
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Global Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Shopify Product": {
+      "main": [
+        [
+          {
+            "node": "Check Product Exists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Product Exists": {
+      "main": [
+        [
+          {
+            "node": "Prepare Update Data",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Create Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Update Data": {
+      "main": [
+        [
+          {
+            "node": "Update Shopify Product",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Shopify Product": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Create Data": {
+      "main": [
+        [
+          {
+            "node": "Create Shopify Product",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Shopify Product": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append or update row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Send Email to Submitter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Product Variant": {
+      "main": [
+        [
+          {
+            "node": "Set Inventory Level",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Update Product Variant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Inventory Level": {
+      "main": [
+        [
+          {
+            "node": "Append or update row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Email to Submitter": {
+      "main": [
+        [
+          {
+            "node": "Send Email to Store",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Email to Store": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Global Config": {
+      "main": [
+        [
+          {
+            "node": "Search Shopify Product",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "63a22cd3-f6c7-4438-9ca0-0c78a670d5d0",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "ab350bd4e167229b36cd6d6f6e9e1b6ef571ce6291758918013894ed15cf95d1"
+  },
+  "id": "oWdHgDAVcULoIZ3U",
+  "tags": []
+}

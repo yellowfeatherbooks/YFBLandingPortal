@@ -2818,9 +2818,15 @@
     body.guest-cart-mode .orders-topbar h2           { font-size: 1rem; }
     body.guest-cart-mode .orders-topbar-left span    { display: none; }
     body.guest-cart-mode #guest-cart-close-btn       { display: flex !important; }
-    /* Sign-in nudge shown in guest cart */
+    /* Sign-in nudge shown only in guest cart mode */
     #guest-cart-signin-nudge { display: none; }
-    body.guest-cart-mode #guest-cart-signin-nudge  { display: block; }
+    body.guest-cart-mode #guest-cart-signin-nudge {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
 
     /* ── Guest wishlist mode — inline wishlist for guest users ── */
     body.guest-wishlist-mode #orders-panel {
@@ -3497,7 +3503,7 @@
       <button class="ds-nav-link" onclick="closeSearch();closeFindABook();closeGuestCart();closeIframePanel();closeAuthorLogin();closeBcLoginPanel();(readerToken||isBookClubMember)?openOrdersPanel():openLoginModal()">🙋&nbsp; My Account</button>
       <div class="ds-section-label">Community</div>
       <button class="ds-nav-link" onclick="closeSearch();closeFindABook();closeGuestCart();closeIframePanel();closeAuthorLogin();handleBookClubNav()">🎖️&nbsp; Book Club</button>
-      <a href="https://yellowfeatherbooks.netlify.app" class="ds-nav-link" onclick="closeSearch();closeFindABook();closeGuestCart();closeBcLoginPanel();if(window.innerWidth>768){event.preventDefault();showAuthorLogin();}">✍️&nbsp; Author's Space</a>
+      <a href="#" class="ds-nav-link" onclick="event.preventDefault();closeSearch();closeFindABook();closeGuestCart();closeBcLoginPanel();showAuthorLogin();">✍️&nbsp; Author's Space</a>
     </div>
     <div id="desktop-sidebar-footer">
       <a href="tel:+919400448000">📞&nbsp; +91 94004 48000</a>
@@ -3648,7 +3654,7 @@
           </ul>
         </div>
 
-        <a href="https://yellowfeatherbooks.netlify.app" target="_blank" class="alp-plans-link">View full plan details &amp; subscribe →</a>
+        <a href="#" onclick="event.preventDefault();showAuthorLogin();" class="alp-plans-link">View full plan details &amp; subscribe →</a>
         <a href="terms.html" class="hpc-tc-link" onclick="openTcModal(event)" style="margin-top:0.5rem;display:inline-block;">Terms &amp; Conditions</a>
       </div>
 
@@ -3672,7 +3678,7 @@
           <div class="alp-error" id="alp-error"></div>
           <button class="alp-btn" id="alp-btn" onclick="alpSubmit()">Sign In</button>
           <div class="alp-footer-note">
-            Don't have an account? <a href="https://yellowfeatherbooks.netlify.app" target="_blank">Visit Author's Space</a> to register.
+            Don't have an account? <a href="/author-portal.html" target="_blank">Register here</a>
           </div>
         </div>
       </div>
@@ -4189,9 +4195,9 @@
       <div class="footer-col">
         <h4>Authors</h4>
         <ul>
-          <li><a href="https://yellowfeatherbooks.netlify.app" target="_blank">List Your Book</a></li>
-          <li><a href="https://yellowfeatherbooks.netlify.app#plans" target="_blank">View Plans</a></li>
-          <li><a href="https://yellowfeatherbooks.netlify.app" target="_blank">My Submissions</a></li>
+          <li><a href="#" onclick="event.preventDefault();showAuthorLogin();">List Your Book</a></li>
+          <li><a href="#" onclick="event.preventDefault();showAuthorLogin();">View Plans</a></li>
+          <li><a href="#" onclick="event.preventDefault();showAuthorLogin();">My Submissions</a></li>
         </ul>
       </div>
       <div class="footer-col">
@@ -4200,7 +4206,7 @@
           <li><a href="https://yellowfeatherbookstore.in/account/login" target="_blank">Reader Login</a></li>
           <li><a href="https://yellowfeatherbookstore.in/account/register" target="_blank">Register</a></li>
           <li><a href="https://yellowfeatherbookstore.in/account" target="_blank">My Orders</a></li>
-          <li><a href="https://yellowfeatherbooks.netlify.app" target="_blank">Author Portal</a></li>
+          <li><a href="#" onclick="event.preventDefault();showAuthorLogin();">Author Portal</a></li>
         </ul>
       </div>
       <div class="footer-col">
@@ -4809,13 +4815,18 @@
         </div>
         <div class="sf-field">
           <label class="sf-label">Email Address</label>
-          <input id="bc-email" type="email" class="sf-input" placeholder="your@email.com" />
+          <input id="bc-email" type="email" class="sf-input" placeholder="your@email.com"
+                 onblur="bcCheckExistingUser(this.value.trim())" />
         </div>
         <div class="sf-field">
-          <label class="sf-label">Password <span style="color:var(--muted);font-weight:400;">(for your Yellow Feather account)</span></label>
+          <label class="sf-label" id="bc-password-label">Password <span style="color:var(--muted);font-weight:400;">(for your Yellow Feather account)</span></label>
           <div class="pw-wrap">
-            <input id="bc-password" type="password" class="sf-input" placeholder="Min. 5 characters" />
+            <input id="bc-password" type="password" class="sf-input" placeholder="Min. 5 characters"
+                   onblur="bcCheckExistingUser(this.closest('.sf-field').previousElementSibling.previousElementSibling.previousElementSibling.querySelector('input')?.value || document.getElementById('bc-email').value)" />
             <button type="button" class="pw-eye" onclick="togglePw('bc-password',this)" tabindex="-1" aria-label="Show password">👁</button>
+          </div>
+          <div id="bc-password-hint" style="font-size:0.72rem;color:#F5B800;margin-top:0.35rem;display:none;">
+            ⚠️ You already have a Yellow Feather account. Please enter your <strong>existing password</strong> so you can log in after joining.
           </div>
         </div>
         <div class="sf-field">
@@ -4951,8 +4962,7 @@
     <div class="orders-content" id="panel-cart" style="display:none;">
       <div id="guest-cart-signin-nudge"
            style="margin:1rem 1.5rem 0;padding:0.85rem 1.1rem;background:rgba(201,146,42,0.08);
-                  border:1px solid rgba(201,146,42,0.25);border-radius:10px;
-                  display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
+                  border:1px solid rgba(201,146,42,0.25);border-radius:10px;">
         <span style="font-size:0.82rem;color:rgba(245,240,232,0.75);">
           🔒 <strong style="color:var(--cream);">Sign in</strong> to save your cart, track orders &amp; get club discounts
         </span>
@@ -5365,6 +5375,20 @@
 
       // Helper: complete the post-login flow once we have a valid token
       const completeLogin = async (accessToken) => {
+        // ── Detect user switch & clear stale localStorage data ───────────────
+        // localStorage is shared by all accounts on the same device. Always
+        // wipe member buckets to prevent a new user seeing a previous user's
+        // cart or wishlist.
+        // If the email changed (or has never been set), flag it so
+        // _syncMemberSession() also skips/clears any corrupted server data.
+        const prevEmail = localStorage.getItem('yfb_last_member_email') || '';
+        if (!prevEmail || prevEmail !== email.toLowerCase()) {
+          sessionStorage.setItem('yfb_user_just_switched', '1');
+        }
+        localStorage.removeItem('yfb_member_cart_id');
+        localStorage.removeItem('yfb_member_wishlist');
+        localStorage.setItem('yfb_last_member_email', email.toLowerCase());
+
         readerToken = accessToken;
         readerEmail = email;
         sessionStorage.setItem('yfb_reader_token', readerToken);
@@ -5524,7 +5548,7 @@
 
     // ── Listen for plan info sent back from the author portal iframe ──────────
     window.addEventListener('message', function(e) {
-      if (e.origin !== 'https://yellowfeatherbooks.netlify.app') return;
+      if (e.origin !== window.location.origin) return;
       const msg = e.data;
       if (!msg || msg.type !== 'yfb_plan') return;
       const nameEl  = document.getElementById('author-plan-name-badge');
@@ -6462,7 +6486,7 @@
         try {
           frame.contentWindow.postMessage(
             { type: 'yfb_logout' },
-            'https://yellowfeatherbooks.netlify.app'
+            window.location.origin
           );
         } catch(e) {}
       }
@@ -6493,7 +6517,7 @@
           try {
             frame.contentWindow.postMessage(
               { type: 'yfb_navigate', tab: tab },
-              'https://yellowfeatherbooks.netlify.app'
+              window.location.origin
             );
           } catch(e) {}
         }
@@ -6631,9 +6655,29 @@
 
     // ── Cross-device session sync ──────────────────────────────────────────────
     // Fetch the latest cart_id and wishlist from the server after login.
-    // Runs async after the member view is shown so the UI isn't blocked.
+    // Direction is SERVER → LOCAL only.
+    // Local → server pushes happen on explicit user actions (saveWishlist /
+    // _saveCartId) — NOT here, to prevent a previous user's stale localStorage
+    // from contaminating the current user's server record.
     function _syncMemberSession() {
       if (!readerEmail) return;
+
+      // If this is a user switch (different or first-ever account on this device),
+      // wipe the server record for this user and start fresh rather than restoring
+      // potentially-corrupted data left by the previous code.
+      const userJustSwitched = sessionStorage.getItem('yfb_user_just_switched') === '1';
+      if (userJustSwitched) {
+        sessionStorage.removeItem('yfb_user_just_switched');
+        // Clear the server session so any previously-corrupted wishlist/cart is gone
+        fetch('/.netlify/functions/save-member-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: readerEmail, wishlist: [], cart_id: null })
+        }).catch(() => {});
+        return; // Don't restore from server — start with a clean slate
+      }
+
+      // Same user logging back in — restore their saved session from the server
       fetch('/.netlify/functions/get-member-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -6650,14 +6694,6 @@
           const cp = document.getElementById('panel-cart');
           if (cp && cp.style.display !== 'none') fetchAndRenderCart();
         }
-        // ── Cart: local → server (push pre-existing cart the server doesn't know about) ──
-        if (_cartId && !session.cart_id) {
-          fetch('/.netlify/functions/save-member-session', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: readerEmail, cart_id: _cartId })
-          }).catch(() => {});
-        }
         // ── Wishlist: server → local ──
         if (session.wishlist && session.wishlist.length > 0) {
           localStorage.setItem('yfb_member_wishlist', JSON.stringify(session.wishlist));
@@ -6665,15 +6701,6 @@
           // Refresh wishlist panel if it's currently open
           const wp = document.getElementById('panel-wishlist');
           if (wp && wp.style.display !== 'none') renderWishlist();
-        }
-        // ── Wishlist: local → server (push pre-existing wishlist the server doesn't know about) ──
-        const _localWl = getWishlist();
-        if (_localWl.length > 0 && (!session.wishlist || session.wishlist.length === 0)) {
-          fetch('/.netlify/functions/save-member-session', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: readerEmail, wishlist: _localWl })
-          }).catch(() => {});
         }
       })
       .catch(() => {}); // graceful degradation — localStorage remains the fallback
@@ -7204,11 +7231,11 @@
           frame.onload = function() {
             frame.contentWindow.postMessage(
               { type: 'yfb_auth', email: _sessEmail, name: _sessName },
-              'https://yellowfeatherbooks.netlify.app'
+              window.location.origin
             );
           };
-          if (!frame.src.includes('yellowfeatherbooks.netlify.app')) {
-            frame.src = 'https://yellowfeatherbooks.netlify.app';
+          if (!frame.src.includes('author-portal.html')) {
+            frame.src = '/author-portal.html';
           }
         }
         // Switch to the author's personal cart bucket
@@ -7222,6 +7249,16 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ customerAccessToken: session.shopifyToken })
           }).catch(() => {});
+        }
+        // Restore plan badge from stored session (avoids stale data on reload)
+        const planNameBadge  = document.getElementById('author-plan-name-badge');
+        const planQuotaBadge = document.getElementById('author-plan-quota-badge');
+        if (session.plan_name) {
+          if (planNameBadge)  planNameBadge.textContent  = session.plan_name + ' Plan';
+          if (planQuotaBadge) planQuotaBadge.textContent = ''; // quota refreshed via iframe postMessage
+        } else {
+          if (planNameBadge)  planNameBadge.textContent  = 'No active plan';
+          if (planQuotaBadge) planQuotaBadge.textContent = 'Subscribe to get started';
         }
         setView('author');
       } catch(e) {
@@ -8246,6 +8283,34 @@
       }
     }
 
+    // ── Check if email belongs to an existing user (author or returning member) ──
+    // Shows a hint on the password field so they know to use their existing password.
+    async function bcCheckExistingUser(email) {
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return;
+      const hint = document.getElementById('bc-password-hint');
+      const label = document.getElementById('bc-password-label');
+      if (!hint) return;
+      try {
+        // Use check-book-club-member (checks book_club_members table)
+        // and a lightweight users check via check-subscription (checks subscriptions table).
+        // We check both: if either returns a record the email is known.
+        const [clubRes, subRes] = await Promise.all([
+          fetch('/.netlify/functions/check-book-club-member', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email })
+          }),
+          fetch('/.netlify/functions/check-subscription', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email })
+          })
+        ]);
+        const clubData = await clubRes.json();
+        const subData  = await subRes.json();
+        const isKnown  = clubData?.member || subData?.found;
+        hint.style.display  = isKnown ? 'block' : 'none';
+      } catch(e) { /* ignore — hint is optional */ }
+    }
+
     // ── Start Book Club payment ──
     async function startBookClubPayment() {
       const name     = document.getElementById('bc-name').value.trim();
@@ -8325,7 +8390,16 @@
               if (verData.error) throw new Error(verData.error);
               showBcStep('success');
 
-              // 1 — Set membership state IMMEDIATELY (synchronous, no network needed)
+              // 1 — Detect user switch & clear stale localStorage data
+              const prevEmailBc = localStorage.getItem('yfb_last_member_email') || '';
+              if (!prevEmailBc || prevEmailBc !== email.toLowerCase()) {
+                sessionStorage.setItem('yfb_user_just_switched', '1');
+              }
+              localStorage.removeItem('yfb_member_cart_id');
+              localStorage.removeItem('yfb_member_wishlist');
+              localStorage.setItem('yfb_last_member_email', email.toLowerCase());
+
+              // 2 — Set membership state IMMEDIATELY (synchronous, no network needed)
               //     so the nav name and member tab show up right away.
               isBookClubMember   = true;
               bookClubMemberName = name;
@@ -9345,7 +9419,7 @@
 
     async function fetchAuthorSubmissions(email) {
       try {
-        const res = await fetch('https://yellowfeatherbooks.netlify.app/.netlify/functions/get-submissions', {
+        const res = await fetch('/.netlify/functions/get-submissions', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email })
         });
@@ -9557,129 +9631,68 @@
       if (!email || !password) { errEl.textContent = 'Please enter your email and password.'; return; }
       btn.disabled = true; btn.textContent = 'Signing in…';
       try {
-        // ── Step 1: Authenticate via Shopify (same credential as Book Club) ──
-        const authJson = await sfFetch(`
-          mutation CustomerAccessTokenCreate($input: CustomerAccessTokenCreateInput!) {
-            customerAccessTokenCreate(input: $input) {
-              customerAccessToken { accessToken }
-              customerUserErrors  { code message }
-            }
-          }`, { input: { email, password } });
-
-        let shopifyToken  = authJson?.data?.customerAccessTokenCreate?.customerAccessToken?.accessToken;
-        const shopifyErrors = authJson?.data?.customerAccessTokenCreate?.customerUserErrors || [];
-
-        // ── Recovery: no Shopify account yet (existing Publisher Portal author) ──
-        // If Shopify says "unidentified", the author may have signed up only on the
-        // Publisher Portal (Supabase) and never created a Shopify storefront account.
-        // Recover transparently: verify Supabase credentials → create Shopify account → retry.
-        if (!shopifyToken && (shopifyErrors[0]?.message || '').toLowerCase().includes('unidentified')) {
-          btn.textContent = 'Checking account…';
-          try {
-            // 1. Verify against Publisher Portal Supabase auth
-            const sbRes  = await fetch('https://yellowfeatherbooks.netlify.app/.netlify/functions/login-user', {
-              method: 'POST', headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ email, password })
-            });
-            const sbData = await sbRes.json();
-
-            if (!sbData.success) {
-              // Credentials wrong in both Shopify and Supabase — genuine bad password
-              errEl.textContent = 'Invalid email or password.';
-              btn.disabled = false; btn.textContent = 'Sign In';
-              return;
-            }
-
-            // 2. Check subscription before creating the account
-            btn.textContent = 'Verifying subscription…';
-            const subChkRes  = await fetch('https://yellowfeatherbooks.netlify.app/.netlify/functions/check-subscription', {
-              method: 'POST', headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ email })
-            });
-            const subChkData = await subChkRes.json();
-            if (!subChkData.found) {
-              errEl.textContent = 'No active Author\'s Space subscription found. Visit yellowfeatherbooks.netlify.app to subscribe.';
-              btn.disabled = false; btn.textContent = 'Sign In';
-              return;
-            }
-
-            // 3. Create Shopify account (one-time migration — silent to the user)
-            btn.textContent = 'Setting up account…';
-            await fetch('/.netlify/functions/create-author-shopify-account', {
-              method: 'POST', headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ email, name: sbData.name || '', password })
-            });
-            // (ignore result — alreadyExists is fine; we proceed to retry below)
-
-            // 4. Retry Shopify auth with the newly created account
-            btn.textContent = 'Signing in…';
-            const retryJson = await sfFetch(`
-              mutation CustomerAccessTokenCreate($input: CustomerAccessTokenCreateInput!) {
-                customerAccessTokenCreate(input: $input) {
-                  customerAccessToken { accessToken }
-                  customerUserErrors  { code message }
-                }
-              }`, { input: { email, password } });
-            shopifyToken = retryJson?.data?.customerAccessTokenCreate?.customerAccessToken?.accessToken;
-
-            if (!shopifyToken) {
-              errEl.textContent = 'Account setup complete but sign-in failed. Please try again.';
-              btn.disabled = false; btn.textContent = 'Sign In';
-              return;
-            }
-          } catch(recErr) {
-            errEl.textContent = 'Connection error. Please try again.';
-            btn.disabled = false; btn.textContent = 'Sign In';
-            return;
-          }
-        } else if (!shopifyToken) {
-          // Non-"unidentified" Shopify error (e.g. account disabled) — surface it directly
-          const msg = shopifyErrors[0]?.message || 'Invalid email or password.';
-          errEl.textContent = msg;
-          btn.disabled = false; btn.textContent = 'Sign In';
-          return;
-        }
-
-        // ── Step 2: Get customer display name from Shopify ──
-        btn.textContent = 'Verifying subscription…';
-        const custJson = await sfFetch(`
-          query GetCustomer($token: String!) {
-            customer(customerAccessToken: $token) { firstName lastName }
-          }`, { token: shopifyToken });
-        const cust = custJson?.data?.customer;
-        const name = [cust?.firstName, cust?.lastName].filter(Boolean).join(' ') || email;
-
-        // ── Step 3: Confirm active Author's Space subscription ──
-        const subRes  = await fetch('https://yellowfeatherbooks.netlify.app/.netlify/functions/check-subscription', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email })
+        // ── Step 1: Auth + role check via login-user ─────────────────────────
+        // login-user verifies credentials (Supabase first, Shopify fallback),
+        // enforces the 'author' role, handles Shopify account creation for
+        // Supabase-only authors, and returns the shopifyToken for cart/checkout.
+        const authRes  = await fetch('/.netlify/functions/login-user', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
         });
-        const subData = await subRes.json();
-        if (!subData.found) {
-          errEl.textContent = 'No active Author\'s Space subscription found. Visit yellowfeatherbooks.netlify.app to subscribe.';
+        const authData = await authRes.json();
+
+        if (!authData.success) {
+          errEl.textContent = authData.error || 'Invalid email or password.';
           btn.disabled = false; btn.textContent = 'Sign In';
           return;
         }
 
-        // ── Step 4: Store session and switch to author view ──
+        const { name, shopifyToken } = authData;
+
+        // ── Step 2: Fetch subscription info (soft — authors can log in without a plan) ──
+        btn.textContent = 'Verifying subscription…';
+        let subData = { found: false, plan_name: null };
+        try {
+          const subRes = await fetch('/.netlify/functions/check-subscription', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email })
+          });
+          subData = await subRes.json();
+        } catch(e) { /* ignore — subscription info is optional at login */ }
+
+        // ── Step 3: Store session and switch to author view ──────────────────
         localStorage.setItem('authorSession', JSON.stringify({
-          email, name, shopifyToken, plan_name: subData.plan_name || 'Starter'
+          email, name, shopifyToken: shopifyToken || null, plan_name: subData.plan_name || null
         }));
         closeAuthorLogin();
 
         // Update nav chip
         const authorChip = document.getElementById('nav-author-chip');
-        if (authorChip) authorChip.textContent = '✍️ ' + name.split(' ')[0];
+        if (authorChip) authorChip.textContent = '✍️ ' + (name || email).split(' ')[0];
+
+        // Update sidebar plan badge immediately — don't wait for iframe postMessage
+        const planNameBadge  = document.getElementById('author-plan-name-badge');
+        const planQuotaBadge = document.getElementById('author-plan-quota-badge');
+        if (subData.found && subData.plan_name) {
+          if (planNameBadge)  planNameBadge.textContent  = subData.plan_name + ' Plan';
+          if (planQuotaBadge) planQuotaBadge.textContent = (subData.quota || 0) + ' submissions / month';
+        } else {
+          if (planNameBadge)  planNameBadge.textContent  = 'No active plan';
+          if (planQuotaBadge) planQuotaBadge.textContent = 'Subscribe to get started';
+        }
 
         // Fetch author's submitted books for cart discount (fire-and-forget)
         fetchAuthorSubmissions(email);
 
         // Tag this Shopify customer as 'author' so AUTHOR20 discount applies (fire-and-forget)
-        fetch('/.netlify/functions/tag-author-customer', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ customerAccessToken: shopifyToken })
-        }).catch(() => {});
+        if (shopifyToken) {
+          fetch('/.netlify/functions/tag-author-customer', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ customerAccessToken: shopifyToken })
+          }).catch(() => {});
+        }
 
         // Switch to the author's own cart bucket
         _cartId = localStorage.getItem('yfb_author_cart_id') || null;
@@ -9691,10 +9704,10 @@
           frame.onload = function() {
             frame.contentWindow.postMessage(
               { type: 'yfb_auth', email, name },
-              'https://yellowfeatherbooks.netlify.app'
+              window.location.origin
             );
           };
-          frame.src = 'https://yellowfeatherbooks.netlify.app';
+          frame.src = '/author-portal.html';
         }
         setView('author');
       } catch(e) {

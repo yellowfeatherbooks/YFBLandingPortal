@@ -1,0 +1,3721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>List Your Book — Yellow Feather Books</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    :root {
+      --navy:   #0B0E1A;
+      --navy2:  #111527;
+      --gold:   #C9922A;
+      --gold2:  #F5B800;
+      --cream:  #F5F0E8;
+      --muted:  #6B6478;
+      --border: rgba(201,146,42,0.18);
+      --rainbow: linear-gradient(90deg,
+        #e63946, #f4a261, #f5b800, #2a9d8f, #457b9d, #6a4c93);
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--navy);
+      color: var(--cream);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── HERO ── */
+    .hero {
+      position: relative;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 5rem 1.5rem 4rem;
+      overflow: hidden;
+    }
+
+    /* full-bleed landscape logo as hero background */
+    .hero-bg {
+      position: absolute;
+      inset: 0;
+      background: url('logo-landscape.png') center center / cover no-repeat;
+      opacity: 0.18;
+      z-index: 0;
+    }
+
+    /* dark gradient vignette over it */
+    .hero-vignette {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at center,
+        transparent 20%, var(--navy) 80%);
+      z-index: 1;
+    }
+
+    .hero-content {
+      position: relative;
+      z-index: 2;
+      max-width: 680px;
+    }
+
+    /* portrait logo badge */
+    .logo-badge {
+      width: 160px;
+      height: 160px;
+      margin: 0 auto 2rem;
+      border-radius: 50%;
+      overflow: hidden;
+      border: 2px solid var(--border);
+      box-shadow: 0 0 60px rgba(201,146,42,0.25);
+    }
+
+    .logo-badge img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .rainbow-bar {
+      height: 3px;
+      width: 80px;
+      background: var(--rainbow);
+      border-radius: 99px;
+      margin: 0 auto 1.25rem;
+    }
+
+    .eyebrow {
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 1rem;
+    }
+
+    h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(2rem, 5vw, 3.25rem);
+      font-weight: 700;
+      line-height: 1.15;
+      margin-bottom: 1.25rem;
+      background: linear-gradient(135deg, var(--gold2) 0%, #fff 60%, var(--gold) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .tagline {
+      font-size: 1.05rem;
+      color: #9A94A8;
+      line-height: 1.75;
+      margin-bottom: 2.5rem;
+      max-width: 480px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .cta-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: linear-gradient(135deg, var(--gold) 0%, var(--gold2) 100%);
+      color: #0B0E1A;
+      font-family: 'Inter', sans-serif;
+      font-size: 1rem;
+      font-weight: 700;
+      padding: 1rem 2.5rem;
+      border-radius: 50px;
+      text-decoration: none;
+      letter-spacing: 0.03em;
+      box-shadow: 0 6px 32px rgba(245,184,0,0.3);
+      transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+    }
+
+    .cta-btn:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 12px 40px rgba(245,184,0,0.45);
+      filter: brightness(1.08);
+    }
+
+    .cta-btn:active { transform: translateY(0); }
+
+    .cta-arrow {
+      font-size: 1.2rem;
+      transition: transform 0.2s ease;
+    }
+
+    .cta-btn:hover .cta-arrow { transform: translateX(4px); }
+
+    /* ── SCROLL HINT ── */
+    .scroll-hint {
+      position: absolute;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.4rem;
+      color: var(--muted);
+      font-size: 0.72rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      animation: bounce 2s infinite;
+    }
+
+    .scroll-hint svg { opacity: 0.5; }
+
+    @keyframes bounce {
+      0%, 100% { transform: translateX(-50%) translateY(0); }
+      50%       { transform: translateX(-50%) translateY(6px); }
+    }
+
+    /* ── HOW IT WORKS ── */
+    .section {
+      padding: 5rem 1.5rem;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .section-label {
+      text-align: center;
+      margin-bottom: 3rem;
+    }
+
+    .section-label .rainbow-bar { margin-bottom: 1rem; }
+
+    .section-label h2 {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(1.5rem, 3.5vw, 2.25rem);
+      color: var(--cream);
+    }
+
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .step {
+      background: var(--navy2);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 2rem 1.5rem;
+      text-align: center;
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+
+    .step:hover {
+      transform: translateY(-4px);
+      border-color: var(--gold);
+    }
+
+    .step-num {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: var(--rainbow);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 1rem;
+      color: #fff;
+      margin: 0 auto 1rem;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+    }
+
+    .step h3 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.05rem;
+      color: var(--gold2);
+      margin-bottom: 0.5rem;
+    }
+
+    .step p {
+      font-size: 0.875rem;
+      color: #7A7485;
+      line-height: 1.65;
+    }
+
+    /* ── DIVIDER ── */
+    .rainbow-divider {
+      height: 2px;
+      background: var(--rainbow);
+      opacity: 0.35;
+      margin: 0 auto;
+      max-width: 900px;
+      border-radius: 99px;
+    }
+
+    /* ── BOTTOM CTA ── */
+    .bottom-cta {
+      padding: 5rem 1.5rem 6rem;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .bottom-cta-bg {
+      position: absolute;
+      inset: 0;
+      background: url('logo-portrait.png') center center / contain no-repeat;
+      opacity: 0.06;
+      z-index: 0;
+    }
+
+    .bottom-cta-content {
+      position: relative;
+      z-index: 1;
+      max-width: 560px;
+      margin: 0 auto;
+    }
+
+    .bottom-cta h2 {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(1.6rem, 3.5vw, 2.25rem);
+      color: var(--cream);
+      margin-bottom: 1rem;
+    }
+
+    .bottom-cta p {
+      font-size: 0.95rem;
+      color: #7A7485;
+      line-height: 1.7;
+      margin-bottom: 2.25rem;
+    }
+
+    .contact-note {
+      margin-top: 1.75rem;
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+
+    .contact-note a {
+      color: var(--gold);
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 1.5rem;
+      text-align: center;
+      font-size: 0.76rem;
+      color: #3A3545;
+    }
+
+    footer a {
+      color: #5A5268;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    /* ── AUTH SCREEN ── */
+    #auth-screen {
+      position: fixed;
+      inset: 0;
+      z-index: 300;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 1.5rem;
+      padding-top: max(1.5rem, 3vh);
+      overflow-y: auto;
+      background: rgba(11,14,26,0.97);
+      backdrop-filter: blur(8px);
+    }
+
+    #auth-screen.hidden { display: none; }
+
+    .auth-card {
+      background: var(--navy2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 1.75rem 2rem;
+      width: 100%;
+      max-width: 420px;
+      text-align: center;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.5);
+    }
+
+    .auth-tabs {
+      display: flex;
+      background: rgba(255,255,255,0.05);
+      border-radius: 10px;
+      padding: 4px;
+      margin-bottom: 1.75rem;
+      gap: 4px;
+    }
+
+    .auth-tab {
+      flex: 1;
+      padding: 0.6rem;
+      border-radius: 7px;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      font-family: 'Inter', sans-serif;
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    .auth-tab.active {
+      background: var(--gold);
+      color: #0B0E1A;
+    }
+
+    .auth-tab:not(.active):hover {
+      background: rgba(255,255,255,0.08);
+      color: var(--cream);
+    }
+
+    .auth-heading {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.6rem;
+      background: linear-gradient(135deg, var(--gold2), #fff, var(--gold));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 0.5rem;
+    }
+
+    .auth-sub {
+      font-size: 0.88rem;
+      color: var(--muted);
+      margin-bottom: 1.5rem;
+    }
+
+    .password-wrapper {
+      position: relative;
+      margin-bottom: 1rem;
+    }
+
+    .password-wrapper .email-input {
+      margin-bottom: 0;
+      padding-right: 2.75rem;
+    }
+
+    .password-toggle {
+      position: absolute;
+      right: 0.85rem;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      padding: 0;
+      transition: color 0.2s;
+    }
+
+    .password-toggle:hover { color: var(--cream); }
+
+    .email-input {
+      width: 100%;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.85rem 1rem;
+      font-size: 0.95rem;
+      color: var(--cream);
+      font-family: 'Inter', sans-serif;
+      outline: none;
+      margin-bottom: 1rem;
+      transition: border-color 0.2s;
+    }
+
+    .email-input:focus { border-color: var(--gold); }
+    .email-input::placeholder { color: var(--muted); }
+
+    .email-error {
+      font-size: 0.8rem;
+      color: #e63946;
+      margin-bottom: 0.75rem;
+      display: none;
+    }
+
+    /* ── ANIMATIONS ── */
+    .reveal {
+      opacity: 0;
+      transform: translateY(24px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* ── PRICING ── */
+    .pricing-section {
+      padding: 5rem 1.5rem;
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    .plans {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1.5rem;
+      margin-top: 3rem;
+    }
+
+    .plan-card {
+      background: var(--navy2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 2.25rem 2rem;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+    }
+
+    .plan-card:hover {
+      transform: translateY(-6px);
+      border-color: var(--gold);
+      box-shadow: 0 16px 48px rgba(201,146,42,0.18);
+    }
+
+    .plan-card.popular {
+      border-color: var(--gold);
+      box-shadow: 0 8px 40px rgba(245,184,0,0.2);
+    }
+
+    .popular-badge {
+      position: absolute;
+      top: -13px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--rainbow);
+      color: #fff;
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      padding: 0.3rem 1rem;
+      border-radius: 99px;
+      white-space: nowrap;
+    }
+
+    .plan-name {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.35rem;
+      color: var(--gold2);
+      margin-bottom: 0.35rem;
+    }
+
+    .plan-tagline {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-bottom: 1.5rem;
+    }
+
+    .plan-price {
+      margin-bottom: 1.75rem;
+    }
+
+    .plan-price .amount {
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: var(--cream);
+      line-height: 1;
+    }
+
+    .plan-price .currency {
+      font-size: 1.35rem;
+      font-weight: 600;
+      vertical-align: top;
+      margin-top: 0.4rem;
+      display: inline-block;
+      color: var(--gold);
+    }
+
+    .plan-price .period {
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin-left: 0.25rem;
+    }
+
+    .plan-features {
+      list-style: none;
+      margin-bottom: 2rem;
+      flex: 1;
+    }
+
+    .plan-features li {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.6rem;
+      font-size: 0.875rem;
+      color: #9A94A8;
+      padding: 0.45rem 0;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+
+    .plan-features li:last-child { border-bottom: none; }
+
+    .plan-features li .check {
+      flex-shrink: 0;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: rgba(45,198,83,0.15);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 1px;
+    }
+
+    .plan-features li .check svg { stroke: #2dc653; }
+
+    .plan-btn {
+      display: block;
+      width: 100%;
+      text-align: center;
+      padding: 0.9rem 1.5rem;
+      border-radius: 50px;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+      border: none;
+    }
+
+    .plan-btn.outline {
+      background: transparent;
+      border: 1.5px solid var(--gold);
+      color: var(--gold);
+    }
+
+    .plan-btn.outline:hover {
+      background: var(--gold);
+      color: #0B0E1A;
+      transform: translateY(-2px);
+    }
+
+    .plan-btn.filled {
+      background: linear-gradient(135deg, var(--gold), var(--gold2));
+      color: #0B0E1A;
+      box-shadow: 0 6px 24px rgba(245,184,0,0.3);
+    }
+
+    .plan-btn.filled:hover {
+      transform: translateY(-2px);
+      filter: brightness(1.08);
+      box-shadow: 0 10px 32px rgba(245,184,0,0.45);
+    }
+
+    /* ── SUBSCRIPTION SUCCESS SCREEN ── */
+    #sub-success-screen {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: var(--navy);
+      overflow-y: auto;
+    }
+
+    #sub-success-screen.active { display: flex; flex-direction: column; }
+
+    .sub-success-wrap {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 3rem 1.5rem 4rem;
+      position: relative;
+    }
+
+    .sub-success-content {
+      position: relative;
+      z-index: 2;
+      max-width: 520px;
+      width: 100%;
+      text-align: center;
+    }
+
+    .plan-activated-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(245,184,0,0.12);
+      border: 1px solid rgba(245,184,0,0.3);
+      color: var(--gold2);
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 0.4rem 1rem;
+      border-radius: 99px;
+      margin-bottom: 1.5rem;
+    }
+
+    .form-link-box {
+      background: var(--navy2);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 1.75rem 2rem;
+      margin: 1.5rem 0;
+      text-align: left;
+    }
+
+    .form-link-box h3 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.05rem;
+      color: var(--gold2);
+      margin-bottom: 0.75rem;
+    }
+
+    .form-link-box p {
+      font-size: 0.85rem;
+      color: #7A7485;
+      line-height: 1.65;
+      margin-bottom: 1.25rem;
+    }
+
+    .quota-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(255,255,255,0.04);
+      border-radius: 10px;
+      padding: 0.75rem 1rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .quota-label { font-size: 0.78rem; color: var(--muted); }
+
+    .quota-count {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--gold2);
+    }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 600px) {
+      .logo-badge { width: 130px; height: 130px; }
+      .steps { grid-template-columns: 1fr; }
+      .plans { grid-template-columns: 1fr; }
+    }
+    /* ── SUCCESS TOP BAR ── */
+    .success-topbar {
+      position: sticky;
+      top: 0;
+      z-index: 200;
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      background: var(--navy2);
+      display: flex;
+      align-items: center;
+    }
+
+    .success-home-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: linear-gradient(135deg, var(--gold), var(--gold2));
+      color: #0B0E1A;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.88rem;
+      font-weight: 700;
+      padding: 0.6rem 1.25rem;
+      border-radius: 50px;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 4px 16px rgba(245,184,0,0.3);
+      transition: transform 0.2s, filter 0.2s;
+    }
+
+    .success-home-btn:hover {
+      transform: translateY(-2px);
+      filter: brightness(1.1);
+    }
+
+    /* ── HOME TOP BUTTON ── */
+    .home-top-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--gold);
+      font-family: 'Inter', sans-serif;
+      font-size: 0.82rem;
+      font-weight: 600;
+      padding: 0.45rem 1rem;
+      border-radius: 99px;
+      cursor: pointer;
+      margin-bottom: 1.75rem;
+      letter-spacing: 0.04em;
+      transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+    }
+
+    .home-top-btn:hover {
+      background: var(--gold);
+      border-color: var(--gold);
+      color: #0B0E1A;
+    }
+
+    /* ── SUCCESS SCREEN ── */
+    #success-screen {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: var(--navy);
+      overflow-y: auto;
+    }
+
+    #success-screen.active { display: flex; flex-direction: column; }
+
+    .success-wrap {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 3rem 1.5rem 4rem;
+      position: relative;
+    }
+
+    .success-bg {
+      position: absolute;
+      inset: 0;
+      background: url('logo-landscape.png') center center / cover no-repeat;
+      opacity: 0.1;
+      z-index: 0;
+    }
+
+    .success-vignette {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at center, transparent 10%, var(--navy) 75%);
+      z-index: 1;
+    }
+
+    .success-content {
+      position: relative;
+      z-index: 2;
+      max-width: 540px;
+      width: 100%;
+      text-align: center;
+    }
+
+    .success-icon {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #2a9d8f, #2dc653);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 1.5rem;
+      box-shadow: 0 8px 32px rgba(45,198,83,0.3);
+      animation: pop 0.4s cubic-bezier(0.34,1.56,0.64,1) both;
+    }
+
+    @keyframes pop {
+      from { transform: scale(0); opacity: 0; }
+      to   { transform: scale(1); opacity: 1; }
+    }
+
+    .success-icon svg { stroke: #fff; }
+
+    .success-content h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(1.75rem, 4vw, 2.5rem);
+      background: linear-gradient(135deg, var(--gold2), #fff, var(--gold));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 0.5rem;
+    }
+
+    .success-content .sub {
+      font-size: 0.95rem;
+      color: #7A7485;
+      margin-bottom: 2rem;
+    }
+
+    .book-card {
+      background: var(--navy2);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 1.75rem 2rem;
+      text-align: left;
+      margin-bottom: 1.5rem;
+    }
+
+    .book-card-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.15rem;
+      color: var(--gold2);
+      margin-bottom: 1.25rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .book-detail {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      gap: 1rem;
+    }
+
+    .book-detail:last-child { border-bottom: none; }
+
+    .book-detail .label {
+      font-size: 0.78rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .book-detail .value {
+      font-size: 0.9rem;
+      color: var(--cream);
+      text-align: right;
+      word-break: break-all;
+    }
+
+    .shopify-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: rgba(45,198,83,0.1);
+      border: 1px solid rgba(45,198,83,0.25);
+      color: #2dc653;
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 0.35rem 0.85rem;
+      border-radius: 99px;
+      margin-bottom: 1.5rem;
+    }
+
+    .notify-note {
+      font-size: 0.82rem;
+      color: #5A5268;
+      line-height: 1.65;
+      margin-bottom: 2rem;
+    }
+
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: linear-gradient(135deg, var(--gold), var(--gold2));
+      color: #0B0E1A;
+      font-weight: 700;
+      font-size: 0.95rem;
+      padding: 0.85rem 2rem;
+      border-radius: 50px;
+      text-decoration: none;
+      border: none;
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      box-shadow: 0 6px 24px rgba(245,184,0,0.25);
+      transition: transform 0.2s, box-shadow 0.2s, filter 0.2s;
+    }
+
+    .back-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 32px rgba(245,184,0,0.4);
+      filter: brightness(1.08);
+    }
+
+    /* ── SUBMIT BOOK SCREEN ── */
+    #submit-screen {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: var(--navy);
+      overflow-y: auto;
+      flex-direction: column;
+    }
+    #submit-screen.active { display: flex; flex-direction: column; }
+
+    .submit-wrap {
+      flex: 1;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 2.5rem 1.5rem 4rem;
+    }
+
+    .submit-layout {
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      gap: 0;
+      width: 100%;
+      max-width: 860px;
+      border-radius: 24px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      box-shadow: 0 24px 80px rgba(0,0,0,0.4);
+    }
+
+    .submit-sidebar {
+      background: linear-gradient(160deg, #0d1120 0%, #111527 60%, rgba(201,146,42,0.08) 100%);
+      border-right: 1px solid var(--border);
+      padding: 2.5rem 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+
+    .submit-sidebar-logo {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      overflow: hidden;
+      border: 1.5px solid var(--border);
+    }
+    .submit-sidebar-logo img { width: 100%; height: 100%; object-fit: cover; }
+
+    .submit-sidebar h3 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.35rem;
+      color: var(--cream);
+      line-height: 1.35;
+    }
+
+    .submit-sidebar p {
+      font-size: 0.78rem;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .submit-steps {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      margin-top: auto;
+    }
+
+    .submit-step {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+    }
+
+    .submit-step-dot {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: rgba(201,146,42,0.15);
+      border: 1px solid rgba(201,146,42,0.35);
+      color: var(--gold);
+      font-size: 0.68rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .submit-step-text {
+      font-size: 0.76rem;
+      color: #7A7488;
+      line-height: 1.5;
+    }
+
+    .submit-step-text strong { color: var(--cream); display: block; font-size: 0.78rem; }
+
+    .submit-form-panel {
+      background: var(--navy2);
+      padding: 2.5rem 2rem;
+    }
+
+    .submit-form-panel h2 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.5rem;
+      color: var(--cream);
+      margin-bottom: 0.3rem;
+    }
+
+    .submit-form-panel .sub-label {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-bottom: 2rem;
+    }
+
+    .submit-section-label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin: 1.5rem 0 0.85rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .submit-section-label:first-of-type { margin-top: 0; }
+
+    .sf-field {
+      margin-bottom: 1.35rem;
+    }
+
+    .sf-label {
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      color: #9B95A8;
+      text-transform: uppercase;
+      margin-bottom: 0.4rem;
+    }
+
+    .sf-input {
+      width: 100%;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(201,146,42,0.2);
+      border-radius: 10px;
+      padding: 0.95rem 1.1rem;
+      color: var(--cream);
+      font-family: 'Inter', sans-serif;
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+      -webkit-appearance: none;
+    }
+    .sf-input::placeholder { color: #4A4458; }
+    .sf-input:focus {
+      border-color: rgba(201,146,42,0.6);
+      box-shadow: 0 0 0 3px rgba(201,146,42,0.08);
+      background: rgba(255,255,255,0.06);
+    }
+    .sf-input option { background: #111527; color: var(--cream); }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 0;
+    }
+
+    .sf-hint {
+      font-size: 0.7rem;
+      color: #4A4458;
+      margin-top: 0.3rem;
+    }
+
+    .sf-textarea {
+      width: 100%;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(201,146,42,0.2);
+      border-radius: 10px;
+      padding: 0.95rem 1.1rem;
+      color: var(--cream);
+      font-family: 'Inter', sans-serif;
+      font-size: 0.95rem;
+      outline: none;
+      resize: vertical;
+      min-height: 110px;
+      line-height: 1.6;
+      transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+    }
+    .sf-textarea::placeholder { color: #4A4458; }
+    .sf-textarea:focus {
+      border-color: rgba(201,146,42,0.6);
+      box-shadow: 0 0 0 3px rgba(201,146,42,0.08);
+      background: rgba(255,255,255,0.06);
+    }
+
+    .sf-char-count {
+      font-size: 0.68rem;
+      color: #4A4458;
+      text-align: right;
+      margin-top: 0.3rem;
+    }
+    .sf-char-count.warn { color: #F5B800; }
+
+    .cover-upload-area {
+      border: 2px dashed rgba(201,146,42,0.25);
+      border-radius: 12px;
+      padding: 1.5rem 1rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      background: rgba(255,255,255,0.02);
+      position: relative;
+    }
+    .cover-upload-area:hover, .cover-upload-area.drag-over {
+      border-color: rgba(201,146,42,0.6);
+      background: rgba(201,146,42,0.04);
+    }
+    .cover-upload-area input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+    .cover-upload-icon {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+    }
+    .cover-upload-text {
+      font-size: 0.82rem;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+    .cover-upload-text strong { color: var(--gold); }
+    .cover-preview {
+      display: none;
+      margin-top: 1rem;
+      align-items: center;
+      gap: 1rem;
+      background: rgba(255,255,255,0.04);
+      border-radius: 10px;
+      padding: 0.75rem 1rem;
+    }
+    .cover-preview img {
+      width: 52px;
+      height: 70px;
+      object-fit: cover;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+    }
+    .cover-preview-info { text-align: left; flex: 1; }
+    .cover-preview-name { font-size: 0.82rem; color: var(--cream); word-break: break-all; }
+    .cover-preview-size { font-size: 0.72rem; color: var(--muted); margin-top: 0.2rem; }
+    .cover-remove {
+      background: none;
+      border: none;
+      color: #e63946;
+      font-size: 1.1rem;
+      cursor: pointer;
+      padding: 0 0.25rem;
+      flex-shrink: 0;
+    }
+
+    /* ── Shopify genre-tag pills on submission form ── */
+    .sf-tag-pill-grid {
+      display: flex; flex-wrap: wrap; gap: 0.45rem; margin-top: 0.45rem;
+    }
+    .sf-tag-pill {
+      padding: 0.28rem 0.8rem; border-radius: 20px; font-size: 0.7rem; font-weight: 600;
+      border: 1px solid rgba(201,146,42,0.25); background: rgba(201,146,42,0.04);
+      color: #9B95A8; cursor: pointer; transition: all 0.15s; user-select: none;
+    }
+    .sf-tag-pill:hover  { border-color: rgba(201,146,42,0.6); color: var(--cream); }
+    .sf-tag-pill.active { background: rgba(201,146,42,0.18); border-color: rgba(201,146,42,0.7); color: var(--cream); }
+
+    .submit-btn {
+      width: 100%;
+      padding: 0.95rem;
+      background: linear-gradient(135deg, #C9922A, #F5B800);
+      color: #0B0E1A;
+      font-family: 'Inter', sans-serif;
+      font-size: 1rem;
+      font-weight: 700;
+      border: none;
+      border-radius: 50px;
+      cursor: pointer;
+      margin-top: 1.5rem;
+      letter-spacing: 0.02em;
+      box-shadow: 0 6px 24px rgba(201,146,42,0.3);
+      transition: opacity 0.2s, transform 0.15s, box-shadow 0.2s;
+    }
+    .submit-btn:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 32px rgba(201,146,42,0.4);
+    }
+    .submit-btn:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+
+    .submit-error {
+      display: none;
+      background: rgba(230,57,70,0.08);
+      border: 1px solid rgba(230,57,70,0.25);
+      color: #e63946;
+      font-size: 0.82rem;
+      border-radius: 10px;
+      padding: 0.75rem 1rem;
+      margin-bottom: 1.25rem;
+    }
+
+    @media (max-width: 640px) {
+      .submit-layout { grid-template-columns: 1fr; }
+      .submit-sidebar { display: none; }
+      .form-row { grid-template-columns: 1fr; }
+    }
+
+    /* ── EMBEDDED MODE (inside landing portal iframe) ── */
+    /* Hide "Back to Home" bars — navigation is handled by the landing portal sidebar */
+    body.embedded .portal-back-bar  { display: none !important; }
+    body.embedded .portal-back-link { display: none !important; }
+
+    /* ── MY SALES SCREEN ── */
+    #mysales-screen {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: var(--navy);
+      overflow-y: auto;
+      flex-direction: column;
+    }
+    #mysales-screen.active { display: flex; flex-direction: column; }
+
+    .sales-table-wrap { overflow-x: auto; margin-top: 1.5rem; }
+
+    .sales-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.82rem;
+    }
+    .sales-table th {
+      background: rgba(201,146,42,0.12);
+      color: var(--gold);
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 0.75rem 1rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+    .sales-table td {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid rgba(201,146,42,0.08);
+      color: var(--cream);
+      vertical-align: middle;
+    }
+    .sales-table tr:last-child td { border-bottom: none; }
+    .sales-table tr:hover td { background: rgba(201,146,42,0.05); }
+
+    .status-badge {
+      display: inline-block;
+      padding: 0.2rem 0.6rem;
+      border-radius: 99px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: capitalize;
+    }
+    .status-paid    { background: rgba(45,198,83,0.15);  color: #2dc653; }
+    .status-pending { background: rgba(245,184,0,0.15);  color: #F5B800; }
+    .status-refund  { background: rgba(230,57,70,0.15);  color: #e63946; }
+    .status-fulfilled   { background: rgba(45,198,83,0.15);  color: #2dc653; }
+    .status-unfulfilled { background: rgba(107,100,120,0.25); color: #9b95a8; }
+
+    /* ── MY BOOKS SCREEN ── */
+    #mybooks-screen {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: var(--navy);
+      overflow-y: auto;
+    }
+
+    #mybooks-screen.active { display: flex; flex-direction: column; }
+
+    .mybooks-wrap {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 3rem 1.5rem 4rem;
+      position: relative;
+    }
+
+    .mybooks-content {
+      position: relative;
+      z-index: 2;
+      max-width: 620px;
+      width: 100%;
+    }
+
+    .mybooks-heading {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(1.5rem, 3.5vw, 2rem);
+      background: linear-gradient(135deg, var(--gold2), #fff, var(--gold));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 0.4rem;
+    }
+
+    .mybooks-sub {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-bottom: 2rem;
+    }
+
+    .submission-card {
+      background: var(--navy2);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 1.4rem 1.6rem;
+      margin-bottom: 1rem;
+      text-align: left;
+      transition: border-color 0.2s ease;
+    }
+
+    .submission-card:hover { border-color: var(--gold); }
+
+    .submission-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.05rem;
+      color: var(--gold2);
+      margin-bottom: 0.3rem;
+    }
+
+    .submission-meta {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-bottom: 0.85rem;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      padding: 0.28rem 0.75rem;
+      border-radius: 99px;
+    }
+
+    .status-badge.live {
+      background: rgba(45,198,83,0.12);
+      border: 1px solid rgba(45,198,83,0.3);
+      color: #2dc653;
+    }
+
+    .status-badge.pending {
+      background: rgba(245,184,0,0.12);
+      border: 1px solid rgba(245,184,0,0.3);
+      color: var(--gold2);
+    }
+
+    .status-badge.rejected {
+      background: rgba(230,57,70,0.12);
+      border: 1px solid rgba(230,57,70,0.3);
+      color: #e63946;
+    }
+
+    .mb-shopify-id {
+      font-size: 0.76rem;
+      color: #5A5268;
+      margin-top: 0.6rem;
+    }
+
+    .mb-state {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: var(--muted);
+      font-size: 0.9rem;
+      line-height: 1.7;
+    }
+
+    .mb-state .mb-icon {
+      font-size: 2.5rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .mb-submit-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: linear-gradient(135deg, var(--gold), var(--gold2));
+      color: #0B0E1A;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 700;
+      padding: 0.75rem 1.75rem;
+      border-radius: 50px;
+      text-decoration: none;
+      margin-top: 1.25rem;
+      box-shadow: 0 4px 16px rgba(245,184,0,0.3);
+      transition: transform 0.2s, filter 0.2s;
+    }
+
+    .mb-submit-link:hover { transform: translateY(-2px); filter: brightness(1.08); }
+
+    /* ── CANCEL SUBSCRIPTION ── */
+    .cancel-sub-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: transparent;
+      border: 1px solid rgba(230,57,70,0.35);
+      color: #e63946;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 0.45rem 1.1rem;
+      border-radius: 99px;
+      cursor: pointer;
+      letter-spacing: 0.03em;
+      transition: background 0.2s, border-color 0.2s;
+    }
+
+    .cancel-sub-btn:hover {
+      background: rgba(230,57,70,0.1);
+      border-color: #e63946;
+    }
+
+    #cancel-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 400;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      background: rgba(11,14,26,0.96);
+      backdrop-filter: blur(6px);
+    }
+
+    #cancel-modal.active { display: flex; }
+
+    .cancel-modal-card {
+      background: var(--navy2);
+      border: 1px solid rgba(230,57,70,0.25);
+      border-radius: 20px;
+      padding: 2.5rem 2rem;
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.5);
+    }
+
+    .cancel-modal-card h3 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.5rem;
+      color: var(--cream);
+      margin-bottom: 0.75rem;
+    }
+
+    .cancel-modal-card p {
+      font-size: 0.875rem;
+      color: var(--muted);
+      line-height: 1.65;
+      margin-bottom: 2rem;
+    }
+
+    .cancel-confirm-btn {
+      background: #e63946;
+      color: #fff;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 700;
+      padding: 0.8rem 1.75rem;
+      border-radius: 50px;
+      border: none;
+      cursor: pointer;
+      transition: filter 0.2s;
+    }
+
+    .cancel-confirm-btn:hover { filter: brightness(1.1); }
+    .cancel-confirm-btn:disabled { opacity: 0.6; cursor: default; }
+
+    .keep-plan-btn {
+      background: transparent;
+      color: var(--muted);
+      font-family: 'Inter', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 600;
+      padding: 0.8rem 1.75rem;
+      border-radius: 50px;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      transition: border-color 0.2s, color 0.2s;
+    }
+
+    .keep-plan-btn:hover { border-color: var(--gold); color: var(--gold); }
+  </style>
+</head>
+<body>
+
+  <!-- ══ CANCEL SUBSCRIPTION MODAL ══ -->
+  <div id="cancel-modal">
+    <div class="cancel-modal-card">
+      <div style="font-size:2.25rem;margin-bottom:1rem;">⚠️</div>
+      <h3>Cancel Subscription?</h3>
+      <p>Your subscription will be cancelled <strong style="color:var(--cream);">immediately</strong>. You won't be able to submit any more books until you subscribe again.</p>
+      <div style="display:flex;gap:0.85rem;justify-content:center;flex-wrap:wrap;">
+        <button id="cancel-confirm-btn" class="cancel-confirm-btn" onclick="confirmCancel()">Yes, Cancel It</button>
+        <button class="keep-plan-btn" onclick="closeCancelModal()">Keep My Plan</button>
+      </div>
+      <p id="cancel-modal-error" style="display:none;margin-top:1rem;font-size:0.82rem;color:#e63946;"></p>
+    </div>
+  </div>
+
+  <!-- ══ TOPUP MODAL ══ -->
+  <div id="topup-modal" onclick="closeTopupModal()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:9999;align-items:center;justify-content:center;">
+    <div onclick="event.stopPropagation()" style="background:#2a1f14;border:1px solid rgba(212,175,55,0.3);border-radius:16px;padding:2rem;max-width:380px;width:90%;text-align:center;">
+      <div style="font-size:2.25rem;margin-bottom:0.75rem;">📦</div>
+      <h3 style="color:var(--cream);margin-bottom:0.5rem;">Buy Extra Submission Slots</h3>
+      <p style="color:var(--muted);font-size:0.88rem;margin-bottom:1.5rem;">One-time purchase. Slots are added to your current plan immediately after payment.</p>
+      <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;margin-bottom:1.25rem;">
+        <button onclick="buyTopup(5)" style="flex:1;min-width:130px;padding:0.9rem 1rem;background:var(--gold);color:#1a1009;border:none;border-radius:10px;font-weight:700;font-size:0.95rem;cursor:pointer;">
+          5 Slots<br><span style="font-size:0.78rem;font-weight:500;">₹99</span>
+        </button>
+        <button onclick="buyTopup(10)" style="flex:1;min-width:130px;padding:0.9rem 1rem;background:transparent;color:var(--gold);border:2px solid var(--gold);border-radius:10px;font-weight:700;font-size:0.95rem;cursor:pointer;">
+          10 Slots<br><span style="font-size:0.78rem;font-weight:500;">₹199</span>
+        </button>
+      </div>
+      <p id="topup-error" style="display:none;color:#e63946;font-size:0.82rem;margin-bottom:0.75rem;"></p>
+      <button onclick="closeTopupModal()" style="background:none;border:none;color:var(--muted);font-size:0.85rem;cursor:pointer;text-decoration:underline;">Cancel</button>
+    </div>
+  </div>
+
+  <!-- ══ AUTH SCREEN ══ -->
+  <div id="auth-screen">
+    <div class="auth-card">
+      <div class="logo-badge" style="width:80px;height:80px;margin:0 auto 1.25rem;">
+        <img src="logo-portrait.png" alt="Yellow Feather Books" />
+      </div>
+      <div class="rainbow-bar" style="margin-bottom:1.25rem;"></div>
+
+      <div class="auth-tabs">
+        <button class="auth-tab active" id="tab-login" onclick="switchAuthTab('login')">Log In</button>
+        <button class="auth-tab" id="tab-signup" onclick="switchAuthTab('signup')">Sign Up</button>
+      </div>
+
+      <!-- Login Panel -->
+      <div id="auth-login-panel">
+        <h2 class="auth-heading">Welcome Back</h2>
+        <p class="auth-sub">Sign in to your account</p>
+        <input type="email" id="login-email" class="email-input"
+               placeholder="your@email.com"
+               onkeydown="if(event.key==='Enter') document.getElementById('login-password').focus()" />
+        <div class="password-wrapper">
+          <input type="password" id="login-password" class="email-input"
+                 placeholder="Password"
+                 onkeydown="if(event.key==='Enter') handleLogin()" />
+          <button type="button" class="password-toggle" tabindex="-1"
+                  onclick="togglePassword('login-password', this)">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+        <div style="text-align:right;margin-top:-0.5rem;margin-bottom:1rem;">
+          <button type="button" onclick="showForgotScreen()"
+            style="background:none;border:none;color:var(--gold);font-family:'Inter',sans-serif;font-size:0.8rem;cursor:pointer;text-decoration:underline;text-underline-offset:3px;padding:0;">
+            Forgot password?
+          </button>
+        </div>
+        <div id="login-error" class="email-error"></div>
+        <button id="login-btn" class="plan-btn filled" style="width:100%;"
+                onclick="handleLogin()">Log In →</button>
+      </div>
+
+      <!-- Signup Panel -->
+      <div id="auth-signup-panel" style="display:none;">
+        <h2 class="auth-heading">Create Account</h2>
+        <p class="auth-sub">Join Yellow Feather Books as a publisher</p>
+        <input type="text" id="signup-name" class="email-input" placeholder="Your name" />
+        <input type="email" id="signup-email" class="email-input" placeholder="your@email.com" />
+        <div style="display:flex;gap:0;margin-bottom:1rem;">
+          <span style="background:rgba(255,255,255,0.07);border:1px solid var(--border);border-right:none;border-radius:10px 0 0 10px;padding:0.85rem 0.75rem;color:var(--cream);font-size:0.95rem;white-space:nowrap;line-height:1.4;">🇮🇳 +91</span>
+          <input type="tel" id="signup-phone" class="email-input" placeholder="10-digit mobile number" maxlength="10" style="border-radius:0 10px 10px 0;margin-bottom:0;flex:1;" />
+        </div>
+        <div class="password-wrapper">
+          <input type="password" id="signup-password" class="email-input" placeholder="Password" />
+          <button type="button" class="password-toggle" tabindex="-1"
+                  onclick="togglePassword('signup-password', this)">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+        <div class="password-wrapper">
+          <input type="password" id="signup-confirm" class="email-input" placeholder="Confirm password"
+                 onkeydown="if(event.key==='Enter') handleSignup()" />
+          <button type="button" class="password-toggle" tabindex="-1"
+                  onclick="togglePassword('signup-confirm', this)">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+        <div id="signup-error" class="email-error"></div>
+        <button id="signup-btn" class="plan-btn filled" style="width:100%;"
+                onclick="handleSignup()">Create Account →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ FORGOT PASSWORD SCREEN ══ -->
+  <div id="forgot-screen" style="position:fixed;inset:0;z-index:310;display:none;align-items:center;justify-content:center;padding:1.5rem;background:rgba(11,14,26,0.97);backdrop-filter:blur(8px);">
+    <div class="auth-card">
+      <div class="logo-badge" style="width:80px;height:80px;margin:0 auto 1.25rem;">
+        <img src="logo-portrait.png" alt="Yellow Feather Books" />
+      </div>
+      <div class="rainbow-bar" style="margin-bottom:1.25rem;"></div>
+
+      <!-- Form state -->
+      <div id="forgot-form-panel">
+        <h2 class="auth-heading">Reset Password</h2>
+        <p class="auth-sub">Enter your email and we'll send you a reset link</p>
+        <input type="email" id="forgot-email" class="email-input"
+               placeholder="your@email.com"
+               onkeydown="if(event.key==='Enter') handleForgotPassword()" />
+        <div id="forgot-error" class="email-error"></div>
+        <button id="forgot-btn" class="plan-btn filled" style="width:100%;"
+                onclick="handleForgotPassword()">Send Reset Link →</button>
+        <button type="button" onclick="hideForgotScreen()"
+          style="display:block;width:100%;margin-top:0.85rem;background:none;border:none;color:var(--muted);font-family:'Inter',sans-serif;font-size:0.85rem;cursor:pointer;text-decoration:underline;text-underline-offset:3px;">
+          ← Back to Login
+        </button>
+      </div>
+
+      <!-- Success state -->
+      <div id="forgot-success-panel" style="display:none;">
+        <div style="width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#2a9d8f,#2dc653);display:flex;align-items:center;justify-content:center;margin:0 auto 1.25rem;box-shadow:0 8px 32px rgba(45,198,83,0.3);">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <h2 class="auth-heading">Check Your Inbox</h2>
+        <p class="auth-sub">A reset link has been sent to<br/><strong id="forgot-email-sent" style="color:var(--cream);"></strong></p>
+        <p style="font-size:0.78rem;color:#5A5268;margin-bottom:1.5rem;">The link expires in 1 hour.</p>
+        <button type="button" onclick="hideForgotScreen()" class="plan-btn filled" style="width:100%;">
+          Back to Login
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ RESET PASSWORD SCREEN ══ -->
+  <div id="reset-screen" style="position:fixed;inset:0;z-index:310;display:none;align-items:center;justify-content:center;padding:1.5rem;background:rgba(11,14,26,0.97);backdrop-filter:blur(8px);">
+    <div class="auth-card">
+      <div class="logo-badge" style="width:80px;height:80px;margin:0 auto 1.25rem;">
+        <img src="logo-portrait.png" alt="Yellow Feather Books" />
+      </div>
+      <div class="rainbow-bar" style="margin-bottom:1.25rem;"></div>
+
+      <!-- Form state -->
+      <div id="reset-form-panel">
+        <h2 class="auth-heading">Set New Password</h2>
+        <p class="auth-sub">Choose a strong password for your account</p>
+        <div class="password-wrapper">
+          <input type="password" id="reset-password" class="email-input" placeholder="New password" />
+          <button type="button" class="password-toggle" tabindex="-1"
+                  onclick="togglePassword('reset-password', this)">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+        <div class="password-wrapper">
+          <input type="password" id="reset-confirm" class="email-input" placeholder="Confirm new password"
+                 onkeydown="if(event.key==='Enter') handleResetPassword()" />
+          <button type="button" class="password-toggle" tabindex="-1"
+                  onclick="togglePassword('reset-confirm', this)">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+        <div id="reset-error" class="email-error"></div>
+        <button id="reset-btn" class="plan-btn filled" style="width:100%;"
+                onclick="handleResetPassword()">Reset Password →</button>
+      </div>
+
+      <!-- Success state -->
+      <div id="reset-success-panel" style="display:none;">
+        <div style="width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#2a9d8f,#2dc653);display:flex;align-items:center;justify-content:center;margin:0 auto 1.25rem;box-shadow:0 8px 32px rgba(45,198,83,0.3);">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <h2 class="auth-heading">Password Reset!</h2>
+        <p class="auth-sub">You can now log in with your new password.</p>
+        <button type="button" onclick="afterResetLogin()" class="plan-btn filled" style="width:100%;">
+          Log In →
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ AUTHOR WELCOME SCREEN ══ -->
+  <div id="author-welcome-screen" style="display:none;position:fixed;inset:0;z-index:200;overflow-y:auto;background:#0B0E1A;flex-direction:column;">
+
+    <div class="portal-back-bar" style="background:#F5B800;padding:0.85rem 1.5rem;display:flex;align-items:center;">
+      <a href="https://yellowfeather.netlify.app/"
+         style="display:inline-flex;align-items:center;gap:0.5rem;color:#0B0E1A;font-family:Inter,sans-serif;font-size:0.95rem;font-weight:700;text-decoration:none;text-decoration-color:transparent;">
+        &#8592; Back to Home
+      </a>
+    </div>
+
+    <div style="flex:1;max-width:820px;margin:0 auto;width:100%;padding:2rem 1.5rem 4rem;">
+
+      <!-- Greeting banner -->
+      <div style="background:linear-gradient(135deg,rgba(201,146,42,0.14),rgba(201,146,42,0.04));border:1px solid rgba(201,146,42,0.22);border-radius:16px;padding:1.5rem 1.75rem;margin-bottom:1.75rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;">
+        <div>
+          <div style="font-size:0.68rem;color:#F5B800;font-weight:700;text-transform:uppercase;letter-spacing:0.12em;margin-bottom:0.35rem;">✍️ Author Partner</div>
+          <div style="font-size:1.05rem;font-weight:700;color:#F5F0E8;font-family:'Playfair Display',serif;" id="aw-name">Welcome back!</div>
+          <div style="font-size:0.78rem;color:#7A7485;margin-top:0.2rem;" id="aw-plan-line"></div>
+        </div>
+        <div style="display:flex;gap:0.65rem;flex-wrap:wrap;">
+          <button onclick="showSubmitForm()" style="background:linear-gradient(135deg,#C9922A,#F5B800);color:#0B0E1A;font-family:Inter,sans-serif;font-size:0.82rem;font-weight:700;padding:0.6rem 1.2rem;border-radius:50px;border:none;cursor:pointer;white-space:nowrap;">📝 New Book</button>
+          <button onclick="showMyBooks()" style="background:transparent;border:1.5px solid rgba(201,146,42,0.5);color:#F5B800;font-family:Inter,sans-serif;font-size:0.82rem;font-weight:600;padding:0.6rem 1.2rem;border-radius:50px;cursor:pointer;white-space:nowrap;">📚 My Books</button>
+          <button onclick="showMySales()" style="background:transparent;border:1.5px solid rgba(201,146,42,0.5);color:#F5B800;font-family:Inter,sans-serif;font-size:0.82rem;font-weight:600;padding:0.6rem 1.2rem;border-radius:50px;cursor:pointer;white-space:nowrap;">📈 Sales</button>
+        </div>
+      </div>
+
+      <!-- Benefits heading -->
+      <div style="font-size:0.75rem;color:#F5B800;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:1rem;">🌟 What You Get as a YFB Author Partner</div>
+
+      <!-- Benefits grid -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:0.75rem;margin-bottom:2rem;">
+        <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:1rem 1.1rem;display:flex;gap:0.75rem;align-items:flex-start;">
+          <div style="font-size:1.4rem;flex-shrink:0;">🛍️</div>
+          <div><div style="font-size:0.85rem;font-weight:600;color:#F5F0E8;margin-bottom:0.2rem;">Listed on Our Store</div><div style="font-size:0.75rem;color:#7A7485;line-height:1.5;">Your book appears on yellowfeatherbookstore.in, our Instagram page &amp; mobile app.</div></div>
+        </div>
+        <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:1rem 1.1rem;display:flex;gap:0.75rem;align-items:flex-start;">
+          <div style="font-size:1.4rem;flex-shrink:0;">🎨</div>
+          <div><div style="font-size:0.85rem;font-weight:600;color:#F5F0E8;margin-bottom:0.2rem;">Digital Poster Per Book</div><div style="font-size:0.75rem;color:#7A7485;line-height:1.5;">A professionally designed promotional poster for each book you list.</div></div>
+        </div>
+        <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:1rem 1.1rem;display:flex;gap:0.75rem;align-items:flex-start;">
+          <div style="font-size:1.4rem;flex-shrink:0;">🎬</div>
+          <div><div style="font-size:0.85rem;font-weight:600;color:#F5F0E8;margin-bottom:0.2rem;">Reel Collaboration</div><div style="font-size:0.75rem;color:#7A7485;line-height:1.5;">Collaborate with our content team on Instagram &amp; YouTube reels to promote your book.</div></div>
+        </div>
+        <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:1rem 1.1rem;display:flex;gap:0.75rem;align-items:flex-start;">
+          <div style="font-size:1.4rem;flex-shrink:0;">⭐</div>
+          <div><div style="font-size:0.85rem;font-weight:600;color:#F5F0E8;margin-bottom:0.2rem;">Book Review Support</div><div style="font-size:0.75rem;color:#7A7485;line-height:1.5;">Our team facilitates reader reviews to build credibility for your title.</div></div>
+        </div>
+        <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:1rem 1.1rem;display:flex;gap:0.75rem;align-items:flex-start;">
+          <div style="font-size:1.4rem;flex-shrink:0;">🏆</div>
+          <div><div style="font-size:0.85rem;font-weight:600;color:#F5F0E8;margin-bottom:0.2rem;">Priority Offer Zone Listing</div><div style="font-size:0.75rem;color:#7A7485;line-height:1.5;">Your books get featured in our high-visibility offer zone for maximum exposure.</div></div>
+        </div>
+        <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:1rem 1.1rem;display:flex;gap:0.75rem;align-items:flex-start;">
+          <div style="font-size:1.4rem;flex-shrink:0;">📈</div>
+          <div><div style="font-size:0.85rem;font-weight:600;color:#F5F0E8;margin-bottom:0.2rem;">Sales Dashboard</div><div style="font-size:0.75rem;color:#7A7485;line-height:1.5;">Track your book sales, revenue &amp; performance metrics in real time.</div></div>
+        </div>
+        <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:1rem 1.1rem;display:flex;gap:0.75rem;align-items:flex-start;">
+          <div style="font-size:1.4rem;flex-shrink:0;">👥</div>
+          <div><div style="font-size:0.85rem;font-weight:600;color:#F5F0E8;margin-bottom:0.2rem;">Reach Kerala Readers</div><div style="font-size:0.75rem;color:#7A7485;line-height:1.5;">Connect with thousands of passionate Malayalam book lovers across India.</div></div>
+        </div>
+        <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:1rem 1.1rem;display:flex;gap:0.75rem;align-items:flex-start;">
+          <div style="font-size:1.4rem;flex-shrink:0;">💬</div>
+          <div><div style="font-size:0.85rem;font-weight:600;color:#F5F0E8;margin-bottom:0.2rem;">Dedicated Author Support</div><div style="font-size:0.75rem;color:#7A7485;line-height:1.5;">Direct WhatsApp &amp; email support for listing queries, updates &amp; promotions.</div></div>
+        </div>
+      </div>
+
+      <!-- Tips section -->
+      <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:14px;padding:1.25rem 1.5rem;">
+        <div style="font-size:0.75rem;color:#F5B800;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:0.85rem;">💡 Tips to Maximise Your Listing</div>
+        <ul style="margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:0.6rem;">
+          <li style="font-size:0.82rem;color:#9A9AA8;line-height:1.5;display:flex;gap:0.6rem;"><span style="color:#F5B800;flex-shrink:0;">→</span> Submit a high-resolution cover image for better visibility in carousels.</li>
+          <li style="font-size:0.82rem;color:#9A9AA8;line-height:1.5;display:flex;gap:0.6rem;"><span style="color:#F5B800;flex-shrink:0;">→</span> Write a compelling Malayalam &amp; English description to attract more readers.</li>
+          <li style="font-size:0.82rem;color:#9A9AA8;line-height:1.5;display:flex;gap:0.6rem;"><span style="color:#F5B800;flex-shrink:0;">→</span> Share your listing link on social media — we'll amplify your reach with reels.</li>
+          <li style="font-size:0.82rem;color:#9A9AA8;line-height:1.5;display:flex;gap:0.6rem;"><span style="color:#F5B800;flex-shrink:0;">→</span> Check your Sales dashboard regularly to understand which books perform best.</li>
+        </ul>
+      </div>
+
+    </div>
+
+    <footer style="border-top:1px solid rgba(255,255,255,0.06);padding:1.25rem;text-align:center;font-size:0.75rem;color:#3A3545;">
+      &copy; 2026 Yellow Feather Books &nbsp;·&nbsp;
+      <a href="https://yellowfeatherbookstore.in" target="_blank" style="color:#5A5268;">yellowfeatherbookstore.in</a>
+    </footer>
+  </div>
+
+  <!-- ══ SUCCESS SCREEN ══ -->
+  <div id="success-screen">
+
+    <!-- Always-visible top nav -->
+    <div class="portal-back-bar" style="background:#F5B800;padding:0.85rem 1.5rem;display:flex;align-items:center;">
+      <a href="https://yellowfeather.netlify.app/"
+         style="display:inline-flex;align-items:center;gap:0.5rem;color:#0B0E1A;font-family:Inter,sans-serif;font-size:0.95rem;font-weight:700;text-decoration:none;">
+        &#8592; Back to Home
+      </a>
+    </div>
+
+    <div class="success-wrap">
+      <div class="success-bg"></div>
+      <div class="success-vignette"></div>
+      <div class="success-content">
+
+        <div class="success-icon">
+          <svg width="34" height="34" viewBox="0 0 24 24" fill="none"
+               stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        </div>
+
+        <div class="rainbow-bar" style="margin-bottom:1rem;"></div>
+        <h1>Book Successfully<br/>Submitted!</h1>
+        <p class="sub">Thank you for submitting your book details.</p>
+
+        <div class="book-card">
+          <div class="book-card-title">Submission Summary</div>
+          <div class="book-detail">
+            <span class="label">Book</span>
+            <span class="value" id="s-book">—</span>
+          </div>
+          <div class="book-detail">
+            <span class="label">Author</span>
+            <span class="value" id="s-author">—</span>
+          </div>
+          <div class="book-detail">
+            <span class="label">Category</span>
+            <span class="value" id="s-category">—</span>
+          </div>
+          <div class="book-detail">
+            <span class="label">MRP</span>
+            <span class="value" id="s-mrp">—</span>
+          </div>
+          <div class="book-detail">
+            <span class="label">Price</span>
+            <span class="value" id="s-price">—</span>
+          </div>
+          <div class="book-detail">
+            <span class="label">Barcode</span>
+            <span class="value" id="s-barcode">—</span>
+          </div>
+          <div class="book-detail">
+            <span class="label">Shopify ID</span>
+            <span class="value" id="s-shopifyId">—</span>
+          </div>
+        </div>
+
+        <div class="shopify-badge">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2.5">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+          Successfully processed in Shopify inventory
+        </div>
+
+        <p class="notify-note" id="s-notify"></p>
+
+        <button onclick="showMyBooks()"
+           style="display:inline-block;margin-top:1.5rem;background:linear-gradient(135deg,#C9922A,#F5B800);color:#0B0E1A;font-family:Inter,sans-serif;font-size:1rem;font-weight:700;padding:1rem 2.5rem;border-radius:50px;border:none;cursor:pointer;box-shadow:0 6px 24px rgba(245,184,0,0.35);">
+          📚 View My Submissions →
+        </button>
+        <br/>
+        <a class="portal-back-link" href="https://yellowfeather.netlify.app/"
+           style="display:inline-block;margin-top:0.9rem;font-size:0.84rem;color:var(--muted);text-decoration:underline;text-underline-offset:3px;">
+          Back to Home
+        </a>
+
+      </div>
+    </div>
+    <footer style="border-top:1px solid var(--border);padding:1.5rem;text-align:center;font-size:0.76rem;color:#3A3545;">
+      &copy; 2026 Yellow Feather Books &nbsp;·&nbsp;
+      <a href="https://yellowfeatherbookstore.in" target="_blank" style="color:#5A5268;">yellowfeatherbookstore.in</a>
+    </footer>
+  </div>
+
+  <!-- ══ HERO ══ -->
+  <section class="hero">
+    <div class="hero-bg"></div>
+    <div class="hero-vignette"></div>
+
+    <div class="hero-content">
+      <div class="logo-badge">
+        <img src="logo-portrait.png" alt="Yellow Feather Books" />
+      </div>
+
+      <p class="eyebrow">Yellow Feather Books</p>
+      <div class="rainbow-bar"></div>
+
+      <h1>Get Your Book<br/>Listed With Us</h1>
+
+      <p class="tagline">
+        Reach thousands of readers across India. Submit your book details
+        and our team will list it on the Yellow Feather Books store.
+      </p>
+
+      <!-- Shown to new users -->
+      <a href="#pricing" id="hero-cta-new" class="cta-btn">
+        View Plans <span class="cta-arrow">→</span>
+      </a>
+
+      <!-- Shown to returning subscribers (hidden by default) -->
+      <div id="hero-returning" style="display:none;">
+        <div id="subscriber-badge" style="display:inline-flex;align-items:center;gap:0.5rem;background:rgba(245,184,0,0.12);border:1px solid rgba(245,184,0,0.3);color:var(--gold2);font-size:0.82rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:0.4rem 1rem;border-radius:99px;margin-bottom:1.25rem;">
+          ★ <span id="hero-plan-name"></span> — Active
+        </div>
+        <br/>
+        <button id="hero-submit-btn" onclick="handleSubmitClick(this)" class="cta-btn" style="border:none;cursor:pointer;font-family:Inter,sans-serif;">
+          Submit Your Book <span class="cta-arrow">→</span>
+        </button>
+        <p style="margin-top:1rem;font-size:0.8rem;color:var(--muted);">
+          <span id="hero-quota"></span> · <a id="hero-quota-action" href="#pricing" style="color:var(--gold);text-decoration:underline;">Upgrade plan</a>
+        </p>
+        <p id="hero-quota-error" style="display:none;margin-top:0.6rem;font-size:0.82rem;color:#e63946;line-height:1.5;"></p>
+        <button onclick="showMyBooks()"
+          style="margin-top:0.85rem;display:inline-flex;align-items:center;gap:0.45rem;background:transparent;border:1.5px solid var(--gold);color:var(--gold);font-family:Inter,sans-serif;font-size:0.88rem;font-weight:600;padding:0.65rem 1.5rem;border-radius:50px;cursor:pointer;transition:background 0.2s,color 0.2s;"
+          onmouseover="this.style.background='rgba(201,146,42,0.15)'"
+          onmouseout="this.style.background='transparent'">
+          📚 My Submissions
+        </button>
+        <button onclick="showMySales()"
+          style="margin-top:0.6rem;display:inline-flex;align-items:center;gap:0.45rem;background:transparent;border:1.5px solid var(--gold);color:var(--gold);font-family:Inter,sans-serif;font-size:0.88rem;font-weight:600;padding:0.65rem 1.5rem;border-radius:50px;cursor:pointer;transition:background 0.2s,color 0.2s;"
+          onmouseover="this.style.background='rgba(201,146,42,0.15)'"
+          onmouseout="this.style.background='transparent'">
+          📈 My Sales
+        </button>
+        <br/>
+        <button onclick="showCancelModal()" class="cancel-sub-btn" style="margin-top:0.75rem;">
+          Cancel Subscription
+        </button>
+      </div>
+    </div>
+
+    <div class="scroll-hint">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="2">
+        <path d="M12 5v14M5 12l7 7 7-7"/>
+      </svg>
+      scroll
+    </div>
+  </section>
+
+  <!-- ══ HOW IT WORKS ══ -->
+  <section class="section">
+    <div class="section-label reveal">
+      <div class="rainbow-bar"></div>
+      <h2>How It Works</h2>
+    </div>
+
+    <div class="steps">
+      <div class="step reveal">
+        <div class="step-num">1</div>
+        <h3>Submit Your Book</h3>
+        <p>Fill in your book details — title, author, genre, price, and a short description.</p>
+      </div>
+      <div class="step reveal">
+        <div class="step-num">2</div>
+        <h3>We Review</h3>
+        <p>Our team reviews your submission and gets in touch within 2–3 business days.</p>
+      </div>
+      <div class="step reveal">
+        <div class="step-num">3</div>
+        <h3>Go Live</h3>
+        <p>Your book gets listed on yellowfeatherbookstore.in and starts reaching readers.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="rainbow-divider"></div>
+
+  <!-- ══ PRICING ══ -->
+  <section class="pricing-section" id="pricing">
+    <div class="section-label reveal">
+      <div class="rainbow-bar"></div>
+      <h2>Choose Your Plan</h2>
+      <p style="color:#7A7485;font-size:0.9rem;margin-top:0.75rem;">Monthly subscription · Cancel anytime</p>
+    </div>
+
+    <div class="plans">
+
+      <!-- Starter -->
+      <div class="plan-card reveal">
+        <div class="plan-name">Starter</div>
+        <div class="plan-tagline">For independent authors</div>
+        <div class="plan-price">
+          <span class="currency">₹</span><span class="amount">99</span><span class="period">/ month</span>
+        </div>
+        <ul class="plan-features">
+          <li><span class="check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>1 book submission per month</li>
+          <li><span class="check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>Book listing in insta page, website and mobile app</li>
+          <li><span class="check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>One digital poster per book</li>
+          <li><span class="check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>2 reel collab opportunities</li>
+          <li><span class="check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>One book review support</li>
+          <li><span class="check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>Priority listing in offer zone</li>
+        </ul>
+        <button class="plan-btn outline" onclick="subscribe('starter', this)">
+          Get Started →
+        </button>
+      </div>
+
+      <!-- Growth (popular) -->
+      <div class="plan-card popular reveal">
+        <div class="popular-badge">Most Popular</div>
+        <div class="plan-name">Growth</div>
+        <div class="plan-tagline">For active publishers</div>
+        <div class="plan-price">
+          <span class="currency">₹</span><span class="amount">199</span><span class="period">/ month</span>
+        </div>
+        <ul class="plan-features">
+          <li><span class="check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>3 book submissions per month</li>
+          <li><span class="check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>Book listing in insta page, website and mobile app</li>
+          <li><span class="check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>One digital poster per book</li>
+          <li><span class="check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>5 reel collab opportunities</li>
+          <li><span class="check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>One book review support per book</li>
+          <li><span class="check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>Priority listing in offer zone</li>
+        </ul>
+        <button class="plan-btn filled" onclick="subscribe('growth', this)">
+          Subscribe Now →
+        </button>
+      </div>
+
+      <!-- Publisher -->
+      <div class="plan-card reveal">
+        <div class="plan-name">Publisher</div>
+        <div class="plan-tagline">For labels &amp; collectives</div>
+        <div class="plan-price">
+          <span class="currency">₹</span><span class="amount">399</span><span class="period">/ month</span>
+        </div>
+        <ul class="plan-features">
+          <li><span class="check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>10 book submissions per month</li>
+          <li><span class="check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>Book listing in insta page, website and mobile app</li>
+          <li><span class="check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>One digital poster per book</li>
+          <li><span class="check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>10 reel collab opportunities</li>
+          <li><span class="check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>One book review support per book</li>
+          <li><span class="check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>Priority listing in offer zone</li>
+          <li><span class="check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>Dedicated account support</li>
+          <li><span class="check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>Monthly analytics report</li>
+        </ul>
+        <button class="plan-btn outline" onclick="subscribe('publisher', this)">
+          Get Started →
+        </button>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ══ SUBSCRIPTION SUCCESS SCREEN ══ -->
+  <div id="sub-success-screen">
+
+    <div class="portal-back-bar" style="background:#F5B800;padding:0.85rem 1.5rem;display:flex;align-items:center;">
+      <a href="https://yellowfeather.netlify.app/"
+         style="display:inline-flex;align-items:center;gap:0.5rem;color:#0B0E1A;font-family:Inter,sans-serif;font-size:0.95rem;font-weight:700;text-decoration:none;">
+        &#8592; Back to Home
+      </a>
+    </div>
+
+    <div class="sub-success-wrap">
+      <div class="success-bg"></div>
+      <div class="success-vignette"></div>
+      <div class="sub-success-content">
+
+        <div class="success-icon" style="margin-bottom:1.25rem;">
+          <svg width="34" height="34" viewBox="0 0 24 24" fill="none"
+               stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        </div>
+
+        <div class="rainbow-bar" style="margin-bottom:1rem;"></div>
+        <h1 style="font-family:'Playfair Display',serif;font-size:clamp(1.75rem,4vw,2.5rem);background:linear-gradient(135deg,#F5B800,#fff,#C9922A);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:0.5rem;">
+          Subscription Active!
+        </h1>
+        <p style="font-size:0.95rem;color:#7A7485;margin-bottom:1.5rem;">
+          Your <strong id="ss-plan-name" style="color:var(--gold2);"></strong> plan is now active.
+        </p>
+
+        <div class="plan-activated-badge">
+          ★ Plan Activated
+        </div>
+
+        <div class="form-link-box">
+          <h3>Submit Your Book</h3>
+          <p>Use the link below to submit your books. Each submission counts toward your monthly quota.</p>
+
+          <div class="quota-bar">
+            <span class="quota-label">Books allowed this month</span>
+            <span class="quota-count" id="ss-quota">—</span>
+          </div>
+
+          <button id="ss-form-link" onclick="handleSubmitClick(this)"
+             class="plan-btn filled" style="display:block;text-align:center;width:100%;font-family:Inter,sans-serif;cursor:pointer;">
+            Open Submission Form →
+          </button>
+          <p id="ss-quota-error" style="display:none;margin-top:0.6rem;font-size:0.82rem;color:#e63946;line-height:1.5;"></p>
+        </div>
+
+        <p style="font-size:0.8rem;color:#5A5268;line-height:1.65;margin-bottom:1.5rem;">
+          Manage or cancel your subscription anytime from your Razorpay-sent email, or write to us at
+          <a href="mailto:bookstore@yellowfeatherbookstore.com" style="color:var(--gold);text-decoration:underline;">bookstore@yellowfeatherbookstore.com</a>
+        </p>
+
+        <a class="portal-back-link" href="https://yellowfeather.netlify.app/"
+           style="display:inline-block;background:linear-gradient(135deg,#C9922A,#F5B800);color:#0B0E1A;font-family:Inter,sans-serif;font-size:1rem;font-weight:700;padding:1rem 2.5rem;border-radius:50px;text-decoration:none;box-shadow:0 6px 24px rgba(245,184,0,0.35);">
+          🏠 Back to Home
+        </a>
+
+      </div>
+    </div>
+
+    <footer style="border-top:1px solid var(--border);padding:1.5rem;text-align:center;font-size:0.76rem;color:#3A3545;">
+      &copy; 2026 Yellow Feather Books &nbsp;·&nbsp;
+      <a href="https://yellowfeatherbookstore.in" target="_blank" style="color:#5A5268;">yellowfeatherbookstore.in</a>
+    </footer>
+  </div>
+
+  <!-- ══ MY BOOKS SCREEN ══ -->
+  <div id="mybooks-screen">
+
+    <div class="portal-back-bar" style="background:#F5B800;padding:0.85rem 1.5rem;display:flex;align-items:center;gap:1rem;">
+      <button onclick="closeMyBooks()"
+        style="display:inline-flex;align-items:center;gap:0.4rem;background:none;border:none;cursor:pointer;color:#0B0E1A;font-family:Inter,sans-serif;font-size:0.95rem;font-weight:700;padding:0;">
+        &#8592; Back to Home
+      </button>
+    </div>
+
+    <div class="mybooks-wrap">
+      <div class="success-bg"></div>
+      <div class="success-vignette"></div>
+      <div class="mybooks-content">
+
+        <div class="rainbow-bar" style="margin-bottom:1rem;"></div>
+        <h2 class="mybooks-heading">My Submitted Books</h2>
+        <p id="mb-email-label" class="mybooks-sub"></p>
+
+        <div id="mb-loading" class="mb-state">
+          <div class="mb-icon">⏳</div>
+          Loading your submissions…
+        </div>
+
+        <div id="mb-empty" class="mb-state" style="display:none;">
+          <div class="mb-icon">📭</div>
+          No submissions found yet.<br/>
+          <a href="#" onclick="showSubmitForm();return false;" class="mb-submit-link">
+            Submit Your First Book →
+          </a>
+        </div>
+
+        <div id="mb-list" style="display:none;"></div>
+
+        <div style="margin-top:2.5rem;padding-top:1.5rem;border-top:1px solid var(--border);text-align:center;">
+          <p style="font-size:0.8rem;color:#5A5268;margin-bottom:0.85rem;">Want to stop your subscription?</p>
+          <button onclick="showCancelModal()" class="cancel-sub-btn">Cancel Subscription</button>
+        </div>
+
+      </div>
+    </div>
+
+    <footer style="border-top:1px solid var(--border);padding:1.5rem;text-align:center;font-size:0.76rem;color:#3A3545;">
+      &copy; 2026 Yellow Feather Books &nbsp;·&nbsp;
+      <a href="https://yellowfeatherbookstore.in" target="_blank" style="color:#5A5268;">yellowfeatherbookstore.in</a>
+    </footer>
+  </div>
+
+  <!-- ══ SUBMIT BOOK SCREEN ══ -->
+  <div id="submit-screen">
+    <div class="portal-back-bar" style="background:#F5B800;padding:0.85rem 1.5rem;display:flex;align-items:center;">
+      <button onclick="closeSubmitForm()"
+        style="display:inline-flex;align-items:center;gap:0.4rem;background:none;border:none;cursor:pointer;color:#0B0E1A;font-family:Inter,sans-serif;font-size:0.95rem;font-weight:700;padding:0;">
+        &#8592; Back to Home
+      </button>
+    </div>
+
+    <div class="submit-wrap">
+      <div class="submit-layout">
+
+        <!-- Sidebar -->
+        <div class="submit-sidebar">
+          <div class="submit-sidebar-logo">
+            <img src="logo-portrait.png" alt="Yellow Feather Books" />
+          </div>
+          <div>
+            <h3>List Your Book With Us</h3>
+            <p style="margin-top:0.6rem;">Reach thousands of readers across India. Submit your details and we'll handle the rest.</p>
+          </div>
+          <div class="submit-steps">
+            <div class="submit-step">
+              <div class="submit-step-dot">1</div>
+              <div class="submit-step-text">
+                <strong>Fill the form</strong>
+                Enter your book details below
+              </div>
+            </div>
+            <div class="submit-step">
+              <div class="submit-step-dot">2</div>
+              <div class="submit-step-text">
+                <strong>We review & list</strong>
+                Your book goes live on the store
+              </div>
+            </div>
+            <div class="submit-step">
+              <div class="submit-step-dot">3</div>
+              <div class="submit-step-text">
+                <strong>Track your sales</strong>
+                Monitor orders from your dashboard
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Form Panel -->
+        <div class="submit-form-panel">
+          <h2>Book Submission</h2>
+          <p class="sub-label">All fields marked * are required</p>
+
+          <div id="submit-error" class="submit-error"></div>
+
+          <div class="submit-section-label">Book Information</div>
+
+          <div class="sf-field">
+            <label class="sf-label">Book Title *</label>
+            <input id="sb-book" type="text" class="sf-input" placeholder="Enter the full title of your book" />
+          </div>
+
+          <div class="sf-field">
+            <label class="sf-label">Author Name *</label>
+            <input id="sb-author" type="text" class="sf-input" placeholder="Full name of the author" />
+          </div>
+
+          <div class="sf-field">
+            <label class="sf-label">Publisher *</label>
+            <select id="sb-publisher" class="sf-input" onchange="toggleOtherPublisher(this.value)">
+              <option value="">Select a publisher</option>
+              <option value="Aura Tales">Aura Tales</option>
+              <option value="Bibliophilic Insanities">Bibliophilic Insanities</option>
+              <option value="Book Carry">Book Carry</option>
+              <option value="Chintha Publishers">Chintha Publishers</option>
+              <option value="Current Books">Current Books</option>
+              <option value="DC Books">DC Books</option>
+              <option value="Don Books">Don Books</option>
+              <option value="Dream Bookbindery">Dream Bookbindery</option>
+              <option value="EB Books">EB Books</option>
+              <option value="Green Books">Green Books</option>
+              <option value="H&amp;C Publishing House">H&amp;C Publishing House</option>
+              <option value="Insight Publica">Insight Publica</option>
+              <option value="Islamic Publishing House">Islamic Publishing House</option>
+              <option value="Kairali Books">Kairali Books</option>
+              <option value="Kerala Books and Publications Society (KBPS)">Kerala Books and Publications Society (KBPS)</option>
+              <option value="Kerala Sahitya Akademi">Kerala Sahitya Akademi</option>
+              <option value="Lipi Publications">Lipi Publications</option>
+              <option value="Litmus">Litmus</option>
+              <option value="Logos Books">Logos Books</option>
+              <option value="Maithri Books">Maithri Books</option>
+              <option value="Mankind Literature">Mankind Literature</option>
+              <option value="Manorama Books">Manorama Books</option>
+              <option value="Mathrubhumi Books">Mathrubhumi Books</option>
+              <option value="National Book Stall (NBS)">National Book Stall (NBS)</option>
+              <option value="Olive Publications">Olive Publications</option>
+              <option value="Poorna Publications">Poorna Publications</option>
+              <option value="Pravada Books">Pravada Books</option>
+              <option value="Sahitya Pravarthaka Co-operative Society">Sahitya Pravarthaka Co-operative Society</option>
+              <option value="Saikatham Books">Saikatham Books</option>
+              <option value="Story Slate">Story Slate</option>
+              <option value="Vidyarthi Mithram">Vidyarthi Mithram</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+
+          <div class="sf-field" id="sb-publisher-other-wrap" style="display:none;">
+            <label class="sf-label">Publisher Name *</label>
+            <input id="sb-publisher-other" type="text" class="sf-input" placeholder="Enter your publisher name" />
+          </div>
+
+          <div class="sf-field">
+            <label class="sf-label">Genre *</label>
+            <select id="sb-genre" class="sf-input">
+              <option value="">Select a genre</option>
+              <option value="Fiction">Fiction</option>
+              <option value="Non-Fiction">Non-Fiction</option>
+              <option value="Romance">Romance</option>
+              <option value="Mystery">Mystery</option>
+              <option value="Thriller">Thriller</option>
+              <option value="Fantasy">Fantasy</option>
+              <option value="Science Fiction">Science Fiction</option>
+              <option value="Historical Fiction">Historical Fiction</option>
+              <option value="Horror">Horror</option>
+              <option value="Adventure">Adventure</option>
+              <option value="Biography">Biography</option>
+              <option value="Autobiography">Autobiography</option>
+              <option value="Memoir">Memoir</option>
+              <option value="Self-Help">Self-Help</option>
+              <option value="Poetry">Poetry</option>
+              <option value="Drama">Drama</option>
+              <option value="Children's Literature">Children's Literature</option>
+              <option value="Young Adult (YA)">Young Adult (YA)</option>
+              <option value="Crime">Crime</option>
+              <option value="Suspense">Suspense</option>
+              <option value="Spiritual / Religious">Spiritual / Religious</option>
+              <option value="Philosophy">Philosophy</option>
+              <option value="Travel">Travel</option>
+              <option value="Humor / Comedy">Humor / Comedy</option>
+              <option value="Business / Finance">Business / Finance</option>
+              <option value="Health & Wellness">Health &amp; Wellness</option>
+              <option value="Cookbooks">Cookbooks</option>
+              <option value="Graphic Novels / Comics">Graphic Novels / Comics</option>
+              <option value="Classic Literature">Classic Literature</option>
+              <option value="Literary Fiction">Literary Fiction</option>
+              <option value="Short Stories">Short Stories</option>
+              <option value="Novel">Novel</option>
+              <option value="Tantric">Tantric</option>
+              <option value="Translations">Translations</option>
+              <option value="Socio-Political">Socio-Political</option>
+              <option value="Travelogues">Travelogues</option>
+              <option value="Thriller &amp; Crime">Thriller &amp; Crime</option>
+              <option value="Anthologies">Anthologies</option>
+            </select>
+          </div>
+
+          <div class="sf-field">
+            <label class="sf-label">Genre Tags for Search &amp; Discovery</label>
+            <div class="sf-hint" style="margin-bottom:0.45rem;">Select all that apply — helps readers find your book via AI search and genre filters.</div>
+            <div class="sf-tag-pill-grid" id="sb-genre-tags">
+              <button type="button" class="sf-tag-pill" data-tag="Romantic"       onclick="sfToggleTag(this)">Romantic</button>
+              <button type="button" class="sf-tag-pill" data-tag="crime"          onclick="sfToggleTag(this)">Crime</button>
+              <button type="button" class="sf-tag-pill" data-tag="investigation"  onclick="sfToggleTag(this)">Mystery / Investigation</button>
+              <button type="button" class="sf-tag-pill" data-tag="murder"         onclick="sfToggleTag(this)">Murder</button>
+              <button type="button" class="sf-tag-pill" data-tag="Fiction"        onclick="sfToggleTag(this)">Fiction</button>
+              <button type="button" class="sf-tag-pill" data-tag="historic"       onclick="sfToggleTag(this)">Historic</button>
+              <button type="button" class="sf-tag-pill" data-tag="Period Drama"   onclick="sfToggleTag(this)">Period Drama</button>
+              <button type="button" class="sf-tag-pill" data-tag="Adventure"      onclick="sfToggleTag(this)">Adventure</button>
+              <button type="button" class="sf-tag-pill" data-tag="Memoir"         onclick="sfToggleTag(this)">Memoir / Biography</button>
+              <button type="button" class="sf-tag-pill" data-tag="Philosophy"     onclick="sfToggleTag(this)">Philosophy / Self-Help</button>
+              <button type="button" class="sf-tag-pill" data-tag="poetry"         onclick="sfToggleTag(this)">Poetry</button>
+              <button type="button" class="sf-tag-pill" data-tag="children"       onclick="sfToggleTag(this)">Children's</button>
+              <button type="button" class="sf-tag-pill" data-tag="Young Adult"    onclick="sfToggleTag(this)">Young Adult</button>
+            </div>
+          </div>
+
+          <div class="submit-section-label">Pricing</div>
+
+          <div class="sf-field">
+            <label class="sf-label">MRP (₹) *</label>
+            <input id="sb-mrp" type="number" class="sf-input" placeholder="e.g. 299" min="0" />
+            <div class="sf-hint">Maximum retail price</div>
+          </div>
+
+          <div class="sf-field">
+            <label class="sf-label">Short Description</label>
+            <textarea id="sb-desc" class="sf-textarea" placeholder="Write a brief description of your book (max 500 characters)…" maxlength="500" oninput="updateCharCount()"></textarea>
+            <div class="sf-char-count" id="sb-char-count">0 / 500</div>
+          </div>
+
+          <div class="sf-field">
+            <label class="sf-label">Cover Design</label>
+            <div class="cover-upload-area" id="cover-drop-area">
+              <input type="file" id="sb-cover" accept="image/jpeg,image/png,image/webp" onchange="handleCoverSelect(event)" />
+              <div class="cover-upload-icon">🖼️</div>
+              <div class="cover-upload-text">
+                <strong>Click to upload</strong> or drag &amp; drop<br/>
+                JPG, PNG or WEBP &nbsp;·&nbsp; Max 2 MB
+              </div>
+            </div>
+            <div class="cover-preview" id="cover-preview">
+              <img id="cover-thumb" src="" alt="Cover preview" />
+              <div class="cover-preview-info">
+                <div class="cover-preview-name" id="cover-name"></div>
+                <div class="cover-preview-size" id="cover-size"></div>
+              </div>
+              <button class="cover-remove" onclick="removeCover()" title="Remove">✕</button>
+            </div>
+          </div>
+
+          <div class="submit-section-label">Additional Details</div>
+
+          <div class="form-row">
+            <div class="sf-field">
+              <label class="sf-label">Barcode / ISBN *</label>
+              <input id="sb-barcode" type="text" class="sf-input" placeholder="13-digit barcode" />
+            </div>
+            <div class="sf-field">
+              <label class="sf-label">Phone Number</label>
+              <input id="sb-phone" type="tel" class="sf-input" placeholder="+91 XXXXX XXXXX" />
+            </div>
+          </div>
+
+          <button class="submit-btn" id="sb-btn" onclick="handleBookSubmit()">
+            Submit Book for Listing →
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+    <footer style="border-top:1px solid var(--border);padding:1.5rem;text-align:center;font-size:0.76rem;color:#3A3545;">
+      &copy; 2026 Yellow Feather Books &nbsp;·&nbsp;
+      <a href="https://yellowfeatherbookstore.in" target="_blank" style="color:#5A5268;">yellowfeatherbookstore.in</a>
+    </footer>
+  </div>
+
+  <!-- ══ MY SALES SCREEN ══ -->
+  <div id="mysales-screen">
+
+    <div class="portal-back-bar" style="background:#F5B800;padding:0.85rem 1.5rem;display:flex;align-items:center;gap:1rem;">
+      <button onclick="closeMySales()"
+        style="display:inline-flex;align-items:center;gap:0.4rem;background:none;border:none;cursor:pointer;color:#0B0E1A;font-family:Inter,sans-serif;font-size:0.95rem;font-weight:700;padding:0;">
+        &#8592; Back to Home
+      </button>
+    </div>
+
+    <div class="mybooks-wrap">
+      <div class="success-bg"></div>
+      <div class="success-vignette"></div>
+      <div class="mybooks-content">
+
+        <div class="rainbow-bar" style="margin-bottom:1rem;"></div>
+        <h2 class="mybooks-heading">My Sales</h2>
+        <p id="ms-email-label" class="mybooks-sub"></p>
+
+        <div id="ms-loading" class="mb-state">
+          <div class="mb-icon">⏳</div>
+          Loading your sales data…
+        </div>
+
+        <div id="ms-empty" class="mb-state" style="display:none;">
+          <div class="mb-icon">📊</div>
+          No sales found yet.<br/>
+          <span style="font-size:0.84rem;color:var(--muted);">Orders will appear here once your books start selling.</span>
+        </div>
+
+        <div id="ms-list" style="display:none;">
+          <div class="sales-table-wrap">
+            <table class="sales-table">
+              <thead>
+                <tr>
+                  <th>Book Title</th>
+                  <th>Order #</th>
+                  <th>Date</th>
+                  <th>Qty</th>
+                  <th>Payment</th>
+                  <th>Fulfillment</th>
+                </tr>
+              </thead>
+              <tbody id="ms-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <footer style="border-top:1px solid var(--border);padding:1.5rem;text-align:center;font-size:0.76rem;color:#3A3545;">
+      &copy; 2026 Yellow Feather Books &nbsp;·&nbsp;
+      <a href="https://yellowfeatherbookstore.in" target="_blank" style="color:#5A5268;">yellowfeatherbookstore.in</a>
+    </footer>
+  </div>
+
+  <div class="rainbow-divider"></div>
+
+  <!-- ══ BOTTOM CTA ══ -->
+  <section class="bottom-cta">
+    <div class="bottom-cta-bg"></div>
+    <div class="bottom-cta-content">
+      <h2>Ready to Share<br/>Your Story?</h2>
+      <p>
+        Whether you're an independent author, a small publisher, or a literary collective —
+        Yellow Feather Books is the place for your work.
+      </p>
+
+      <a href="#pricing" id="bottom-cta-new" class="cta-btn">
+        View Plans <span class="cta-arrow">→</span>
+      </a>
+      <button onclick="handleSubmitClick(this)" class="cta-btn" id="bottom-cta-sub"
+         style="display:none;border:none;cursor:pointer;font-family:Inter,sans-serif;">
+        Submit Your Book <span class="cta-arrow">→</span>
+      </button>
+      <p id="bottom-quota-error" style="display:none;margin-top:0.6rem;font-size:0.82rem;color:#e63946;line-height:1.5;"></p>
+
+      <p class="contact-note">
+        Questions? Write to us at
+        <a href="mailto:bookstore@yellowfeatherbookstore.com">bookstore@yellowfeatherbookstore.com</a>
+      </p>
+    </div>
+  </section>
+
+  <!-- ══ FOOTER ══ -->
+  <footer>
+    &copy; 2026 Yellow Feather Books &nbsp;·&nbsp;
+    <a href="https://yellowfeatherbookstore.in" target="_blank">yellowfeatherbookstore.in</a>
+  </footer>
+
+  <script>
+    var RAZORPAY_KEY        = '';
+    fetch('/.netlify/functions/get-razorpay-key').then(r => r.json()).then(d => { RAZORPAY_KEY = d.key; });
+    var CREATE_SUB_URL      = '/.netlify/functions/create-subscription';
+    var CHECK_SUB_URL       = '/.netlify/functions/check-subscription';
+    var SAVE_SUB_URL        = '/.netlify/functions/save-subscription';
+    var GET_SUBMISSIONS_URL = '/.netlify/functions/get-submissions';
+    var GET_SALES_URL       = '/.netlify/functions/get-sales';
+    var REGISTER_USER_URL   = '/.netlify/functions/register-user';
+    var LOGIN_USER_URL      = '/.netlify/functions/login-user';
+    var FORGOT_URL          = '/.netlify/functions/forgot-password';
+    var RESET_URL           = '/.netlify/functions/reset-password';
+
+    var currentUserName  = null;
+    var pendingResetToken = null;
+
+    var PLANS = {
+      starter:   { name: 'Starter',   quota: 1,  plan_id: 'plan_SkuiB2nyoaswNZ' },
+      growth:    { name: 'Growth',    quota: 3,  plan_id: 'plan_SkukwXUCHR58qz' },
+      publisher: { name: 'Publisher', quota: 10, plan_id: 'plan_SkukHR8IHnriYi' }
+    };
+
+    var currentEmail          = null;
+    var currentQuota          = 0;
+    var currentPlanName       = '';
+    var currentSubscriptionId = null;
+    var SUBMIT_BOOK_URL       = '/.netlify/functions/submit-book';
+    var CANCEL_SUB_URL        = '/.netlify/functions/cancel-subscription';
+    var CREATE_TOPUP_URL      = '/.netlify/functions/create-topup-order';
+    var VERIFY_TOPUP_URL      = '/.netlify/functions/verify-topup-payment';
+
+    // ── Scroll reveal ──
+    const reveals = document.querySelectorAll('.reveal');
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry, i) => {
+        if (entry.isIntersecting) {
+          setTimeout(() => entry.target.classList.add('visible'), i * 120);
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.15 });
+    reveals.forEach(el => observer.observe(el));
+
+    function switchAuthTab(tab) {
+      document.getElementById('auth-login-panel').style.display  = tab === 'login'  ? 'block' : 'none';
+      document.getElementById('auth-signup-panel').style.display = tab === 'signup' ? 'block' : 'none';
+      document.getElementById('tab-login').classList.toggle('active',  tab === 'login');
+      document.getElementById('tab-signup').classList.toggle('active', tab === 'signup');
+    }
+
+    // ── Cross-origin messaging with the landing portal (when embedded in iframe) ──
+    window.addEventListener('message', function(event) {
+      // Only accept messages from the Yellow Feather Books landing portal
+      if (event.origin !== window.location.origin) return;
+      var msg = event.data;
+      if (!msg || !msg.type) return;
+
+      // ── yfb_auth: author already signed in on the landing portal ──
+      if (msg.type === 'yfb_auth' && msg.email) {
+        if (currentEmail) return;  // already authenticated — ignore
+        currentEmail    = msg.email;
+        currentUserName = msg.name || null;
+        localStorage.setItem('yfb_email', msg.email);
+        if (msg.name) localStorage.setItem('yfb_name', msg.name);
+        fetch(CHECK_SUB_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: msg.email })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          hideAuthScreen();
+          showUserNav(currentUserName); // no-op in iframe (showUserNav checks window.top)
+          if (data.found) {
+            applyReturningUser({ name: data.plan_name, quota: data.quota, subscriptionId: data.subscription_id });
+          }
+        })
+        .catch(function() { hideAuthScreen(); });
+      }
+
+      // ── yfb_logout: landing portal logout button was clicked ──
+      if (msg.type === 'yfb_logout') {
+        currentEmail = null; currentUserName = null;
+        localStorage.removeItem('yfb_email');
+        localStorage.removeItem('yfb_name');
+      }
+
+      // ── yfb_navigate: landing portal tile nav clicked ──
+      if (msg.type === 'yfb_navigate' && currentEmail) {
+        if (msg.tab === 'portal')  showPortalHome();
+        if (msg.tab === 'welcome') showAuthorWelcome();
+        if (msg.tab === 'submit')  showSubmitForm();
+        if (msg.tab === 'mybooks') showMyBooks();
+        if (msg.tab === 'sales')   showMySales();
+        if (msg.tab === 'cancel')  showCancelModal();
+      }
+    });
+
+    function hideAuthScreen() {
+      document.getElementById('auth-screen').classList.add('hidden');
+    }
+
+    function togglePassword(inputId, btn) {
+      var input = document.getElementById(inputId);
+      var showing = input.type === 'text';
+      input.type = showing ? 'password' : 'text';
+      btn.innerHTML = showing
+        ? '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>'
+        : '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+    }
+
+    async function handleLogin() {
+      var email    = document.getElementById('login-email').value.trim().toLowerCase();
+      var password = document.getElementById('login-password').value;
+      var btn      = document.getElementById('login-btn');
+      var err      = document.getElementById('login-error');
+
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        err.textContent = 'Please enter a valid email address.';
+        err.style.display = 'block'; return;
+      }
+      if (!password) {
+        err.textContent = 'Please enter your password.';
+        err.style.display = 'block'; return;
+      }
+      err.style.display = 'none';
+      btn.innerHTML = 'Signing in…';
+      btn.disabled  = true;
+
+      try {
+        var res  = await fetch(LOGIN_USER_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        var data = await res.json();
+
+        if (!data.success) {
+          err.textContent = data.error || 'Invalid email or password.';
+          err.style.display = 'block';
+          btn.innerHTML = 'Log In →';
+          btn.disabled  = false;
+          return;
+        }
+
+        currentEmail    = email;
+        currentUserName = data.name || null;
+        localStorage.setItem('yfb_email', email);
+        if (data.name) localStorage.setItem('yfb_name', data.name);
+
+        var subRes  = await fetch(CHECK_SUB_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+        var subData = await subRes.json();
+        hideAuthScreen();
+        showUserNav(currentUserName);
+        if (subData.found) {
+          applyReturningUser({ name: subData.plan_name, quota: subData.quota, subscriptionId: subData.subscription_id });
+        }
+      } catch(e) {
+        err.textContent = 'Something went wrong. Please try again.';
+        err.style.display = 'block';
+      }
+
+      btn.innerHTML = 'Log In →';
+      btn.disabled  = false;
+    }
+
+    async function handleSignup() {
+      var name     = document.getElementById('signup-name').value.trim();
+      var email    = document.getElementById('signup-email').value.trim().toLowerCase();
+      var phone    = document.getElementById('signup-phone').value.trim();
+      var password = document.getElementById('signup-password').value;
+      var confirm  = document.getElementById('signup-confirm').value;
+      var btn      = document.getElementById('signup-btn');
+      var err      = document.getElementById('signup-error');
+
+      if (!name) {
+        err.textContent = 'Please enter your name.';
+        err.style.display = 'block'; return;
+      }
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        err.textContent = 'Please enter a valid email address.';
+        err.style.display = 'block'; return;
+      }
+      if (!phone || !/^[6-9]\d{9}$/.test(phone)) {
+        err.textContent = 'Please enter a valid 10-digit mobile number.';
+        err.style.display = 'block'; return;
+      }
+      var phoneWithCode = '+91' + phone;
+      if (!password || password.length < 8) {
+        err.textContent = 'Password must be at least 8 characters.';
+        err.style.display = 'block'; return;
+      }
+      if (password !== confirm) {
+        err.textContent = 'Passwords do not match.';
+        err.style.display = 'block'; return;
+      }
+      err.style.display = 'none';
+      btn.innerHTML = 'Creating account…';
+      btn.disabled  = true;
+
+      try {
+        var res  = await fetch(REGISTER_USER_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, phone: phoneWithCode, password })
+        });
+        var data = await res.json();
+
+        if (data.error) {
+          err.textContent = data.error;
+          err.style.display = 'block';
+          btn.innerHTML = 'Create Account →';
+          btn.disabled  = false;
+          return;
+        }
+
+        if (data.upgraded) {
+          // Club member account upgraded — show info and switch to Login tab
+          err.style.display = 'none';
+          btn.innerHTML = 'Create Account →';
+          btn.disabled  = false;
+          switchAuthTab('login');
+          // Prefill email and show a friendly banner
+          var loginEmail = document.getElementById('login-email');
+          if (loginEmail) loginEmail.value = email;
+          var loginErr = document.getElementById('login-error');
+          if (loginErr) {
+            loginErr.style.cssText = 'display:block;color:#2ecc71;background:rgba(46,204,113,0.1);padding:0.5rem 0.75rem;border-radius:6px;font-size:0.83rem;';
+            loginErr.textContent = data.message || "Author access added! Please log in with your new password.";
+          }
+          return;
+        }
+
+        // Brand-new author account — log them in directly
+        currentEmail    = email;
+        currentUserName = name;
+        localStorage.setItem('yfb_email', email);
+        localStorage.setItem('yfb_name',  name);
+        document.getElementById('sub-success-screen').classList.remove('active');
+        hideAuthScreen();
+        showUserNav(currentUserName);
+      } catch(e) {
+        err.textContent = 'Something went wrong. Please try again.';
+        err.style.display = 'block';
+      }
+
+      btn.innerHTML = 'Create Account →';
+      btn.disabled  = false;
+    }
+
+    function showForgotScreen() {
+      document.getElementById('forgot-email').value = '';
+      document.getElementById('forgot-error').style.display = 'none';
+      document.getElementById('forgot-form-panel').style.display    = 'block';
+      document.getElementById('forgot-success-panel').style.display = 'none';
+      document.getElementById('forgot-screen').style.display = 'flex';
+    }
+
+    function hideForgotScreen() {
+      document.getElementById('forgot-screen').style.display = 'none';
+    }
+
+    async function handleForgotPassword() {
+      var email = document.getElementById('forgot-email').value.trim().toLowerCase();
+      var btn   = document.getElementById('forgot-btn');
+      var err   = document.getElementById('forgot-error');
+
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        err.textContent = 'Please enter a valid email address.';
+        err.style.display = 'block'; return;
+      }
+      err.style.display = 'none';
+      btn.innerHTML = 'Sending…';
+      btn.disabled  = true;
+
+      try {
+        await fetch(FORGOT_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+        document.getElementById('forgot-email-sent').textContent = email;
+        document.getElementById('forgot-form-panel').style.display    = 'none';
+        document.getElementById('forgot-success-panel').style.display = 'block';
+      } catch(e) {
+        err.textContent = 'Something went wrong. Please try again.';
+        err.style.display = 'block';
+      }
+
+      btn.innerHTML = 'Send Reset Link →';
+      btn.disabled  = false;
+    }
+
+    async function handleResetPassword() {
+      var password = document.getElementById('reset-password').value;
+      var confirm  = document.getElementById('reset-confirm').value;
+      var btn      = document.getElementById('reset-btn');
+      var err      = document.getElementById('reset-error');
+
+      if (!password || password.length < 8) {
+        err.textContent = 'Password must be at least 8 characters.';
+        err.style.display = 'block'; return;
+      }
+      if (password !== confirm) {
+        err.textContent = 'Passwords do not match.';
+        err.style.display = 'block'; return;
+      }
+      err.style.display = 'none';
+      btn.innerHTML = 'Resetting…';
+      btn.disabled  = true;
+
+      try {
+        var res  = await fetch(RESET_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: pendingResetToken, password })
+        });
+        var data = await res.json();
+
+        if (data.success) {
+          document.getElementById('reset-form-panel').style.display    = 'none';
+          document.getElementById('reset-success-panel').style.display = 'block';
+        } else {
+          err.textContent = data.error || 'Reset failed. The link may have expired.';
+          err.style.display = 'block';
+          btn.innerHTML = 'Reset Password →';
+          btn.disabled  = false;
+        }
+      } catch(e) {
+        err.textContent = 'Something went wrong. Please try again.';
+        err.style.display = 'block';
+        btn.innerHTML = 'Reset Password →';
+        btn.disabled  = false;
+      }
+    }
+
+    function afterResetLogin() {
+      document.getElementById('reset-screen').style.display = 'none';
+      pendingResetToken = null;
+      history.replaceState(null, '', window.location.pathname);
+      switchAuthTab('login');
+      document.getElementById('auth-screen').classList.remove('hidden');
+    }
+
+    async function subscribe(planKey, btn) {
+      if (!RAZORPAY_KEY) {
+        try {
+          const kd = await fetch('/.netlify/functions/get-razorpay-key').then(r => r.json());
+          RAZORPAY_KEY = kd.key;
+        } catch(e) {}
+      }
+      if (!RAZORPAY_KEY) { alert('Payment system not ready. Please refresh and try again.'); return; }
+
+      var plan = PLANS[planKey];
+      var originalText = btn.innerHTML;
+      btn.innerHTML = 'Please wait…';
+      btn.disabled = true;
+
+      try {
+        var res = await fetch(CREATE_SUB_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            plan_id:    plan.plan_id,
+            authorName: currentUserName || currentEmail,
+            planName:   plan.name,
+            planMonths: '1'
+          })
+        });
+        var data = await res.json();
+        console.log('Function response:', JSON.stringify(data));
+        var subId = data.subscription_id || data.id;
+        if (!subId) throw new Error('No subscription ID. Response: ' + JSON.stringify(data));
+
+        var rzp = new Razorpay({
+          key: RAZORPAY_KEY,
+          subscription_id: subId,
+          name: 'Yellow Feather Books',
+          description: plan.name + ' Plan',
+          image: 'https://yellowfeather.netlify.app/logo-portrait.png',
+          theme: { color: '#C9922A' },
+          prefill: { email: currentEmail || '' },
+          handler: async function(response) {
+            var sid     = response.razorpay_subscription_id || subId;
+            var saved   = await saveSubscription(planKey, sid);
+            if (!saved) {
+              alert('Payment received but we could not save your subscription. Please contact bookstore@yellowfeatherbookstore.com with your payment ID: ' + sid);
+              return;
+            }
+            showSubSuccess(planKey, sid);
+          },
+          modal: {
+            ondismiss: function() {
+              btn.innerHTML = originalText;
+              btn.disabled = false;
+            }
+          }
+        });
+        rzp.open();
+
+      } catch(err) {
+        alert('Something went wrong. Please try again or contact bookstore@yellowfeatherbookstore.com');
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+      }
+    }
+
+    async function saveSubscription(planKey, subscriptionId) {
+      var plan = PLANS[planKey];
+      try {
+        var res  = await fetch(SAVE_SUB_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: currentEmail,
+            plan_name: plan.name,
+            plan_id: plan.plan_id,
+            subscription_id: subscriptionId
+          })
+        });
+        var data = await res.json();
+        if (!data.success) throw new Error(data.error || 'Save failed');
+        return true;
+      } catch(e) {
+        console.error('Save failed:', e);
+        return false;
+      }
+    }
+
+    function showSubSuccess(planKey, subscriptionId) {
+      var plan = PLANS[planKey];
+      // Wire up globals so quota check works immediately after subscribing
+      currentQuota          = plan.quota;
+      currentSubscriptionId = subscriptionId || null;
+      document.getElementById('ss-plan-name').textContent = plan.name;
+      document.getElementById('ss-quota').textContent = plan.quota + (plan.quota === 1 ? ' book' : ' books');
+      document.getElementById('sub-success-screen').classList.add('active');
+      // Update hero section for if user scrolls back up
+      applyReturningUser({ name: plan.name, quota: plan.quota, subscriptionId: subscriptionId || null });
+      window.scrollTo(0, 0);
+    }
+
+    function applyReturningUser(sub) {
+      currentPlanName       = (sub.name || '').toLowerCase();
+      currentSubscriptionId = sub.subscriptionId || null;
+      // Use PLANS as the source of truth for quota — server value may be stale
+      var planKey = Object.keys(PLANS).find(function(k) { return PLANS[k].name.toLowerCase() === currentPlanName; });
+      currentQuota = planKey ? PLANS[planKey].quota : (sub.quota || 0);
+
+      // Update the quota action link based on plan
+      var actionLink = document.getElementById('hero-quota-action');
+      if (actionLink) {
+        if (currentPlanName === 'publisher') {
+          actionLink.textContent = 'Buy more slots';
+          actionLink.href = '#';
+          actionLink.onclick = function(e) { e.preventDefault(); openTopupModal(); };
+        } else {
+          actionLink.textContent = 'Upgrade plan';
+          actionLink.href = '#pricing';
+          actionLink.onclick = null;
+        }
+      }
+
+      showUserNav(currentUserName);
+
+      // Hero: show returning user block, hide new user CTA
+      document.getElementById('hero-cta-new').style.display = 'none';
+      document.getElementById('hero-returning').style.display = 'block';
+      document.getElementById('hero-plan-name').textContent = sub.name + ' Plan';
+      document.getElementById('hero-quota').textContent =
+        sub.quota + (sub.quota === 1 ? ' book' : ' books') + ' per month';
+
+      // Bottom CTA: swap buttons
+      document.getElementById('bottom-cta-new').style.display = 'none';
+      document.getElementById('bottom-cta-sub').style.display = 'inline-flex';
+
+      // Notify landing portal so it can show the plan badge in the sidebar
+      if (window !== window.top) {
+        try {
+          window.parent.postMessage(
+            { type: 'yfb_plan', planName: sub.name, quota: currentQuota },
+            window.location.origin
+          );
+        } catch(e) {}
+      }
+    }
+
+    async function handleSubmitClick(btn) {
+      var orig = btn.innerHTML;
+      btn.innerHTML = 'Checking quota…';
+      btn.disabled = true;
+
+      try {
+        var res = await fetch(GET_SUBMISSIONS_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: currentEmail })
+        });
+        var data = await res.json();
+        var submissions = data.submissions || [];
+
+        var now = new Date();
+        var usedThisMonth = submissions.filter(function(s) {
+          if (!s.submittted_date) return false;
+          if (s.subscription_id !== currentSubscriptionId) return false;
+          var d = new Date(s.submittted_date);
+          return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+        }).length;
+
+        btn.innerHTML = orig;
+        btn.disabled = false;
+
+        if (usedThisMonth >= currentQuota) {
+          var errId = btn.id === 'hero-submit-btn' ? 'hero-quota-error'
+                    : btn.id === 'ss-form-link'    ? 'ss-quota-error'
+                    : 'bottom-quota-error';
+          var errEl = document.getElementById(errId);
+          var actionHtml;
+          if (currentPlanName === 'publisher') {
+            actionHtml = '<a href="#" onclick="openTopupModal();return false;" style="color:var(--gold);font-weight:600;">Buy extra slots →</a>';
+          } else if (currentPlanName === 'growth') {
+            actionHtml = '<a href="#pricing" style="color:var(--gold);font-weight:600;">Upgrade to Publisher →</a>';
+          } else {
+            actionHtml = '<a href="#pricing" style="color:var(--gold);font-weight:600;">Upgrade to Growth →</a>';
+          }
+          errEl.innerHTML = 'You\'ve used all ' + currentQuota + ' submission'
+            + (currentQuota === 1 ? '' : 's') + ' for this month. ' + actionHtml;
+          errEl.style.display = 'block';
+          setTimeout(function() { errEl.style.display = 'none'; }, 8000);
+        } else {
+          showSubmitForm();
+        }
+      } catch(e) {
+        btn.innerHTML = orig;
+        btn.disabled = false;
+        window.open(N8N_FORM_URL, '_blank');
+      }
+    }
+
+    function showCancelModal() {
+      document.getElementById('cancel-modal-error').style.display = 'none';
+      document.getElementById('cancel-confirm-btn').disabled = false;
+      document.getElementById('cancel-confirm-btn').textContent = 'Yes, Cancel It';
+      document.getElementById('cancel-modal').classList.add('active');
+    }
+
+    function closeCancelModal() {
+      document.getElementById('cancel-modal').classList.remove('active');
+    }
+
+    async function confirmCancel() {
+      var btn = document.getElementById('cancel-confirm-btn');
+      var err = document.getElementById('cancel-modal-error');
+      btn.disabled = true;
+      btn.textContent = 'Cancelling…';
+      err.style.display = 'none';
+
+      try {
+        var res = await fetch(CANCEL_SUB_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ subscription_id: currentSubscriptionId, email: currentEmail })
+        });
+        var data = await res.json();
+
+        if (data.success) {
+          closeCancelModal();
+          resetToNonSubscriber();
+        } else {
+          var msg = (data.error && data.error.description) || data.error || 'Cancellation failed. Please try again.';
+          err.textContent = msg;
+          err.style.display = 'block';
+          btn.disabled = false;
+          btn.textContent = 'Yes, Cancel It';
+        }
+      } catch(e) {
+        err.textContent = 'Something went wrong. Please try again.';
+        err.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Yes, Cancel It';
+      }
+    }
+
+    // ── User nav helpers ──
+    function showUserNav(name) {
+      // When embedded in the landing portal iframe the parent nav handles auth UI —
+      // suppress the portal's own floating nav to avoid a duplicate logout button.
+      if (window !== window.top) return;
+      var nav    = document.getElementById('user-nav');
+      var avatar = document.getElementById('user-avatar');
+      var nameEl = document.getElementById('user-nav-name');
+      if (name) {
+        avatar.textContent = name.charAt(0).toUpperCase();
+        nameEl.textContent = name;
+      }
+      nav.style.display = 'flex';
+    }
+
+    function hideUserNav() {
+      document.getElementById('user-nav').style.display = 'none';
+    }
+
+    function logOut() {
+      hideUserNav();
+      localStorage.removeItem('yfb_email');
+      localStorage.removeItem('yfb_name');
+      currentEmail          = null;
+      currentUserName       = null;
+      currentQuota          = 0;
+      currentSubscriptionId = null;
+      document.getElementById('hero-returning').style.display  = 'none';
+      document.getElementById('hero-cta-new').style.display    = 'inline-flex';
+      document.getElementById('bottom-cta-new').style.display  = 'inline-flex';
+      document.getElementById('bottom-cta-sub').style.display  = 'none';
+      document.getElementById('mybooks-screen').classList.remove('active');
+      document.getElementById('mysales-screen').classList.remove('active');
+      document.getElementById('submit-screen').classList.remove('active');
+      document.getElementById('sub-success-screen').classList.remove('active');
+      document.getElementById('login-email').value    = '';
+      document.getElementById('login-password').value = '';
+      document.getElementById('signup-name').value    = '';
+      document.getElementById('signup-email').value   = '';
+      document.getElementById('signup-password').value = '';
+      document.getElementById('signup-confirm').value  = '';
+      switchAuthTab('login');
+      document.getElementById('auth-screen').classList.remove('hidden');
+      window.scrollTo(0, 0);
+    }
+
+    function resetToNonSubscriber() {
+      hideUserNav();
+      currentQuota          = 0;
+      currentSubscriptionId = null;
+      localStorage.removeItem('yfb_email');
+      localStorage.removeItem('yfb_name');
+
+      document.getElementById('hero-returning').style.display  = 'none';
+      document.getElementById('hero-cta-new').style.display    = 'inline-flex';
+      document.getElementById('bottom-cta-new').style.display  = 'inline-flex';
+      document.getElementById('bottom-cta-sub').style.display  = 'none';
+      document.getElementById('mybooks-screen').classList.remove('active');
+      document.getElementById('mysales-screen').classList.remove('active');
+
+      window.scrollTo(0, 0);
+
+      var banner = document.createElement('div');
+      banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:500;background:#2dc653;color:#fff;font-family:Inter,sans-serif;font-size:0.9rem;font-weight:600;text-align:center;padding:0.9rem 1.5rem;';
+      banner.textContent = 'Your subscription has been cancelled.';
+      document.body.appendChild(banner);
+      setTimeout(function() { banner.remove(); }, 4000);
+    }
+
+    // Return to the native portal landing page (hero, plans, my books button)
+    function showPortalHome() {
+      closeAuthorWelcome();
+      ['success-screen','sub-success-screen','mybooks-screen','mysales-screen','submit-screen'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) { el.classList.remove('active'); el.style.display = ''; }
+      });
+      window.scrollTo(0, 0);
+    }
+
+    function showAuthorWelcome() {
+      // Hide all overlay screens
+      ['success-screen','sub-success-screen','mybooks-screen','mysales-screen','submit-screen'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) { el.classList.remove('active'); el.style.display = ''; }
+      });
+      var ws = document.getElementById('author-welcome-screen');
+      ws.style.display = 'flex';
+      window.scrollTo(0, 0);
+      // Populate greeting
+      var nameEl = document.getElementById('aw-name');
+      var planEl = document.getElementById('aw-plan-line');
+      if (nameEl) nameEl.textContent = currentUserName ? 'Welcome back, ' + currentUserName + '!' : 'Welcome back!';
+      if (planEl) {
+        if (currentPlanName) {
+          var planLabel = currentPlanName.charAt(0).toUpperCase() + currentPlanName.slice(1);
+          var quota = currentQuota || 0;
+          planEl.textContent = planLabel + ' Plan · ' + quota + (quota === 1 ? ' submission' : ' submissions') + ' remaining this month';
+        } else {
+          planEl.textContent = currentEmail || '';
+        }
+      }
+    }
+    function closeAuthorWelcome() {
+      document.getElementById('author-welcome-screen').style.display = 'none';
+    }
+
+    function showMyBooks() {
+      closeAuthorWelcome();
+      ['success-screen','sub-success-screen','mysales-screen','submit-screen'].forEach(function(id) {
+        var el = document.getElementById(id); if (el) el.classList.remove('active');
+      });
+      document.getElementById('mybooks-screen').classList.add('active');
+      window.scrollTo(0, 0);
+      document.getElementById('mb-email-label').textContent = currentEmail || '';
+      document.getElementById('mb-loading').style.display = 'block';
+      document.getElementById('mb-empty').style.display = 'none';
+      document.getElementById('mb-list').style.display = 'none';
+      fetchSubmissions();
+    }
+
+    function closeMyBooks() {
+      document.getElementById('mybooks-screen').classList.remove('active');
+      window.location.href = 'https://yellowfeather.netlify.app/';
+    }
+
+    function showMySales() {
+      closeAuthorWelcome();
+      ['success-screen','sub-success-screen','mybooks-screen','submit-screen'].forEach(function(id) {
+        var el = document.getElementById(id); if (el) el.classList.remove('active');
+      });
+      document.getElementById('mysales-screen').classList.add('active');
+      window.scrollTo(0, 0);
+      document.getElementById('ms-email-label').textContent = currentEmail || '';
+      fetchSales();
+    }
+
+    function showSubmitForm() {
+      // Require an active subscription before showing the submission form
+      if (!currentPlanName) {
+        showPortalHome();
+        // Flash a banner pointing the author to the pricing plans below
+        var banner = document.createElement('div');
+        banner.style.cssText = 'position:fixed;top:1.2rem;left:50%;transform:translateX(-50%);background:#e63946;color:#fff;padding:0.7rem 1.4rem;border-radius:8px;font-size:0.88rem;font-weight:600;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,0.3);text-align:center;';
+        banner.textContent = '📋 A subscription is required to submit books. Please choose a plan below.';
+        document.body.appendChild(banner);
+        setTimeout(function() { banner.remove(); }, 5000);
+        setTimeout(function() {
+          var pricingEl = document.getElementById('pricing');
+          if (pricingEl) pricingEl.scrollIntoView({ behavior: 'smooth' });
+        }, 200);
+        return;
+      }
+      closeAuthorWelcome();
+      ['success-screen','sub-success-screen','mybooks-screen','mysales-screen'].forEach(function(id) {
+        var el = document.getElementById(id); if (el) el.classList.remove('active');
+      });
+      document.getElementById('submit-screen').classList.add('active');
+      window.scrollTo(0, 0);
+      document.getElementById('submit-error').style.display = 'none';
+      document.getElementById('sb-book').value     = '';
+      document.getElementById('sb-author').value   = '';
+      document.getElementById('sb-genre').value    = '';
+      document.getElementById('sb-mrp').value      = '';
+      document.getElementById('sb-price').value    = '';
+      document.getElementById('sb-desc').value     = '';
+      document.getElementById('sb-barcode').value  = '';
+      document.getElementById('sb-phone').value    = '';
+      document.getElementById('sb-char-count').textContent = '0 / 500';
+      // Reset genre tag pills
+      document.querySelectorAll('#sb-genre-tags .sf-tag-pill').forEach(function(p) { p.classList.remove('active'); });
+      removeCover();
+    }
+
+    var coverBase64 = null;
+
+    function sfToggleTag(btn) {
+      btn.classList.toggle('active');
+    }
+
+    function sfGetSelectedTags() {
+      var pills = document.querySelectorAll('#sb-genre-tags .sf-tag-pill.active');
+      return Array.from(pills).map(function(b) { return b.dataset.tag; });
+    }
+
+    function updateCharCount() {
+      var val = document.getElementById('sb-desc').value;
+      var el  = document.getElementById('sb-char-count');
+      el.textContent = val.length + ' / 500';
+      el.classList.toggle('warn', val.length > 450);
+    }
+
+    function handleCoverSelect(event) {
+      var file = event.target.files[0];
+      if (!file) return;
+      if (file.size > 2 * 1024 * 1024) {
+        alert('Cover image must be 2 MB or smaller.');
+        event.target.value = '';
+        return;
+      }
+      var reader = new FileReader();
+      reader.onload = function(e) {
+        coverBase64 = e.target.result;
+        document.getElementById('cover-thumb').src       = coverBase64;
+        document.getElementById('cover-name').textContent = file.name;
+        document.getElementById('cover-size').textContent = (file.size / 1024).toFixed(0) + ' KB';
+        document.getElementById('cover-preview').style.display = 'flex';
+        document.querySelector('.cover-upload-area .cover-upload-icon').style.display  = 'none';
+        document.querySelector('.cover-upload-area .cover-upload-text').style.display  = 'none';
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function removeCover() {
+      coverBase64 = null;
+      document.getElementById('sb-cover').value = '';
+      document.getElementById('cover-preview').style.display = 'none';
+      document.querySelector('.cover-upload-area .cover-upload-icon').style.display  = '';
+      document.querySelector('.cover-upload-area .cover-upload-text').style.display  = '';
+    }
+
+    function closeSubmitForm() {
+      document.getElementById('submit-screen').classList.remove('active');
+      window.scrollTo(0, 0);
+    }
+
+    function toggleOtherPublisher(val) {
+      var wrap = document.getElementById('sb-publisher-other-wrap');
+      wrap.style.display = val === 'Other' ? 'block' : 'none';
+      if (val !== 'Other') document.getElementById('sb-publisher-other').value = '';
+    }
+
+    async function handleBookSubmit() {
+      var book      = document.getElementById('sb-book').value.trim();
+      var author    = document.getElementById('sb-author').value.trim();
+      var pubSel    = document.getElementById('sb-publisher').value;
+      var pubOther  = document.getElementById('sb-publisher-other').value.trim();
+      var publisher = pubSel === 'Other' ? pubOther : pubSel;
+      var genre     = document.getElementById('sb-genre').value;
+      var mrp       = document.getElementById('sb-mrp').value.trim();
+      var barcode   = document.getElementById('sb-barcode').value.trim();
+      var phone     = document.getElementById('sb-phone').value.trim();
+      var shopifyTags = sfGetSelectedTags();   // genre tags for Shopify
+      var errEl     = document.getElementById('submit-error');
+
+      errEl.style.display = 'none';
+
+      // Safety net: block submission if no active subscription
+      if (!currentPlanName) {
+        errEl.textContent  = 'An active subscription is required to submit books. Please subscribe to a plan.';
+        errEl.style.display = 'block';
+        return;
+      }
+
+      if (!book || !author || !publisher || !genre || !mrp || !barcode) {
+        errEl.textContent  = 'Please fill in all required fields.';
+        errEl.style.display = 'block';
+        return;
+      }
+
+      var btn = document.getElementById('sb-btn');
+      btn.textContent = 'Submitting…';
+      btn.disabled    = true;
+
+      try {
+        var res  = await fetch(SUBMIT_BOOK_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: currentEmail,
+            name: currentUserName,
+            subscription_id: currentSubscriptionId,
+            book, author, publisher, genre,
+            shopifyTags,
+            description: document.getElementById('sb-desc').value.trim(),
+            mrp: parseFloat(mrp),
+            barcode, phone,
+            cover: coverBase64 || null
+          })
+        });
+        var data = await res.json();
+
+        if (data.success || data.status === 'success') {
+          document.getElementById('submit-screen').classList.remove('active');
+          document.getElementById('s-book').textContent      = book;
+          document.getElementById('s-author').textContent    = author;
+          document.getElementById('s-category').textContent  = genre;
+          document.getElementById('s-mrp').textContent       = '₹' + mrp;
+          document.getElementById('s-price').textContent     = '—';
+          document.getElementById('s-barcode').textContent   = barcode;
+          document.getElementById('s-shopifyId').textContent = data.shopifyId || data.shopify_Id || '—';
+          document.getElementById('success-screen').classList.add('active');
+          window.scrollTo(0, 0);
+        } else {
+          errEl.textContent   = data.message || data.error || 'Submission failed. Please try again.';
+          errEl.style.display = 'block';
+        }
+      } catch(e) {
+        errEl.textContent   = 'Something went wrong. Please try again.';
+        errEl.style.display = 'block';
+      } finally {
+        btn.textContent = 'Submit Book →';
+        btn.disabled    = false;
+      }
+    }
+
+    function closeMySales() {
+      document.getElementById('mysales-screen').classList.remove('active');
+      window.location.href = 'https://yellowfeather.netlify.app/';
+    }
+
+    async function fetchSales() {
+      document.getElementById('ms-loading').style.display = 'flex';
+      document.getElementById('ms-empty').style.display   = 'none';
+      document.getElementById('ms-list').style.display    = 'none';
+
+      try {
+        var res  = await fetch(GET_SALES_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: currentEmail })
+        });
+        var raw   = await res.json();
+        var data  = Array.isArray(raw) ? raw[0] : raw;
+        var sales = data.sales || [];
+
+        document.getElementById('ms-loading').style.display = 'none';
+
+        if (!sales.length) {
+          document.getElementById('ms-empty').style.display = 'flex';
+          return;
+        }
+
+        var tbody = document.getElementById('ms-tbody');
+        tbody.innerHTML = '';
+        sales.forEach(function(s) {
+          var date = s.date ? new Date(s.date).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }) : '—';
+          var payClass = s.financial_status === 'paid' ? 'status-paid' : s.financial_status === 'pending' ? 'status-pending' : 'status-refund';
+          var fulClass  = s.fulfillment_status === 'fulfilled' ? 'status-fulfilled' : 'status-unfulfilled';
+          tbody.innerHTML += '<tr>' +
+            '<td>' + (s.book_title || '—') + '</td>' +
+            '<td>#' + (s.order_number || '—') + '</td>' +
+            '<td style="white-space:nowrap">' + date + '</td>' +
+            '<td style="text-align:center">' + (s.quantity || 1) + '</td>' +
+            '<td><span class="status-badge ' + payClass + '">' + (s.financial_status || '—') + '</span></td>' +
+            '<td><span class="status-badge ' + fulClass + '">' + (s.fulfillment_status || 'unfulfilled') + '</span></td>' +
+          '</tr>';
+        });
+        document.getElementById('ms-list').style.display = 'block';
+      } catch(e) {
+        document.getElementById('ms-loading').style.display = 'none';
+        document.getElementById('ms-empty').style.display   = 'flex';
+      }
+    }
+
+    async function fetchSubmissions() {
+      try {
+        var res = await fetch(GET_SUBMISSIONS_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: currentEmail })
+        });
+        var data = await res.json();
+        var submissions = data.submissions || [];
+        document.getElementById('mb-loading').style.display = 'none';
+        if (submissions.length === 0) {
+          document.getElementById('mb-empty').style.display = 'block';
+        } else {
+          document.getElementById('mb-list').style.display = 'block';
+          renderSubmissions(submissions);
+        }
+      } catch(e) {
+        document.getElementById('mb-loading').style.display = 'none';
+        document.getElementById('mb-empty').style.display = 'block';
+      }
+    }
+
+    function renderSubmissions(submissions) {
+      var list = document.getElementById('mb-list');
+      list.innerHTML = '';
+
+      submissions.forEach(function(sub) {
+        var title     = sub.title || '—';
+        var author    = sub.author || '';
+        var category  = sub.category || '';
+        var genre     = sub.genre || '';
+        var rawStatus = (sub.status || '').toLowerCase().trim();
+        var date      = sub.submittted_date || '';
+        var shopifyId = sub.shopify_Id || '';
+
+        var displayStatus, badgeClass, dot;
+        if (/success|live|listed|active|published/.test(rawStatus)) {
+          displayStatus = 'Live'; badgeClass = 'live'; dot = '●';
+        } else if (/reject|decline|removed/.test(rawStatus)) {
+          displayStatus = 'Not Listed'; badgeClass = 'rejected'; dot = '●';
+        } else {
+          displayStatus = 'Under Review'; badgeClass = 'pending'; dot = '◐';
+        }
+
+        var dateStr = '';
+        if (date) {
+          try {
+            dateStr = new Date(date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+          } catch(e) { dateStr = date; }
+        }
+
+        var metaParts = [];
+        if (author) metaParts.push(author);
+        if (category) metaParts.push(category);
+        if (genre) metaParts.push(genre);
+        if (dateStr) metaParts.push('Submitted ' + dateStr);
+
+        var shopifyHtml = (shopifyId && shopifyId !== '—')
+          ? '<div class="mb-shopify-id">Shopify ID: ' + shopifyId + '</div>'
+          : '';
+
+        var card = document.createElement('div');
+        card.className = 'submission-card';
+        card.innerHTML =
+          '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;">' +
+            '<div style="flex:1;">' +
+              '<div class="submission-title">' + title + '</div>' +
+              '<div class="submission-meta">' + metaParts.join(' · ') + '</div>' +
+            '</div>' +
+            '<span class="status-badge ' + badgeClass + '">' + dot + ' ' + displayStatus + '</span>' +
+          '</div>' +
+          shopifyHtml;
+        list.appendChild(card);
+      });
+    }
+
+    window.addEventListener('DOMContentLoaded', function () {
+
+      var hash   = window.location.hash.replace(/^#/, '');
+      var params = new URLSearchParams(hash);
+      var status = params.get('status');
+
+      // ── Book submission success — skip auth screen ──
+      if (status === 'success') {
+        hideAuthScreen();
+        function val(key) { return params.get(key) || '—'; }
+        document.getElementById('s-book').textContent      = val('book');
+        document.getElementById('s-author').textContent    = val('author');
+        document.getElementById('s-category').textContent  = val('category');
+        document.getElementById('s-mrp').textContent       = params.get('mrp')   ? '₹' + params.get('mrp')   : '—';
+        document.getElementById('s-price').textContent     = params.get('price') ? '₹' + params.get('price') : '—';
+        document.getElementById('s-barcode').textContent   = val('barcode');
+        document.getElementById('s-shopifyId').textContent = val('shopifyId');
+
+        var email = params.get('email');
+        currentEmail = email || '';
+        var phone = params.get('phone');
+        if (email || phone) {
+          var parts = [];
+          if (email) parts.push('a confirmation email to ' + email);
+          if (phone) parts.push('an SMS to ' + phone);
+          document.getElementById('s-notify').textContent = 'A ' + parts.join(' and ') + ' has been sent.';
+        }
+        document.getElementById('success-screen').classList.add('active');
+        return;
+      }
+
+      // ── Password reset link (#reset?token=...) ──
+      if (window.location.hash.indexOf('#reset?') === 0) {
+        var resetQuery  = window.location.hash.substring(window.location.hash.indexOf('?') + 1);
+        var resetParams = new URLSearchParams(resetQuery);
+        var resetToken  = resetParams.get('token');
+        if (resetToken) {
+          pendingResetToken = resetToken;
+          document.getElementById('reset-form-panel').style.display    = 'block';
+          document.getElementById('reset-success-panel').style.display = 'none';
+          document.getElementById('reset-screen').style.display = 'flex';
+          return;
+        }
+      }
+
+      // ── Auto-login from localStorage ──
+      var savedEmail = localStorage.getItem('yfb_email');
+      var savedName  = localStorage.getItem('yfb_name');
+      if (savedEmail) {
+        currentEmail    = savedEmail;
+        currentUserName = savedName || null;
+        fetch(CHECK_SUB_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: savedEmail })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          hideAuthScreen();
+          showUserNav(currentUserName);
+          if (data.found) {
+            applyReturningUser({ name: data.plan_name, quota: data.quota, subscriptionId: data.subscription_id });
+          }
+        })
+        .catch(function() { hideAuthScreen(); });
+      } else if (window !== window.top) {
+        // Embedded in the landing portal iframe — parent will send credentials
+        // via postMessage. Hide the login form immediately to avoid a flash.
+        hideAuthScreen();
+        // Mark body so CSS can hide redundant "Back to Home" bars —
+        // navigation is handled by the landing portal's sidebar tiles.
+        document.body.classList.add('embedded');
+      }
+
+    });
+
+    // ── Top-up modal ──
+    function openTopupModal() {
+      document.getElementById('topup-error').style.display = 'none';
+      document.getElementById('topup-modal').style.display = 'flex';
+    }
+    window.openTopupModal = openTopupModal;
+
+    function closeTopupModal() {
+      document.getElementById('topup-modal').style.display = 'none';
+    }
+    window.closeTopupModal = closeTopupModal;
+
+    async function buyTopup(slots) {
+      var errEl = document.getElementById('topup-error');
+      errEl.style.display = 'none';
+
+      try {
+        // 1 — Create Razorpay order
+        var orderRes = await fetch(CREATE_TOPUP_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ slots: slots, email: currentEmail })
+        });
+        var orderData = await orderRes.json();
+        if (!orderData.order_id) throw new Error(orderData.error || 'Failed to create order');
+
+        // 2 — Open Razorpay checkout (Razorpay iframe has max z-index, opens above modal)
+        var rzp = new Razorpay({
+          key:         RAZORPAY_KEY,
+          amount:      orderData.amount,
+          currency:    'INR',
+          order_id:    orderData.order_id,
+          name:        'Yellow Feather Books',
+          description: slots + ' Extra Submission Slots',
+          prefill:     { email: currentEmail },
+          theme:       { color: '#C9922A' },
+          handler: async function(response) {
+            closeTopupModal();
+            try {
+              // 3 — Verify payment and add slots
+              var verRes = await fetch(VERIFY_TOPUP_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  razorpay_order_id:   response.razorpay_order_id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_signature:  response.razorpay_signature,
+                  email: currentEmail,
+                  slots: slots
+                })
+              });
+              var verData = await verRes.json();
+              if (verData.success) {
+                currentQuota += slots;
+                document.getElementById('ss-quota').textContent =
+                  currentQuota + (currentQuota === 1 ? ' book' : ' books');
+                alert('✅ ' + slots + ' extra slots added! You can now submit more books.');
+              } else {
+                throw new Error(verData.error || 'Verification failed');
+              }
+            } catch(e) {
+              alert('⚠️ Payment received but slot update failed. Please contact support.\n' + e.message);
+            }
+          }
+        });
+        rzp.on('payment.failed', function() {
+          errEl.textContent = 'Payment failed. Please try again.';
+          errEl.style.display = 'block';
+        });
+        rzp.open();
+
+      } catch(e) {
+        errEl.textContent = e.message;
+        errEl.style.display = 'block';
+      }
+    }
+    window.buyTopup = buyTopup;
+
+  </script>
+
+  <!-- ══ USER PROFILE NAV ══ -->
+  <div id="user-nav" style="display:none;position:fixed;top:1rem;right:1rem;z-index:500;align-items:center;gap:0.6rem;background:rgba(17,21,39,0.92);border:1px solid rgba(201,146,42,0.28);border-radius:50px;padding:0.35rem 0.85rem 0.35rem 0.35rem;backdrop-filter:blur(10px);box-shadow:0 4px 20px rgba(0,0,0,0.35);">
+    <div id="user-avatar" style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#C9922A,#F5B800);display:flex;align-items:center;justify-content:center;font-family:Inter,sans-serif;font-size:0.9rem;font-weight:700;color:#0B0E1A;flex-shrink:0;">?</div>
+    <span id="user-nav-name" style="font-family:Inter,sans-serif;font-size:0.84rem;font-weight:500;color:#F5F0E8;white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis;"></span>
+    <button onclick="logOut()" style="background:transparent;border:1px solid rgba(201,146,42,0.35);border-radius:50px;color:#6B6478;font-family:Inter,sans-serif;font-size:0.74rem;font-weight:500;padding:0.22rem 0.7rem;cursor:pointer;transition:border-color 0.2s,color 0.2s;white-space:nowrap;"
+      onmouseover="this.style.borderColor='rgba(201,146,42,0.8)';this.style.color='#C9922A'"
+      onmouseout="this.style.borderColor='rgba(201,146,42,0.35)';this.style.color='#6B6478'">
+      Log out
+    </button>
+  </div>
+
+</body>
+</html>

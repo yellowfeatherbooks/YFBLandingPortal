@@ -1,0 +1,255 @@
+{
+  "name": "Abandoned Cart Recovery",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "minutes", "minutesInterval": 30 }]
+        }
+      },
+      "id": "aa000001-0000-0000-0000-000000000001",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Checkouts last updated between 61 and 91 minutes ago\n// Running every 30 min means each checkout falls in this window exactly once\nconst now = Date.now();\nconst updatedAtMax = new Date(now - 61 * 60 * 1000).toISOString();\nconst updatedAtMin = new Date(now - 91 * 60 * 1000).toISOString();\nreturn [{ json: { updatedAtMax, updatedAtMin } }];"
+      },
+      "id": "aa000002-0000-0000-0000-000000000002",
+      "name": "Calculate Time Window",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [240, 0]
+    },
+    {
+      "parameters": {
+        "url": "=https://zgqk4e-1m.myshopify.com/admin/api/2024-01/checkouts.json?updated_at_min={{ $json.updatedAtMin }}&updated_at_max={{ $json.updatedAtMax }}&limit=50",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Shopify-Access-Token",
+              "value": "SHOPIFY_ACCESS_TOKEN_REDACTED"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "aa000003-0000-0000-0000-000000000003",
+      "name": "Fetch Abandoned Checkouts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json;\nconst checkouts = Array.isArray(raw.checkouts) ? raw.checkouts : [];\n\nconst results = [];\n\nfor (const c of checkouts) {\n  // Skip completed or paid checkouts\n  if (c.completed_at) continue;\n  if (!c.line_items || c.line_items.length === 0) continue;\n  if (!c.abandoned_checkout_url) continue;\n\n  const rawPhone = (c.phone || c.billing_address?.phone || c.shipping_address?.phone || '').replace(/\\D/g, '').replace(/^0+/, '');\n  const waPhone  = rawPhone.startsWith('91') ? rawPhone : (rawPhone.length === 10 ? '91' + rawPhone : '');\n  const hasPhone = waPhone.length >= 12;\n  const hasEmail = !!(c.email && c.email.includes('@'));\n\n  if (!hasPhone && !hasEmail) continue;\n\n  const firstName = c.customer?.first_name || c.billing_address?.first_name || c.shipping_address?.first_name || 'Valued Customer';\n  const items     = c.line_items.map(i => i.title).filter(Boolean);\n  const total     = c.total_price ? '₹' + parseFloat(c.total_price).toFixed(2) : '';\n\n  results.push({ json: {\n    checkoutToken: c.token,\n    email:         c.email || '',\n    phone:         waPhone,\n    hasPhone,\n    hasEmail,\n    firstName,\n    items,\n    primaryItem:   items[0] || 'your items',\n    bookList:      items.slice(0, 3).join(', ') + (items.length > 3 ? ` and ${items.length - 3} more` : ''),\n    total,\n    cartUrl:       c.abandoned_checkout_url,\n    itemCount:     items.length\n  }});\n}\n\nconsole.log(`Abandoned carts to notify: ${results.length}`);\nreturn results;"
+      },
+      "id": "aa000004-0000-0000-0000-000000000004",
+      "name": "Extract Eligible Checkouts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [720, 0]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "aa000005-0000-0000-0000-000000000005",
+      "name": "Loop Over Checkouts",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [960, 0]
+    },
+    {
+      "parameters": {},
+      "id": "aa000006-0000-0000-0000-000000000006",
+      "name": "All Carts Processed",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [960, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose" },
+          "conditions": [
+            {
+              "id": "cond-phone-001",
+              "leftValue": "={{ $json.phone }}",
+              "rightValue": "",
+              "operator": { "type": "string", "operation": "notEmpty", "singleValue": true }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "aa000007-0000-0000-0000-000000000007",
+      "name": "IF Has Phone",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1200, -120]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.facebook.com/v20.0/1178132198705778/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"messaging_product\": \"whatsapp\",\n  \"to\": \"{{ $json.phone }}\",\n  \"type\": \"template\",\n  \"template\": {\n    \"name\": \"abandoned_cart_recovery\",\n    \"language\": { \"code\": \"en_GB\" },\n    \"components\": [\n      {\n        \"type\": \"body\",\n        \"parameters\": [\n          { \"type\": \"text\", \"parameter_name\": \"customer_name\", \"text\": \"{{ $json.firstName }}\" },\n          { \"type\": \"text\", \"parameter_name\": \"book_list\",     \"text\": \"{{ $json.bookList }}\" },\n          { \"type\": \"text\", \"parameter_name\": \"cart_url\",      \"text\": \"{{ $json.cartUrl }}\" }\n        ]\n      }\n    ]\n  }\n}",
+        "options": {}
+      },
+      "id": "aa000008-0000-0000-0000-000000000008",
+      "name": "Send WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1440, -220],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "PduyAvcBaYt6Afke",
+          "name": "WhatsApp-YFB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose" },
+          "conditions": [
+            {
+              "id": "cond-email-001",
+              "leftValue": "={{ $json.email }}",
+              "rightValue": "",
+              "operator": { "type": "string", "operation": "notEmpty", "singleValue": true }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "aa000009-0000-0000-0000-000000000009",
+      "name": "IF Has Email",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1200, 120]
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $input.first().json;\n\nconst itemRows = d.items.slice(0, 5).map(title =>\n  `<tr><td style=\"padding:8px 0;border-bottom:1px solid #e5e0d8;font-size:14px;color:#444;\">📚 ${title}</td></tr>`\n).join('');\n\nconst moreText = d.items.length > 5\n  ? `<tr><td style=\"padding:8px 0;font-size:13px;color:#888;\">+${d.items.length - 5} more item(s)</td></tr>`\n  : '';\n\nconst totalRow = d.total\n  ? `<tr><td style=\"padding:12px 0;font-size:15px;font-weight:700;color:#1a1a2e;border-top:2px solid #C9922A;\">Order Total: ${d.total}</td></tr>`\n  : '';\n\nconst html = `<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"UTF-8\"/><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"/><style>body{font-family:Arial,sans-serif;background:#f4f4f4;margin:0;padding:0;}.wrapper{max-width:620px;margin:32px auto;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,.10);}.header{background:#1a1a2e;padding:28px 40px;text-align:center;}.header img{height:52px;object-fit:contain;}.body{padding:40px;}p{font-size:15px;color:#444;line-height:1.8;margin:0 0 16px;}.cta{display:inline-block;background:#C9922A;color:#fff;font-size:16px;font-weight:700;padding:14px 32px;border-radius:8px;text-decoration:none;margin:20px 0;}.help{background:#fffbf2;border:1px solid #e5d9b6;border-radius:8px;padding:16px 20px;margin-top:24px;font-size:14px;color:#555;line-height:1.7;}.footer{background:#f5f0e8;padding:20px 40px;font-size:13px;color:#555;line-height:1.8;border-top:1px solid #e5e0d8;}.footer strong{color:#1a1a2e;display:block;font-size:15px;margin-bottom:4px;}.footer a{color:#C9922A;text-decoration:none;}</style></head><body><div class=\"wrapper\"><div class=\"header\"><img src=\"https://yellowfeather.netlify.app/logo-landscape.png\" alt=\"Yellow Feather Books\"/></div><div class=\"body\"><p>Hello <strong>${d.firstName}</strong>,</p><p>You left some wonderful books in your cart — and we'd love to see them in your hands! 📚</p><table style=\"width:100%;border-collapse:collapse;margin:16px 0;\">${itemRows}${moreText}${totalRow}</table><p>Your cart is saved and ready. Complete your purchase with one click:</p><a href=\"${d.cartUrl}\" class=\"cta\">Complete My Order &rarr;</a><div class=\"help\"><strong style=\"font-size:14px;color:#1a1a2e;\">Having trouble completing your order?</strong><br/>Please reach out to us at <a href=\"tel:+919400448000\">+91 94004480000</a> — we're happy to help you place the order directly.</div></div><div class=\"footer\"><strong>Mehru</strong>Sales Manager<br/>Yellow Feather Books<br/>Phone / WhatsApp: <a href=\"tel:+919400448000\">+91 94004480000</a><br/>Website: <a href=\"https://yellowfeatherbookstore.in\">yellowfeatherbookstore.in</a></div></div></body></html>`;\n\nreturn [{ json: { ...d, emailHtml: html } }];"
+      },
+      "id": "aa000010-0000-0000-0000-000000000010",
+      "name": "Build Email HTML",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1440, 20]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.email }}",
+        "subject": "={{ 'You left ' + $json.primaryItem + ' in your cart — Yellow Feather Books' }}",
+        "message": "={{ $json.emailHtml }}",
+        "options": {}
+      },
+      "id": "aa000011-0000-0000-0000-000000000011",
+      "name": "Send Recovery Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [1680, 20],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "n4S10HXIC145nr8L",
+          "name": "Gmail account 2"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "aa000012-0000-0000-0000-000000000012",
+      "name": "Done",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [1680, -220]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.facebook.com/v20.0/1178132198705778/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"messaging_product\": \"whatsapp\",\n  \"to\": \"919400448000\",\n  \"type\": \"template\",\n  \"template\": {\n    \"name\": \"cart_alert_internal\",\n    \"language\": { \"code\": \"en_GB\" },\n    \"components\": [\n      {\n        \"type\": \"body\",\n        \"parameters\": [\n          { \"type\": \"text\", \"parameter_name\": \"customer_name\", \"text\": \"{{ $json.firstName }}\" },\n          { \"type\": \"text\", \"parameter_name\": \"contact_info\",  \"text\": \"{{ $json.hasPhone ? $json.phone : ($json.hasEmail ? $json.email : 'N/A') }}\" },\n          { \"type\": \"text\", \"parameter_name\": \"book_list\",     \"text\": \"{{ $json.bookList }}\" },\n          { \"type\": \"text\", \"parameter_name\": \"total\",         \"text\": \"{{ $json.total || 'N/A' }}\" },\n          { \"type\": \"text\", \"parameter_name\": \"cart_url\",      \"text\": \"{{ $json.cartUrl }}\" }\n        ]\n      }\n    ]\n  }\n}",
+        "options": {}
+      },
+      "id": "aa000013-0000-0000-0000-000000000013",
+      "name": "Notify Store - WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1200, 360],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "PduyAvcBaYt6Afke",
+          "name": "WhatsApp-YFB"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [[{ "node": "Calculate Time Window", "type": "main", "index": 0 }]]
+    },
+    "Calculate Time Window": {
+      "main": [[{ "node": "Fetch Abandoned Checkouts", "type": "main", "index": 0 }]]
+    },
+    "Fetch Abandoned Checkouts": {
+      "main": [[{ "node": "Extract Eligible Checkouts", "type": "main", "index": 0 }]]
+    },
+    "Extract Eligible Checkouts": {
+      "main": [[{ "node": "Loop Over Checkouts", "type": "main", "index": 0 }]]
+    },
+    "Loop Over Checkouts": {
+      "main": [
+        [{ "node": "IF Has Phone",          "type": "main", "index": 0 },
+         { "node": "IF Has Email",          "type": "main", "index": 0 },
+         { "node": "Notify Store - WhatsApp", "type": "main", "index": 0 }],
+        [{ "node": "All Carts Processed",   "type": "main", "index": 0 }]
+      ]
+    },
+    "IF Has Phone": {
+      "main": [
+        [{ "node": "Send WhatsApp", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "Send WhatsApp": {
+      "main": [[{ "node": "Done", "type": "main", "index": 0 }]]
+    },
+    "IF Has Email": {
+      "main": [
+        [{ "node": "Build Email HTML", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "Build Email HTML": {
+      "main": [[{ "node": "Send Recovery Email", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "ac001122-aban-0001-cart-recovery00001",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "ab350bd4e167229b36cd6d6f6e9e1b6ef571ce6291758918013894ed15cf95d1"
+  },
+  "id": "AbandonedCartRecovery01",
+  "tags": []
+}

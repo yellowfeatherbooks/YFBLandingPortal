@@ -3003,6 +3003,80 @@
     .admin-mob-tab .tab-icon { font-size: 1.1rem; }
     .admin-mob-tab.active { color: var(--gold); }
 
+    /* ── Tag Management section ── */
+    .tag-mgmt-card {
+      background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 12px; padding: 1.25rem 1.5rem; margin-bottom: 1.25rem;
+    }
+    .tag-mgmt-card h3 { font-size: 1rem; font-weight: 700; color: var(--text); margin: 0 0 0.3rem; }
+    .tag-mgmt-card p  { font-size: 0.78rem; color: var(--muted); margin: 0 0 1rem; line-height: 1.5; }
+    .tag-sync-btn {
+      padding: 0.55rem 1.4rem; font-size: 0.85rem; font-weight: 700;
+      background: linear-gradient(135deg, var(--gold), #E8A830); border: none;
+      border-radius: 8px; color: #1a1a2e; cursor: pointer; transition: opacity 0.15s;
+    }
+    .tag-sync-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    #tag-sync-log {
+      margin-top: 1rem; background: rgba(0,0,0,0.3); border-radius: 8px;
+      padding: 0.75rem 1rem; font-size: 0.72rem; color: var(--muted);
+      font-family: 'Courier New', monospace; max-height: 220px; overflow-y: auto;
+      border: 1px solid rgba(255,255,255,0.06); display: none;
+    }
+    #tag-sync-log .log-line { padding: 0.1rem 0; }
+    #tag-sync-log .log-ok   { color: #4ade80; }
+    #tag-sync-log .log-skip { color: var(--muted); }
+    #tag-sync-log .log-err  { color: #f87171; }
+    #tag-sync-log .log-info { color: #60a5fa; }
+
+    /* Book tag editor */
+    .book-tag-search-row { display: flex; gap: 0.6rem; margin-bottom: 1rem; }
+    .book-tag-search-row input {
+      flex: 1; padding: 0.55rem 0.85rem; background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.12); border-radius: 8px;
+      color: var(--text); font-family: 'Inter', sans-serif; font-size: 0.85rem;
+      outline: none;
+    }
+    .book-tag-search-row input:focus { border-color: var(--gold); }
+    .book-tag-search-btn {
+      padding: 0.55rem 1.1rem; font-size: 0.82rem; font-weight: 600;
+      background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 8px; color: var(--text); cursor: pointer; white-space: nowrap;
+    }
+    .book-tag-search-btn:hover { border-color: var(--gold); color: var(--gold); }
+    #book-tag-results { margin-bottom: 1rem; }
+    .book-tag-result-item {
+      display: flex; align-items: center; gap: 0.75rem; padding: 0.6rem 0.85rem;
+      border-radius: 8px; cursor: pointer; transition: background 0.12s;
+      border: 1px solid transparent;
+    }
+    .book-tag-result-item:hover { background: rgba(255,255,255,0.04); }
+    .book-tag-result-item.selected { background: rgba(201,146,42,0.08); border-color: rgba(201,146,42,0.3); }
+    .book-tag-result-img {
+      width: 36px; height: 50px; object-fit: cover; border-radius: 4px;
+      background: rgba(255,255,255,0.05); flex-shrink: 0;
+    }
+    .book-tag-result-title { font-size: 0.82rem; font-weight: 600; color: var(--text); }
+    .book-tag-result-tags  { font-size: 0.68rem; color: var(--muted); margin-top: 0.2rem; }
+
+    /* Tag pill grid */
+    .tag-pill-grid { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.75rem 0 1rem; }
+    .tag-pill {
+      padding: 0.3rem 0.85rem; border-radius: 20px; font-size: 0.72rem; font-weight: 600;
+      border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.04);
+      color: var(--muted); cursor: pointer; transition: all 0.15s; user-select: none;
+    }
+    .tag-pill:hover  { border-color: var(--gold); color: var(--gold); }
+    .tag-pill.active { background: var(--gold); color: #1a1a2e; border-color: var(--gold); }
+    .tag-pill.has-tag { border-color: rgba(74,222,128,0.4); color: #4ade80; background: rgba(74,222,128,0.07); }
+    .tag-pill.has-tag.active { background: var(--gold); color: #1a1a2e; border-color: var(--gold); }
+    #book-tag-apply-btn {
+      padding: 0.55rem 1.4rem; font-size: 0.82rem; font-weight: 700;
+      background: linear-gradient(135deg, var(--teal), #1da89d); border: none;
+      border-radius: 8px; color: #fff; cursor: pointer; transition: opacity 0.15s;
+    }
+    #book-tag-apply-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    #book-tag-status { font-size: 0.78rem; margin-top: 0.6rem; min-height: 1.2rem; }
+
     /* Admin login panel */
     #admin-login-panel {
       display: none; position: fixed; inset: 0; background: rgba(11,14,26,0.97);
@@ -4283,6 +4357,9 @@
       <button class="admin-nav-item" data-section="signed-requests" onclick="adminNav('signed-requests',this)">
         <span class="admin-nav-icon">✒️</span> Signed Copies
       </button>
+      <button class="admin-nav-item" data-section="tags" onclick="adminNav('tags',this)">
+        <span class="admin-nav-icon">🏷️</span> Tag Management
+      </button>
       <div class="admin-nav-bottom">
         <button class="admin-nav-item" onclick="adminLogout()" style="color:#f87171;">
           <span class="admin-nav-icon">🚪</span> Logout
@@ -4385,6 +4462,49 @@
         <div id="admin-signed-reqs-body"></div>
       </div>
 
+      <!-- ── Tag Management ── -->
+      <div id="admin-section-tags" class="admin-section">
+        <div class="admin-section-header">
+          <h2>🏷️ Tag Management</h2>
+        </div>
+
+        <!-- Sync All Collection Tags -->
+        <div class="tag-mgmt-card">
+          <h3>🔄 Sync Tags by Collection</h3>
+          <p>Automatically tags every product based on its Shopify collection name. Skips products already tagged. Safe to run multiple times.</p>
+          <div style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap;">
+            <button class="tag-sync-btn" id="tag-sync-btn" onclick="adminSyncCollectionTags(false)">
+              Sync All Collection Tags
+            </button>
+            <button class="tag-sync-btn" id="tag-sync-dry-btn" onclick="adminSyncCollectionTags(true)"
+              style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);color:var(--text);">
+              Dry Run (preview only)
+            </button>
+          </div>
+          <div id="tag-sync-log"></div>
+        </div>
+
+        <!-- Per-book tag editor -->
+        <div class="tag-mgmt-card">
+          <h3>✏️ Edit Book Tags</h3>
+          <p>Search for a book, then add or remove genre tags directly on the Shopify product.</p>
+          <div class="book-tag-search-row">
+            <input type="text" id="book-tag-query" placeholder="Search by book title…"
+              onkeydown="if(event.key==='Enter') adminSearchBookTags()" />
+            <button class="book-tag-search-btn" onclick="adminSearchBookTags()">🔍 Search</button>
+          </div>
+          <div id="book-tag-results"></div>
+
+          <div id="book-tag-editor" style="display:none;">
+            <div style="font-size:0.78rem;color:var(--muted);margin-bottom:0.5rem;">Select tags to apply (green = already on this product):</div>
+            <div class="tag-pill-grid" id="tag-pill-grid"></div>
+            <button id="book-tag-apply-btn" onclick="adminApplyBookTags()">Apply Tags →</button>
+            <div id="book-tag-status"></div>
+          </div>
+        </div>
+
+      </div><!-- /admin-section-tags -->
+
     </main>
 
     <!-- Mobile tab bar -->
@@ -4409,6 +4529,9 @@
       </button>
       <button class="admin-mob-tab" data-section="signed-requests" onclick="adminNav('signed-requests',this)">
         <span class="tab-icon">✒️</span>Signed
+      </button>
+      <button class="admin-mob-tab" data-section="tags" onclick="adminNav('tags',this)">
+        <span class="tab-icon">🏷️</span>Tags
       </button>
     </div>
 
@@ -5505,6 +5628,7 @@
       if (section === 'orders')          adminLoadOrders();
       if (section === 'book-requests')   adminLoadBookReqs();
       if (section === 'signed-requests') adminLoadSignedReqs();
+      // tag section has no auto-load — user initiates actions
     }
 
     // ── Helpers ──
@@ -5903,6 +6027,183 @@
       document.querySelectorAll('#admin-section-signed-requests .admin-filter-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       adminLoadSignedReqs(filter);
+    }
+
+    // ── Tag Management ────────────────────────────────────────────────────────
+
+    const SHOPIFY_TAGS = [
+      'Romantic','crime','Fiction','historic','Adventure',
+      'investigation','Memoir','murder','Period Drama','Philosophy',
+      'poetry','children','Young Adult'
+    ];
+
+    var _tagBookSelected = null;   // { id, title, tags, imageUrl }
+
+    // ── Sync All Collection Tags ──────────────────────────────────────────────
+    async function adminSyncCollectionTags(dryRun) {
+      const btn    = document.getElementById(dryRun ? 'tag-sync-dry-btn' : 'tag-sync-btn');
+      const logEl  = document.getElementById('tag-sync-log');
+      btn.disabled = true;
+      btn.textContent = dryRun ? 'Running dry run…' : 'Syncing…';
+      logEl.style.display = 'block';
+      logEl.innerHTML = `<div class="log-line log-info">⏳ Fetching collection list…</div>`;
+
+      let totalTagged = 0, totalSkipped = 0, totalErrors = 0;
+
+      function addLog(cls, msg) {
+        logEl.innerHTML += `<div class="log-line ${cls}">${msg}</div>`;
+        logEl.scrollTop = logEl.scrollHeight;
+      }
+
+      try {
+        // Step 1: run all collections (first page each)
+        const r1 = await adminPost('admin-tag-by-collection', { runAll: true, dryRun });
+        if (r1.error) throw new Error(r1.error);
+
+        addLog('log-info', `📦 Collections processed: ${r1.summary?.collections ?? '?'}`);
+
+        for (const d of (r1.details || [])) {
+          if (d.status === 'skipped')    { addLog('log-skip', `⏭ Skipped "${d.collection}" (utility)`); continue; }
+          if (d.status === 'no_mapping') { addLog('log-skip', `❓ No mapping for "${d.collection}"`); continue; }
+          const prefix = dryRun ? '🔍' : '✅';
+          addLog('log-ok', `${prefix} "${d.collection}" → tag:${d.tag} | tagged:${d.tagged} skipped:${d.skipped} errors:${d.errors}${d.hasNextPage ? ' [more pages!]' : ''}`);
+          totalTagged  += d.tagged  || 0;
+          totalSkipped += d.skipped || 0;
+          totalErrors  += d.errors  || 0;
+        }
+
+        // Step 2: continue any collections that had more pages
+        const cont = r1.needsContinuation || [];
+        for (const c of cont) {
+          addLog('log-info', `🔄 Continuing "${c.collection}" (more pages)…`);
+          let cursor = c.nextCursor;
+          while (cursor) {
+            const rN = await adminPost('admin-tag-by-collection', {
+              collectionId: c.collectionId, cursor, dryRun
+            });
+            if (rN.error) { addLog('log-err', `⚠️ "${c.collection}": ${rN.error}`); break; }
+            addLog('log-ok', `  ↳ page done — tagged:${rN.tagged} skipped:${rN.skipped}${rN.hasNextPage ? ' more…' : ' (done)'}`);
+            totalTagged  += rN.tagged  || 0;
+            totalSkipped += rN.skipped || 0;
+            totalErrors  += rN.errors  || 0;
+            cursor = rN.hasNextPage ? rN.nextCursor : null;
+          }
+        }
+
+        addLog('log-info', `─────────────────────────────`);
+        addLog(totalErrors ? 'log-err' : 'log-ok',
+          `${dryRun ? '🔍 Dry run' : '🏁 Done'} — Total tagged: ${totalTagged} | Already had tag: ${totalSkipped} | Errors: ${totalErrors}`);
+
+      } catch(e) {
+        addLog('log-err', `❌ Error: ${e.message}`);
+      }
+
+      btn.disabled = false;
+      btn.textContent = dryRun ? 'Dry Run (preview only)' : 'Sync All Collection Tags';
+    }
+
+    // ── Search books for tag editor ───────────────────────────────────────────
+    async function adminSearchBookTags() {
+      const q      = document.getElementById('book-tag-query').value.trim();
+      const resEl  = document.getElementById('book-tag-results');
+      const edEl   = document.getElementById('book-tag-editor');
+      if (!q) return;
+
+      resEl.innerHTML = '<div style="font-size:0.78rem;color:var(--muted);padding:0.5rem 0;">⏳ Searching…</div>';
+      edEl.style.display = 'none';
+      _tagBookSelected = null;
+
+      try {
+        const data = await adminPost('admin-update-book-tags', { action: 'search', query: q });
+        if (data.error) throw new Error(data.error);
+        if (!data.products?.length) {
+          resEl.innerHTML = '<div style="font-size:0.78rem;color:var(--muted);padding:0.5rem 0;">No books found. Try a different search.</div>';
+          return;
+        }
+        resEl.innerHTML = data.products.map((p, i) => `
+          <div class="book-tag-result-item" onclick="adminSelectBookForTags(${i})" data-idx="${i}"
+               data-id="${p.id}" data-title="${p.title.replace(/"/g,'&quot;')}"
+               data-tags="${(p.tags||[]).join(',')}"
+               data-img="${p.imageUrl||''}">
+            ${p.imageUrl ? `<img class="book-tag-result-img" src="${p.imageUrl}" alt="">` : '<div class="book-tag-result-img"></div>'}
+            <div>
+              <div class="book-tag-result-title">${p.title}</div>
+              <div class="book-tag-result-tags">${p.tags?.length ? p.tags.join(' · ') : 'No tags yet'}</div>
+            </div>
+          </div>`).join('');
+        // store for selection
+        resEl._bookResults = data.products;
+      } catch(e) {
+        resEl.innerHTML = `<div style="font-size:0.78rem;color:#f87171;padding:0.5rem 0;">⚠️ ${e.message}</div>`;
+      }
+    }
+
+    function adminSelectBookForTags(idx) {
+      const resEl = document.getElementById('book-tag-results');
+      const books = resEl._bookResults;
+      if (!books || !books[idx]) return;
+      _tagBookSelected = books[idx];
+
+      document.querySelectorAll('.book-tag-result-item').forEach((el, i) =>
+        el.classList.toggle('selected', i === idx));
+
+      // Build tag pill grid
+      const grid  = document.getElementById('tag-pill-grid');
+      const curTags = new Set(_tagBookSelected.tags || []);
+      grid.innerHTML = SHOPIFY_TAGS.map(t => `
+        <button class="tag-pill ${curTags.has(t) ? 'has-tag active' : ''}"
+          data-tag="${t}" onclick="adminToggleTagPill(this)">${t}</button>`).join('');
+
+      document.getElementById('book-tag-editor').style.display = 'block';
+      document.getElementById('book-tag-status').innerHTML = '';
+      document.getElementById('book-tag-apply-btn').disabled = false;
+      document.getElementById('book-tag-apply-btn').textContent = 'Apply Tags →';
+    }
+
+    function adminToggleTagPill(btn) {
+      btn.classList.toggle('active');
+    }
+
+    async function adminApplyBookTags() {
+      if (!_tagBookSelected) return;
+      const applyBtn  = document.getElementById('book-tag-apply-btn');
+      const statusEl  = document.getElementById('book-tag-status');
+      const grid      = document.getElementById('tag-pill-grid');
+
+      // Collect all active genre tags from pills
+      const selectedGenreTags = [...grid.querySelectorAll('.tag-pill.active')].map(b => b.dataset.tag);
+      // Keep any non-genre tags the product already has (custom tags, other store-specific tags)
+      const otherTags = (_tagBookSelected.tags || []).filter(t => !SHOPIFY_TAGS.includes(t));
+      const finalTags = [...new Set([...otherTags, ...selectedGenreTags])];
+
+      applyBtn.disabled    = true;
+      applyBtn.textContent = 'Saving…';
+      statusEl.innerHTML   = '';
+
+      try {
+        const data = await adminPost('admin-update-book-tags', {
+          action: 'update', productId: _tagBookSelected.id, tags: finalTags
+        });
+        if (data.error) throw new Error(data.error);
+        _tagBookSelected.tags = data.product.tags;
+        statusEl.innerHTML = `<span style="color:#4ade80;">✓ Tags updated: ${data.product.tags.join(' · ') || '(none)'}</span>`;
+
+        // Refresh the result item's tag line
+        const sel = document.querySelector('.book-tag-result-item.selected .book-tag-result-tags');
+        if (sel) sel.textContent = data.product.tags.join(' · ') || 'No tags yet';
+
+        // Refresh pill colours
+        const curTags = new Set(data.product.tags);
+        grid.querySelectorAll('.tag-pill').forEach(p => {
+          const isGenre = SHOPIFY_TAGS.includes(p.dataset.tag);
+          p.classList.toggle('has-tag', curTags.has(p.dataset.tag) && isGenre);
+        });
+      } catch(e) {
+        statusEl.innerHTML = `<span style="color:#f87171;">⚠️ ${e.message}</span>`;
+      }
+
+      applyBtn.disabled    = false;
+      applyBtn.textContent = 'Apply Tags →';
     }
 
     function _reqActionBtns(table, id, status) {
@@ -8155,7 +8456,150 @@
       width: calc(100% - 2rem);
       animation: toast-slide-up 0.35s cubic-bezier(0.34,1.56,0.64,1);
     }
+
+    /* ══ FLASH CARD POPUP ══ */
+    #flash-card-overlay {
+      display: none;
+      position: fixed; inset: 0; z-index: 500;
+      background: rgba(0,0,0,0.65);
+      backdrop-filter: blur(4px);
+      align-items: center; justify-content: center;
+      padding: 1rem;
+    }
+    #flash-card-overlay.active { display: flex; }
+    #flash-card {
+      position: relative;
+      background: var(--navy2);
+      border: 1px solid rgba(201,146,42,0.3);
+      border-radius: 18px;
+      overflow: hidden;
+      max-width: 460px;
+      width: 100%;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.6), 0 0 0 1px rgba(201,146,42,0.1);
+      animation: flash-pop 0.4s cubic-bezier(0.34,1.56,0.64,1) both;
+    }
+    @keyframes flash-pop {
+      from { opacity: 0; transform: scale(0.88) translateY(16px); }
+      to   { opacity: 1; transform: scale(1)    translateY(0); }
+    }
+    #flash-card-close {
+      position: absolute; top: 10px; right: 12px;
+      background: rgba(255,255,255,0.08); border: none;
+      color: rgba(245,240,232,0.6); font-size: 1.1rem;
+      width: 30px; height: 30px; border-radius: 50%;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: background 0.2s, color 0.2s; z-index: 1;
+    }
+    #flash-card-close:hover { background: rgba(255,255,255,0.15); color: var(--cream); }
+    .flash-top-bar {
+      background: linear-gradient(135deg, rgba(201,146,42,0.18), rgba(201,146,42,0.06));
+      border-bottom: 1px solid rgba(201,146,42,0.2);
+      padding: 0.45rem 1rem;
+      font-size: 0.7rem; font-weight: 700;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--gold2);
+      display: flex; align-items: center; gap: 0.4rem;
+    }
+    .flash-top-bar .ftb-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--gold2);
+      box-shadow: 0 0 5px var(--gold2);
+      animation: pulse-dot 1.8s ease-in-out infinite;
+    }
+    .flash-body {
+      display: flex; gap: 1.25rem; padding: 1.25rem;
+      align-items: flex-start;
+    }
+    #flash-cover {
+      width: 100px; min-width: 100px;
+      height: 142px; object-fit: cover;
+      border-radius: 8px;
+      box-shadow: 0 4px 18px rgba(0,0,0,0.5);
+      background: var(--navy3);
+    }
+    .flash-info { flex: 1; }
+    .flash-title {
+      font-family: 'Noto Serif Malayalam', 'Manjari', serif;
+      font-size: 1rem; font-weight: 700;
+      color: var(--cream); line-height: 1.35;
+      margin-bottom: 0.25rem;
+    }
+    .flash-author {
+      font-size: 0.78rem; color: var(--muted);
+      margin-bottom: 0.85rem;
+    }
+    .flash-price-row {
+      display: flex; align-items: baseline; gap: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+    .flash-price {
+      font-family: 'Space Grotesk', 'Inter', sans-serif;
+      font-size: 1.5rem; font-weight: 700; color: var(--cream);
+    }
+    .flash-compare {
+      font-size: 0.9rem; color: var(--muted);
+      text-decoration: line-through;
+    }
+    .flash-badge {
+      display: inline-block;
+      background: linear-gradient(135deg, var(--gold), var(--gold2));
+      color: var(--navy); font-size: 0.7rem; font-weight: 800;
+      padding: 0.18rem 0.6rem; border-radius: 100px;
+      letter-spacing: 0.04em; margin-bottom: 1rem;
+    }
+    #flash-add-btn {
+      width: 100%;
+      background: linear-gradient(135deg, var(--gold), var(--gold2));
+      border: none; color: var(--navy);
+      font-family: 'Inter', sans-serif;
+      font-size: 0.9rem; font-weight: 700;
+      padding: 0.65rem 1rem; border-radius: 9px;
+      cursor: pointer; transition: all 0.2s;
+      box-shadow: 0 0 14px rgba(201,146,42,0.3);
+    }
+    #flash-add-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 20px rgba(201,146,42,0.4); }
+    #flash-add-btn.added { background: linear-gradient(135deg, #34d399, #10b981); color: #fff; }
+    #flash-add-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+    .flash-skip {
+      text-align: center; padding: 0 1.25rem 1rem;
+    }
+    .flash-skip button {
+      background: none; border: none;
+      font-size: 0.75rem; color: var(--muted);
+      cursor: pointer; text-decoration: underline;
+      font-family: 'Inter', sans-serif;
+    }
+    .flash-skip button:hover { color: var(--cream); }
+    @media (max-width: 420px) {
+      .flash-body { flex-direction: column; align-items: center; text-align: center; }
+      #flash-cover { width: 110px; height: 156px; }
+      .flash-price-row { justify-content: center; }
+    }
   </style>
+
+  <!-- ══ FLASH CARD POPUP ══ -->
+  <div id="flash-card-overlay">
+    <div id="flash-card">
+      <button id="flash-card-close" onclick="closeFlashCard()" aria-label="Close">✕</button>
+      <div class="flash-top-bar"><span class="ftb-dot"></span> Trending This Week</div>
+      <div class="flash-body">
+        <img id="flash-cover" src="" alt="Book cover" />
+        <div class="flash-info">
+          <div class="flash-title" id="flash-title">—</div>
+          <div class="flash-author" id="flash-author"></div>
+          <div class="flash-price-row">
+            <span class="flash-price" id="flash-price">—</span>
+            <span class="flash-compare" id="flash-compare" style="display:none"></span>
+          </div>
+          <div class="flash-badge" id="flash-discount-badge" style="display:none"></div>
+          <button id="flash-add-btn" onclick="flashAddToCart(this)">🛒 Add to Cart</button>
+        </div>
+      </div>
+      <div class="flash-skip">
+        <button onclick="closeFlashCard()">No thanks, continue browsing</button>
+      </div>
+    </div>
+  </div>
 
   <div class="checkout-overlay" id="checkout-overlay">
     <!-- filled dynamically -->
@@ -9259,6 +9703,99 @@
       }
     }
 
+  </script>
+
+  <script>
+    // ══ FLASH CARD — Trending Book Spotlight ══
+    (function() {
+      const FLASH_BOOK_HANDLE = 'chittilasseryile-choolamvilikkar';
+      const FLASH_SESSION_KEY = 'yfb_flash_dismissed';
+      var   _flashBook = null;
+
+      // Look up book from the already-loaded _books catalog,
+      // polling briefly in case the catalog is still loading.
+      function findBookInCatalog(maxWaitMs) {
+        return new Promise(function(resolve) {
+          var elapsed = 0;
+          var interval = 200;
+          function check() {
+            if (typeof _books !== 'undefined') {
+              var found = Object.values(_books).find(function(b) {
+                return b.handle === FLASH_BOOK_HANDLE;
+              });
+              if (found) { resolve(found); return; }
+            }
+            elapsed += interval;
+            if (elapsed < maxWaitMs) {
+              setTimeout(check, interval);
+            } else {
+              resolve(null);
+            }
+          }
+          check();
+        });
+      }
+
+      function populateFlashCard(book) {
+        document.getElementById('flash-title').textContent  = book.title;
+        document.getElementById('flash-author').textContent = book.vendor || '';
+        document.getElementById('flash-price').textContent  = '₹' + book.price;
+        document.getElementById('flash-cover').src          = book.imgUrl;
+        document.getElementById('flash-cover').alt          = book.title;
+
+        var compareEl = document.getElementById('flash-compare');
+        var badgeEl   = document.getElementById('flash-discount-badge');
+        if (book.comparePrice && parseFloat(book.comparePrice) > parseFloat(book.price)) {
+          compareEl.textContent   = '₹' + book.comparePrice;
+          compareEl.style.display = '';
+          var pct = Math.round((1 - parseFloat(book.price) / parseFloat(book.comparePrice)) * 100);
+          badgeEl.textContent     = pct + '% OFF';
+          badgeEl.style.display   = '';
+        } else {
+          compareEl.style.display = 'none';
+          badgeEl.style.display   = 'none';
+        }
+        _flashBook = book;
+      }
+
+      function showFlashCard() {
+        if (!document.body.classList.contains('guest-mode')) return;
+        if (sessionStorage.getItem(FLASH_SESSION_KEY)) return;
+        document.getElementById('flash-card-overlay').classList.add('active');
+      }
+
+      window.closeFlashCard = function() {
+        document.getElementById('flash-card-overlay').classList.remove('active');
+        sessionStorage.setItem(FLASH_SESSION_KEY, '1');
+      };
+
+      window.flashAddToCart = async function(btn) {
+        if (!_flashBook || !_flashBook.id) return;
+        btn.textContent = '…'; btn.disabled = true;
+        if (typeof addToCart === 'function') {
+          await addToCart(_flashBook.id, btn);
+        }
+        // Auto-close popup a beat after the "✓ Added" confirmation
+        setTimeout(function() {
+          if (btn.classList.contains('added')) {
+            setTimeout(closeFlashCard, 900);
+          }
+        }, 300);
+      };
+
+      // Close on backdrop click
+      document.getElementById('flash-card-overlay').addEventListener('click', function(e) {
+        if (e.target === this) closeFlashCard();
+      });
+
+      // Wait 1.5s (so the landing panel paints), then look up the book
+      setTimeout(async function() {
+        var book = await findBookInCatalog(5000); // poll up to 5s for catalog
+        if (!book) return;
+        populateFlashCard(book);
+        showFlashCard();
+      }, 1500);
+    })();
   </script>
 
 

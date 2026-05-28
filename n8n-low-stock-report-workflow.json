@@ -1,0 +1,80 @@
+{
+  "name": "YFB — Daily Low Stock Report",
+  "nodes": [
+    {
+      "id": "1",
+      "name": "Every Day 8AM IST",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [100, 300],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "30 2 * * *"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "2",
+      "name": "Fetch All Products",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [340, 300],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const token   = 'REPLACE_WITH_SHOPIFY_ACCESS_TOKEN';\nconst baseUrl = 'https://zgqk4e-1m.myshopify.com/admin/api/2025-01/products.json';\n\nlet allProducts = [];\nlet pageInfo    = null;\nlet hasMore     = true;\n\nwhile (hasMore) {\n  let url = `${baseUrl}?fields=title,handle,variants&limit=250`;\n  if (pageInfo) url += `&page_info=${pageInfo}`;\n\n  const response = await this.helpers.httpRequest({\n    method: 'GET',\n    url: url,\n    headers: { 'X-Shopify-Access-Token': token },\n    returnFullResponse: true\n  });\n\n  allProducts = allProducts.concat(response.body.products || []);\n\n  const linkHeader = response.headers['link'] || '';\n  const nextMatch  = linkHeader.match(/<([^>]+)>;\\s*rel=\"next\"/);\n  if (nextMatch) {\n    const pageInfoMatch = nextMatch[1].match(/page_info=([^&]+)/);\n    pageInfo = pageInfoMatch ? pageInfoMatch[1] : null;\n    hasMore  = !!pageInfo;\n  } else {\n    hasMore = false;\n  }\n}\n\nreturn [{ json: { products: allProducts, totalFetched: allProducts.length } }];"
+      }
+    },
+    {
+      "id": "3",
+      "name": "Filter Low Stock & Build Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [580, 300],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const raw = $input.first().json;\nconst products = Array.isArray(raw.products) ? raw.products : [];\n\nconst lowStock = [];\n\nfor (const product of products) {\n  const variants = Array.isArray(product.variants) ? product.variants : [];\n  for (const variant of variants) {\n    const qty = variant.inventory_quantity ?? 0;\n    if (qty <= 0) {\n      const variantLabel = variant.title && variant.title !== 'Default Title' ? variant.title : '';\n      lowStock.push({\n        title:   product.title + (variantLabel ? ` — ${variantLabel}` : ''),\n        handle:  product.handle,\n        stock:   qty,\n        adminUrl: `https://zgqk4e-1m.myshopify.com/admin/products/${variant.product_id}`\n      });\n    }\n  }\n}\n\n// Sort: out of stock (0) first, then negative\nlowStock.sort((a, b) => a.stock - b.stock);\n\nconst today = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });\n\n// Build HTML report\nconst rows = lowStock.map(p => {\n  const stockLabel = p.stock === 0 ? 'Out of Stock' : `${p.stock}`;\n  const stockColor = p.stock === 0 ? '#e63946' : '#ff6b35';\n  return `<tr>\n    <td style=\"padding:10px 14px;border-bottom:1px solid #eee;font-size:14px;color:#1a1a2e;\">\n      <a href=\"${p.adminUrl}\" style=\"color:#1a1a2e;text-decoration:none;font-weight:600;\">${p.title}</a>\n    </td>\n    <td style=\"padding:10px 14px;border-bottom:1px solid #eee;text-align:center;\">\n      <span style=\"background:${stockColor};color:#fff;font-size:12px;font-weight:700;padding:3px 10px;border-radius:20px;\">${stockLabel}</span>\n    </td>\n  </tr>`;\n}).join('');\n\nconst html = `<!DOCTYPE html>\n<html lang=\"en\">\n<head><meta charset=\"UTF-8\"/>\n<style>\n  body{font-family:Arial,sans-serif;background:#f4f4f4;margin:0;padding:0;}\n  .wrapper{max-width:680px;margin:32px auto;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,0.10);}\n  .header{background:#1a1a2e;padding:24px 40px;display:flex;align-items:center;justify-content:space-between;}\n  .header img{height:44px;object-fit:contain;}\n  .header-right{text-align:right;color:#aaa;font-size:12px;}\n  .header-right strong{color:#F5B800;font-size:16px;display:block;}\n  .body{padding:32px 40px;}\n  .summary{display:flex;gap:16px;margin-bottom:28px;}\n  .summary-box{flex:1;background:#f9f7f2;border-radius:8px;padding:16px;text-align:center;}\n  .summary-box .num{font-size:28px;font-weight:700;color:#e63946;}\n  .summary-box .label{font-size:12px;color:#888;margin-top:4px;}\n  table{width:100%;border-collapse:collapse;font-size:14px;}\n  thead tr{background:#1a1a2e;color:#fff;}\n  thead th{padding:11px 14px;text-align:left;font-weight:600;font-size:13px;}\n  tbody tr:nth-child(even){background:#f9f7f2;}\n  .footer{background:#f5f0e8;padding:16px 40px;text-align:center;font-size:11px;color:#888;border-top:1px solid #e5e0d8;}\n</style>\n</head>\n<body>\n<div class=\"wrapper\">\n  <div class=\"header\">\n    <img src=\"https://yellowfeather.netlify.app/logo-landscape.png\" alt=\"Yellow Feather Books\"/>\n    <div class=\"header-right\"><strong>Low Stock Report</strong>${today}</div>\n  </div>\n  <div class=\"body\">\n    <div class=\"summary\">\n      <div class=\"summary-box\"><div class=\"num\">${lowStock.length}</div><div class=\"label\">Products Need Restocking</div></div>\n      <div class=\"summary-box\"><div class=\"num\" style=\"color:#ff6b35;\">${lowStock.filter(p => p.stock === 0).length}</div><div class=\"label\">Completely Out of Stock</div></div>\n    </div>\n    ${lowStock.length === 0\n      ? '<p style=\"color:#555;font-size:15px;\">All products are well stocked. No action needed today.</p>'\n      : `<table>\n          <thead><tr><th>Product</th><th style=\"text-align:center;\">Stock</th></tr></thead>\n          <tbody>${rows}</tbody>\n        </table>`\n    }\n  </div>\n  <div class=\"footer\">Yellow Feather Books &nbsp;·&nbsp; Automated daily report &nbsp;·&nbsp; 8:00 AM IST</div>\n</div>\n</body></html>`;\n\nreturn [{ json: { html, totalLowStock: lowStock.length, today } }];"
+      }
+    },
+    {
+      "id": "4",
+      "name": "Send Report Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [820, 300],
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "toList": "yellowfeatherbookstore@gmail.com",
+        "subject": "={{ '📦 Low Stock Report — ' + $json.totalLowStock + ' products need restocking — ' + $json.today }}",
+        "message": "={{ $json.html }}",
+        "options": {
+          "emailType": "html"
+        }
+      },
+      "credentials": {
+        "gmailOAuth2": { "id": "REPLACE_WITH_GMAIL_CRED_ID", "name": "Gmail Account" }
+      }
+    }
+  ],
+
+  "connections": {
+    "Every Day 8AM IST": {
+      "main": [[{ "node": "Fetch All Products", "type": "main", "index": 0 }]]
+    },
+    "Fetch All Products": {
+      "main": [[{ "node": "Filter Low Stock & Build Report", "type": "main", "index": 0 }]]
+    },
+    "Filter Low Stock & Build Report": {
+      "main": [[{ "node": "Send Report Email", "type": "main", "index": 0 }]]
+    }
+  },
+
+  "active": false,
+  "settings": { "executionOrder": "v1", "timezone": "Asia/Kolkata" },
+  "tags": ["yfb", "shopify", "inventory", "report"]
+}

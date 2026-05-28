@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "YFB Landing Portal",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", "-p", "3456", "."],
+      "port": 3456
+    }
+  ]
+}

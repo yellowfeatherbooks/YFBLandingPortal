@@ -171,6 +171,7 @@ exports.handler = async (event) => {
     let authorName  = searchMeta?.authorName  || '';
     let bookTitle   = searchMeta?.bookTitle   || '';
     let searchQuery = searchMeta?.searchQuery || prompt;
+    let shopifyTag  = searchMeta?.shopifyTag  || '';
     let explanation = searchMeta?.explanation || '';
     let claudeInputTokens = 0, claudeOutputTokens = 0;
 
@@ -185,7 +186,7 @@ exports.handler = async (event) => {
           },
           body: JSON.stringify({
             model:      'claude-haiku-4-5-20251001',
-            max_tokens: 350,
+            max_tokens: 400,
             messages: [{
               role:    'user',
               content: `You are a Malayalam book search assistant. Analyse the user's query and classify it.
@@ -198,13 +199,19 @@ Respond ONLY with valid JSON (no markdown):
   "authorName": "full author name if the query is about an author, else empty string",
   "bookTitle":  "specific book title if the query is about a title, else empty string",
   "searchQuery": "2-5 word clean keywords for searching publisher websites",
+  "shopifyTag":  "pick the single best matching tag from this exact list of available store tags — use the EXACT spelling/case shown: Romantic, crime, Fiction, historic, Adventure, investigation, Memoir, murder, Period Drama, Philosophy — or empty string if no tag fits",
   "explanation": "one sentence describing what the user is looking for"
 }
 
 Rules:
 - searchType="author" when the user names a specific author (e.g. "MT Vasudevan Nair books", "works by Basheer")
 - searchType="title" when the user names a specific book (e.g. "Randamoozham", "find Aadujeevitham")
-- searchType="topic" for everything else (genre, mood, theme queries)`
+- searchType="topic" for everything else (genre, mood, theme queries)
+- For romantic/love/relationship/love story queries → shopifyTag="Romantic"
+- For detective/mystery/whodunit queries → shopifyTag="investigation" or "crime"
+- For historical/period queries → shopifyTag="historic" or "Period Drama"
+- For biography/life story queries → shopifyTag="Memoir"
+- Only use tags from the exact list above — do not invent new tags`
             }]
           })
         });
@@ -218,12 +225,13 @@ Rules:
           authorName  = parsed.authorName  || '';
           bookTitle   = parsed.bookTitle   || '';
           searchQuery = parsed.searchQuery || prompt;
+          shopifyTag  = (parsed.shopifyTag  || '').toLowerCase().trim();
           explanation = parsed.explanation || '';
         }
       } catch(e) { /* fall through with raw prompt */ }
     }
 
-    console.log(`searchType:${searchType} author:"${authorName}" title:"${bookTitle}" query:"${searchQuery}"`);
+    console.log(`searchType:${searchType} author:"${authorName}" title:"${bookTitle}" query:"${searchQuery}" tag:"${shopifyTag}"`);
 
     // ── 2. Shopify search (strategy depends on type) ───────────────────────
     let shopifyBooks = [];
@@ -249,8 +257,30 @@ Rules:
           console.log(`Shopify title match: "${match?.title}" for "${bookTitle}"`);
 
         } else {
-          const { nodes } = await searchShopify(searchQuery, 5, null);
-          if (nodes.length) shopifyBooks = [shopifyNodeToBook(nodes[0])];
+          // 1. Tag search (most reliable for genre/mood queries)
+          let tagNodes = [];
+          if (shopifyTag) {
+            const tagResult = await searchShopify(`tag:${shopifyTag}`, 10, cursor);
+            tagNodes = tagResult.nodes;
+            shopifyPageInfo = tagResult.pageInfo;
+            console.log(`Shopify tag:"${shopifyTag}" results: ${tagNodes.length}`);
+          }
+
+          // 2. Keyword search on title/description
+          let { nodes: kwNodes } = await searchShopify(searchQuery, 8, null);
+          if (!kwNodes.length) {
+            const fallbackQ = prompt.replace(/^(i am looking for|find me|show me|books about|books by)\s+/i, '').trim();
+            ({ nodes: kwNodes } = await searchShopify(fallbackQ, 8, null));
+          }
+          console.log(`Shopify keyword:"${searchQuery}" results: ${kwNodes.length}`);
+
+          // 3. Merge: tag results first (most relevant), then keyword results, deduplicated
+          const seenHandles = new Set(tagNodes.map(n => n.handle));
+          const merged = [
+            ...tagNodes,
+            ...kwNodes.filter(n => !seenHandles.has(n.handle))
+          ];
+          shopifyBooks = merged.map(shopifyNodeToBook).sort((a, b) => (b.inStore ? 1 : 0) - (a.inStore ? 1 : 0));
         }
       } catch(e) { console.error('Shopify search error:', e.message); }
     }
@@ -357,7 +387,7 @@ Rank these by relevance to the user's query. Respond ONLY with a JSON array of 1
         books, explanation, searchType,
         total: books.length,
         pageInfo: shopifyPageInfo,
-        searchMeta: { searchType, authorName, bookTitle, searchQuery, explanation },
+        searchMeta: { searchType, authorName, bookTitle, searchQuery, shopifyTag, explanation },
         debug: cseError || null
       })
     };

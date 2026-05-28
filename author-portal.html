@@ -2550,9 +2550,9 @@
     var pendingResetToken = null;
 
     var PLANS = {
-      starter:   { name: 'Starter',   quota: 1,  plan_id: 'plan_SkuiB2nyoaswNZ' },
-      growth:    { name: 'Growth',    quota: 3,  plan_id: 'plan_SkukwXUCHR58qz' },
-      publisher: { name: 'Publisher', quota: 10, plan_id: 'plan_SkukHR8IHnriYi' }
+      starter:   { name: 'Starter',   quota: 1,  price: 99,  plan_id: 'plan_SkuiB2nyoaswNZ' },
+      growth:    { name: 'Growth',    quota: 3,  price: 199, plan_id: 'plan_SkukwXUCHR58qz' },
+      publisher: { name: 'Publisher', quota: 10, price: 399, plan_id: 'plan_SkukHR8IHnriYi' }
     };
 
     var currentEmail          = null;
@@ -2920,8 +2920,9 @@
           theme: { color: '#C9922A' },
           prefill: { email: currentEmail || '' },
           handler: async function(response) {
-            var sid     = response.razorpay_subscription_id || subId;
-            var saved   = await saveSubscription(planKey, sid);
+            var sid        = response.razorpay_subscription_id || subId;
+            var paymentId  = response.razorpay_payment_id || '';
+            var saved      = await saveSubscription(planKey, sid, paymentId);
             if (!saved) {
               alert('Payment received but we could not save your subscription. Please contact bookstore@yellowfeatherbookstore.com with your payment ID: ' + sid);
               return;
@@ -2944,17 +2945,20 @@
       }
     }
 
-    async function saveSubscription(planKey, subscriptionId) {
+    async function saveSubscription(planKey, subscriptionId, paymentId) {
       var plan = PLANS[planKey];
       try {
         var res  = await fetch(SAVE_SUB_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            email: currentEmail,
-            plan_name: plan.name,
-            plan_id: plan.plan_id,
-            subscription_id: subscriptionId
+            email:           currentEmail,
+            name:            currentUserName || currentEmail.split('@')[0],
+            plan_name:       plan.name,
+            plan_id:         plan.plan_id,
+            amount:          plan.price,
+            subscription_id: subscriptionId,
+            payment_id:      paymentId || ''
           })
         });
         var data = await res.json();

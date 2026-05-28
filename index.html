@@ -4342,8 +4342,8 @@
     <!-- Desktop sidebar -->
     <nav id="admin-sidebar">
       <div class="admin-brand">Admin Panel<strong>Yellow Feather Books</strong></div>
-      <button class="admin-nav-item active" data-section="submissions" onclick="adminNav('submissions',this)">
-        <span class="admin-nav-icon">📋</span> Submissions
+      <button class="admin-nav-item active" data-section="orders" onclick="adminNav('orders',this)">
+        <span class="admin-nav-icon">📦</span> Orders
       </button>
       <button class="admin-nav-item" data-section="authors" onclick="adminNav('authors',this)">
         <span class="admin-nav-icon">✍️</span> Authors
@@ -4354,8 +4354,8 @@
       <button class="admin-nav-item" data-section="subscriptions" onclick="adminNav('subscriptions',this)">
         <span class="admin-nav-icon">💳</span> Subscriptions
       </button>
-      <button class="admin-nav-item" data-section="orders" onclick="adminNav('orders',this)">
-        <span class="admin-nav-icon">📦</span> Orders
+      <button class="admin-nav-item" data-section="submissions" onclick="adminNav('submissions',this)">
+        <span class="admin-nav-icon">📋</span> Submissions
       </button>
       <button class="admin-nav-item" data-section="book-requests" onclick="adminNav('book-requests',this)">
         <span class="admin-nav-icon">📬</span> Book Requests
@@ -4515,8 +4515,8 @@
 
     <!-- Mobile tab bar -->
     <div id="admin-mobile-tabs">
-      <button class="admin-mob-tab active" data-section="submissions" onclick="adminNav('submissions',this)">
-        <span class="tab-icon">📋</span>Submissions
+      <button class="admin-mob-tab active" data-section="orders" onclick="adminNav('orders',this)">
+        <span class="tab-icon">📦</span>Orders
       </button>
       <button class="admin-mob-tab" data-section="authors" onclick="adminNav('authors',this)">
         <span class="tab-icon">✍️</span>Authors
@@ -4527,8 +4527,8 @@
       <button class="admin-mob-tab" data-section="subscriptions" onclick="adminNav('subscriptions',this)">
         <span class="tab-icon">💳</span>Subs
       </button>
-      <button class="admin-mob-tab" data-section="orders" onclick="adminNav('orders',this)">
-        <span class="tab-icon">📦</span>Orders
+      <button class="admin-mob-tab" data-section="submissions" onclick="adminNav('submissions',this)">
+        <span class="tab-icon">📋</span>Submissions
       </button>
       <button class="admin-mob-tab" data-section="book-requests" onclick="adminNav('book-requests',this)">
         <span class="tab-icon">📬</span>Book Reqs
@@ -5621,7 +5621,7 @@
         _applyAdminSession();
         hideAdminLogin();
         setView('admin');
-        adminNav('submissions', document.querySelector('#admin-sidebar [data-section="submissions"]'));
+        adminNav('orders', document.querySelector('#admin-sidebar [data-section="orders"]'));
       } catch(e) {
         errEl.textContent = 'Connection error. Please try again.';
         btn.disabled = false; btn.textContent = 'Sign In';

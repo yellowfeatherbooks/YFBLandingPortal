@@ -5016,7 +5016,7 @@
       <div style="background:linear-gradient(135deg,rgba(201,146,42,0.12),rgba(201,146,42,0.04));border:1px solid rgba(201,146,42,0.2);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;">
         <div>
           <div style="font-size:0.7rem;color:var(--gold);font-weight:700;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:0.3rem;">🏆 Book Club Member</div>
-          <div style="font-size:1rem;font-weight:600;" id="members-welcome-name">Welcome back!</div>
+          <div style="font-size:1rem;font-weight:600;" id="members-welcome-name">Welcome!</div>
           <div style="font-size:0.78rem;color:var(--muted);margin-top:0.2rem;">Your exclusive discount code:</div>
         </div>
         <div style="background:rgba(201,146,42,0.1);border:2px dashed rgba(201,146,42,0.4);border-radius:10px;padding:0.6rem 1.25rem;text-align:center;">
@@ -8094,7 +8094,7 @@
     // ── Welcome tab: just update the greeting name ──
     function loadMembersContent() {
       document.getElementById('members-welcome-name').textContent =
-        'Welcome back, ' + (bookClubMemberName || readerEmail) + '!';
+        'Welcome, ' + (bookClubMemberName || readerEmail) + '!';
     }
 
     // ── Curated Picks tab: fetch books from Best Sellers + Award Winners ──
@@ -8271,7 +8271,7 @@
         if (data.member) {
           const since = data.joined_at ? new Date(data.joined_at).toLocaleDateString('en-IN', { year:'numeric', month:'long', day:'numeric' }) : '';
           document.getElementById('bc-member-since').textContent =
-            `Welcome back, ${data.name || email}! Member since ${since}.`;
+            `Welcome, ${data.name || email}! Member since ${since}.`;
           showBcStep('member');
         } else {
           const err = document.getElementById('bc-error');
@@ -8340,7 +8340,7 @@
         if (chkData.member) {
           const since = chkData.joined_at ? new Date(chkData.joined_at).toLocaleDateString('en-IN', { year:'numeric', month:'long', day:'numeric' }) : '';
           document.getElementById('bc-member-since').textContent =
-            `Welcome back, ${chkData.name || email}! Member since ${since}.`;
+            `Welcome, ${chkData.name || email}! Member since ${since}.`;
           showBcStep('member'); return;
         }
       } catch(e) { /* proceed */ }

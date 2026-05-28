@@ -2920,11 +2920,12 @@
           theme: { color: '#C9922A' },
           prefill: { email: currentEmail || '' },
           handler: async function(response) {
-            var sid        = response.razorpay_subscription_id || subId;
-            var paymentId  = response.razorpay_payment_id || '';
-            var saved      = await saveSubscription(planKey, sid, paymentId);
+            var sid       = response.razorpay_subscription_id || subId;
+            var paymentId = response.razorpay_payment_id  || '';
+            var signature = response.razorpay_signature   || '';
+            var saved     = await saveSubscription(planKey, sid, paymentId, signature);
             if (!saved) {
-              alert('Payment received but we could not save your subscription. Please contact bookstore@yellowfeatherbookstore.com with your payment ID: ' + sid);
+              alert('Payment received but we could not save your subscription. Please contact bookstore@yellowfeatherbookstore.com with your payment ID: ' + paymentId);
               return;
             }
             showSubSuccess(planKey, sid);
@@ -2945,20 +2946,21 @@
       }
     }
 
-    async function saveSubscription(planKey, subscriptionId, paymentId) {
+    async function saveSubscription(planKey, subscriptionId, paymentId, signature) {
       var plan = PLANS[planKey];
       try {
         var res  = await fetch(SAVE_SUB_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            email:           currentEmail,
-            name:            currentUserName || currentEmail.split('@')[0],
-            plan_name:       plan.name,
-            plan_id:         plan.plan_id,
-            amount:          plan.price,
-            subscription_id: subscriptionId,
-            payment_id:      paymentId || ''
+            email:              currentEmail,
+            name:               currentUserName || currentEmail.split('@')[0],
+            plan_name:          plan.name,
+            plan_id:            plan.plan_id,
+            amount:             plan.price,
+            subscription_id:    subscriptionId,
+            payment_id:         paymentId  || '',
+            razorpay_signature: signature  || ''
           })
         });
         var data = await res.json();

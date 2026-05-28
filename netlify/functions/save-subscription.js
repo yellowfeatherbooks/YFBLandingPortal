@@ -1,6 +1,8 @@
+const crypto            = require('crypto');
 const SUPABASE_URL      = process.env.SUPABASE_URL;
 const SUPABASE_KEY      = process.env.SUPABASE_KEY;
 const SUPABASE_SVC_KEY  = process.env.SUPABASE_SERVICE_KEY || SUPABASE_KEY; // service role bypasses RLS
+const RZP_SECRET        = process.env.RAZORPAY_KEY_SECRET;
 
 const corsHeaders = {
   'Access-Control-Allow-Origin':  '*',
@@ -12,12 +14,29 @@ exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: corsHeaders, body: '' };
 
   try {
-    const { email, name, plan_name, plan_id, amount, subscription_id, payment_id } = JSON.parse(event.body || '{}');
+    const { email, name, plan_name, plan_id, amount, subscription_id, payment_id, razorpay_signature } = JSON.parse(event.body || '{}');
     if (!email || !plan_name || !subscription_id) return {
       statusCode: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       body: JSON.stringify({ success: false, error: 'Missing required fields' })
     };
+
+    // ── Verify Razorpay payment signature ──────────────────────────────────
+    // Formula: HMAC-SHA256(subscription_id + "|" + payment_id, secret)
+    if (RZP_SECRET && payment_id && razorpay_signature) {
+      const expected = crypto
+        .createHmac('sha256', RZP_SECRET)
+        .update(`${subscription_id}|${payment_id}`)
+        .digest('hex');
+      if (expected !== razorpay_signature) {
+        console.error('Subscription payment signature mismatch');
+        return {
+          statusCode: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ success: false, error: 'Payment verification failed.' })
+        };
+      }
+    }
 
     // Check for an existing active subscription and cancel it in Razorpay
     // to avoid double-billing when upgrading plans

@@ -75,13 +75,13 @@
     {
       "parameters": {
         "conditions": {
-          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose" },
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
           "conditions": [
             {
               "id": "cond-phone-001",
-              "leftValue": "={{ $json.phone }}",
-              "rightValue": "",
-              "operator": { "type": "string", "operation": "notEmpty", "singleValue": true }
+              "leftValue": "={{ $json.hasPhone }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "equal" }
             }
           ],
           "combinator": "and"
@@ -110,6 +110,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [1440, -220],
+      "onError": "continueRegularOutput",
       "credentials": {
         "httpHeaderAuth": {
           "id": "PduyAvcBaYt6Afke",
@@ -120,13 +121,13 @@
     {
       "parameters": {
         "conditions": {
-          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose" },
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
           "conditions": [
             {
               "id": "cond-email-001",
-              "leftValue": "={{ $json.email }}",
-              "rightValue": "",
-              "operator": { "type": "string", "operation": "notEmpty", "singleValue": true }
+              "leftValue": "={{ $json.hasEmail }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "equal" }
             }
           ],
           "combinator": "and"

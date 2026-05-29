@@ -4833,7 +4833,16 @@
           <label class="sf-label">Phone <span style="color:var(--muted);font-weight:400;">(optional)</span></label>
           <input id="bc-phone" type="tel" class="sf-input" placeholder="+91 98765 43210" />
         </div>
-        <button class="bc-submit-btn" id="bc-join-btn" onclick="startBookClubPayment()">Join for ₹99 →</button>
+        <!-- T&C agreement -->
+        <div style="display:flex;align-items:flex-start;gap:0.6rem;margin:1rem 0 0.25rem;">
+          <input type="checkbox" id="bc-tnc-agree" style="width:16px;height:16px;min-width:16px;margin-top:3px;accent-color:#F5B800;cursor:pointer;"/>
+          <label for="bc-tnc-agree" style="font-size:0.78rem;color:#7A7485;line-height:1.6;cursor:pointer;">
+            I have read and agree to the
+            <a href="/club-terms.html" target="_blank" rel="noopener" style="color:#F5B800;text-decoration:underline;">Book Club Terms &amp; Conditions</a>.
+            I understand this is a <strong style="color:#E8E0D0;">one-year membership</strong> with no automatic renewal — I can choose to renew or continue as a guest when it expires.
+          </label>
+        </div>
+        <button class="bc-submit-btn" id="bc-join-btn" onclick="startBookClubPayment()" disabled style="opacity:0.4;cursor:not-allowed;">Join for ₹99 →</button>
         <p style="text-align:center;font-size:0.75rem;color:var(--muted);margin-top:1rem;">
           Already a member? <a href="#" onclick="checkExistingMember();return false;" style="color:var(--gold);">Check my membership</a>
         </p>
@@ -8310,6 +8319,19 @@
         hint.style.display  = isKnown ? 'block' : 'none';
       } catch(e) { /* ignore — hint is optional */ }
     }
+
+    // ── T&C checkbox toggle for Book Club join button ──
+    (function() {
+      var cb  = document.getElementById('bc-tnc-agree');
+      var btn = document.getElementById('bc-join-btn');
+      if (cb && btn) {
+        cb.addEventListener('change', function() {
+          btn.disabled = !cb.checked;
+          btn.style.opacity = cb.checked ? '1' : '0.4';
+          btn.style.cursor  = cb.checked ? 'pointer' : 'not-allowed';
+        });
+      }
+    })();
 
     // ── Start Book Club payment ──
     async function startBookClubPayment() {

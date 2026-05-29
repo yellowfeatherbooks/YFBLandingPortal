@@ -1674,6 +1674,13 @@
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
           </button>
         </div>
+        <!-- Marketing consent -->
+        <div style="display:flex;align-items:flex-start;gap:0.6rem;margin:0.5rem 0 0.75rem;">
+          <input type="checkbox" id="signup-marketing-agree" checked style="width:16px;height:16px;min-width:16px;margin-top:3px;accent-color:var(--gold);cursor:pointer;"/>
+          <label for="signup-marketing-agree" style="font-size:0.75rem;color:var(--muted);line-height:1.6;cursor:pointer;">
+            I agree to receive publishing tips, platform updates, and promotional offers from Yellow Feather Books via <strong style="color:var(--cream);">WhatsApp and email</strong>.
+          </label>
+        </div>
         <div id="signup-error" class="email-error"></div>
         <button id="signup-btn" class="plan-btn filled" style="width:100%;"
                 onclick="handleSignup()">Create Account →</button>
@@ -2731,13 +2738,14 @@
     }
 
     async function handleSignup() {
-      var name     = document.getElementById('signup-name').value.trim();
-      var email    = document.getElementById('signup-email').value.trim().toLowerCase();
-      var phone    = document.getElementById('signup-phone').value.trim();
-      var password = document.getElementById('signup-password').value;
-      var confirm  = document.getElementById('signup-confirm').value;
-      var btn      = document.getElementById('signup-btn');
-      var err      = document.getElementById('signup-error');
+      var name            = document.getElementById('signup-name').value.trim();
+      var email           = document.getElementById('signup-email').value.trim().toLowerCase();
+      var phone           = document.getElementById('signup-phone').value.trim();
+      var password        = document.getElementById('signup-password').value;
+      var confirm         = document.getElementById('signup-confirm').value;
+      var marketingAgree  = document.getElementById('signup-marketing-agree')?.checked || false;
+      var btn             = document.getElementById('signup-btn');
+      var err             = document.getElementById('signup-error');
 
       if (!name) {
         err.textContent = 'Please enter your name.';
@@ -2768,7 +2776,7 @@
         var res  = await fetch(REGISTER_USER_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, email, phone: phoneWithCode, password })
+          body: JSON.stringify({ name, email, phone: phoneWithCode, password, marketing_consent: marketingAgree })
         });
         var data = await res.json();
 

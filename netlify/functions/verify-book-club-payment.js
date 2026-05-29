@@ -75,7 +75,7 @@ exports.handler = async (event) => {
   if (event.httpMethod !== 'POST')    return { statusCode: 405, headers: cors, body: 'Method Not Allowed' };
 
   try {
-    const { razorpay_payment_id, razorpay_order_id, razorpay_signature, email, name, password, phone } =
+    const { razorpay_payment_id, razorpay_order_id, razorpay_signature, email, name, password, phone, marketing_consent } =
       JSON.parse(event.body || '{}');
 
     // 1 — Verify Razorpay signature
@@ -103,6 +103,7 @@ exports.handler = async (event) => {
           razorpay_payment_id,
           razorpay_order_id,
           plan:                'Annual Membership',
+          marketing_consent:   marketing_consent !== undefined ? marketing_consent : true,
           joined_at:           new Date().toISOString(),
           valid_until:         new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
         })

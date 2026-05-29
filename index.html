@@ -4830,11 +4830,19 @@
           </div>
         </div>
         <div class="sf-field">
-          <label class="sf-label">Phone <span style="color:var(--muted);font-weight:400;">(optional)</span></label>
-          <input id="bc-phone" type="tel" class="sf-input" placeholder="+91 98765 43210" />
+          <label class="sf-label">Phone Number <span style="color:#e05252;font-weight:600;">*</span></label>
+          <input id="bc-phone" type="tel" class="sf-input" placeholder="10-digit mobile number" maxlength="10" />
+          <div style="font-size:0.72rem;color:var(--muted);margin-top:0.3rem;">We use this to send your membership updates on WhatsApp.</div>
+        </div>
+        <!-- Marketing consent -->
+        <div style="display:flex;align-items:flex-start;gap:0.6rem;margin:0.75rem 0 0.5rem;">
+          <input type="checkbox" id="bc-marketing-agree" checked style="width:16px;height:16px;min-width:16px;margin-top:3px;accent-color:#F5B800;cursor:pointer;"/>
+          <label for="bc-marketing-agree" style="font-size:0.78rem;color:#7A7485;line-height:1.6;cursor:pointer;">
+            I agree to receive membership updates, exclusive offers, and new arrival alerts from Yellow Feather Books via <strong style="color:#E8E0D0;">WhatsApp and email</strong>.
+          </label>
         </div>
         <!-- T&C agreement -->
-        <div style="display:flex;align-items:flex-start;gap:0.6rem;margin:1rem 0 0.25rem;">
+        <div style="display:flex;align-items:flex-start;gap:0.6rem;margin:0 0 0.25rem;">
           <input type="checkbox" id="bc-tnc-agree" style="width:16px;height:16px;min-width:16px;margin-top:3px;accent-color:#F5B800;cursor:pointer;"/>
           <label for="bc-tnc-agree" style="font-size:0.78rem;color:#7A7485;line-height:1.6;cursor:pointer;">
             I have read and agree to the
@@ -8335,12 +8343,13 @@
 
     // ── Start Book Club payment ──
     async function startBookClubPayment() {
-      const name     = document.getElementById('bc-name').value.trim();
-      const email    = document.getElementById('bc-email').value.trim();
-      const password = document.getElementById('bc-password').value;
-      const phone    = document.getElementById('bc-phone').value.trim();
-      const errEl    = document.getElementById('bc-error');
-      const btn      = document.getElementById('bc-join-btn');
+      const name            = document.getElementById('bc-name').value.trim();
+      const email           = document.getElementById('bc-email').value.trim();
+      const password        = document.getElementById('bc-password').value;
+      const rawPhone        = document.getElementById('bc-phone').value.trim().replace(/\D/g, '');
+      const marketingAgree  = document.getElementById('bc-marketing-agree')?.checked || false;
+      const errEl           = document.getElementById('bc-error');
+      const btn             = document.getElementById('bc-join-btn');
 
       errEl.style.display = 'none';
 
@@ -8350,6 +8359,11 @@
         errEl.textContent = 'Password must be at least 5 characters.';
         errEl.style.display = 'block'; return;
       }
+      if (!rawPhone || !/^[6-9]\d{9}$/.test(rawPhone)) {
+        errEl.textContent = 'Please enter a valid 10-digit Indian mobile number.';
+        errEl.style.display = 'block'; return;
+      }
+      const phone = '+91' + rawPhone;
 
       // Check if already a member
       try {
@@ -8405,7 +8419,7 @@
                   razorpay_payment_id: response.razorpay_payment_id,
                   razorpay_order_id:   response.razorpay_order_id,
                   razorpay_signature:  response.razorpay_signature,
-                  email, name, password, phone
+                  email, name, password, phone, marketing_consent: marketingAgree
                 })
               });
               const verData = await verRes.json();

@@ -63,7 +63,7 @@ exports.handler = async function(event) {
   if (event.httpMethod !== 'POST')
     return { statusCode: 405, headers: cors, body: 'Method Not Allowed' };
 
-  const { name, email, phone, password } = JSON.parse(event.body || '{}');
+  const { name, email, phone, password, marketing_consent } = JSON.parse(event.body || '{}');
   if (!name || !email || !password) {
     return {
       statusCode: 200, headers: cors,
@@ -109,11 +109,12 @@ exports.handler = async function(event) {
           },
           body: JSON.stringify({
             name,
-            phone:         phone || existingUser.phone || null,
+            phone:              phone || existingUser.phone || null,
             password_hash,
             salt,
-            roles:         newRoles,
-            registered_at: new Date().toISOString()
+            roles:              newRoles,
+            marketing_consent:  marketing_consent !== undefined ? marketing_consent : true,
+            registered_at:      new Date().toISOString()
           })
         }
       );
@@ -155,11 +156,12 @@ exports.handler = async function(event) {
       body: JSON.stringify({
         email,
         name,
-        phone:         phone || null,
+        phone:              phone || null,
         password_hash,
         salt,
-        roles:         ['author'],
-        registered_at: new Date().toISOString()
+        roles:              ['author'],
+        marketing_consent:  marketing_consent !== undefined ? marketing_consent : true,
+        registered_at:      new Date().toISOString()
       })
     });
 

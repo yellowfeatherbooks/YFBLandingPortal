@@ -82,6 +82,7 @@ exports.handler = async (event) => {
           plan_name,
           subscription_id,
           status:          'active',
+          access_until:    null,        // clear stale cancellation date on renewal
           subscribed_date: new Date().toISOString()
         })
       }

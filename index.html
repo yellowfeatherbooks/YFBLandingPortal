@@ -4766,7 +4766,7 @@
       <div class="author-shop-topbar">
         <div>
           <h2>🛍️ Shop My Books</h2>
-          <p>Buy your own published books at a 20% author discount</p>
+          <p>Buy your own published books at a 10% author discount</p>
         </div>
         <div style="display:flex;gap:0.5rem;align-items:center;">
           <button onclick="fetchAuthorSubmissions(JSON.parse(localStorage.getItem('authorSession')||'{}').email||'').then(loadAuthorShopProducts)"
@@ -8088,7 +8088,7 @@
     // Then we do the async cartBuyerIdentityUpdate and navigate the already-open
     // popup to the final URL via openCheckout(url, preOpenedPopup).
     async function prepareAndCheckout(baseCheckoutUrl) {
-      // ── Author mode: attach buyer identity + apply AUTHOR20 if they have their own books ──
+      // ── Author mode: attach buyer identity + apply AUTHOR10 if they have their own books ──
       if (document.body.classList.contains('author-mode') && _cartId) {
         const session     = JSON.parse(localStorage.getItem('authorSession') || '{}');
         const authorToken = session.shopifyToken || null;
@@ -8105,7 +8105,7 @@
             const updUrl = idJson?.data?.cartBuyerIdentityUpdate?.cart?.checkoutUrl;
             if (updUrl) finalUrl = updUrl;
           }
-          // Apply AUTHOR20 only when ALL items are the author's own submitted books
+          // Apply AUTHOR10 only when ALL items are the author's own submitted books
           // (mixed carts use authorDiscountCheckout() instead — see that function)
           if (_lastAuthorDiscount > 0 && _authorAllSubmitted) {
             const discJson = await sfFetch(`
@@ -8113,7 +8113,7 @@
                 cartDiscountCodesUpdate(cartId: $cartId, discountCodes: $discountCodes) {
                   cart { checkoutUrl }
                 }
-              }`, { cartId: _cartId, discountCodes: ['AUTHOR20'] });
+              }`, { cartId: _cartId, discountCodes: ['AUTHOR10'] });
             const discUrl = discJson?.data?.cartDiscountCodesUpdate?.cart?.checkoutUrl;
             if (discUrl) finalUrl = discUrl;
           }
@@ -8271,7 +8271,7 @@
           }
         });
         const CLUB_DISCOUNT_PCT   = 0.10; // CLUB10 = 10%
-        const AUTHOR_DISCOUNT_PCT = 0.20; // AUTHOR20 = 20%
+        const AUTHOR_DISCOUNT_PCT = 0.10; // AUTHOR10 = 10%
         const clubDiscount   = isBookClubMember ? Math.round(totalSale         * CLUB_DISCOUNT_PCT   * 100) / 100 : 0;
         const authorDiscount = isAuthorMode     ? Math.round(authorDiscountBase * AUTHOR_DISCOUNT_PCT * 100) / 100 : 0;
         _lastAuthorDiscount  = authorDiscount;
@@ -8360,7 +8360,7 @@
               </div>` : ''}
               ${authorDiscount > 0 ? `
               <div class="cart-price-row discount">
-                <span class="label">✍️ Author Discount (AUTHOR20 −20%)</span>
+                <span class="label">✍️ Author Discount (AUTHOR10 −10%)</span>
                 <span>−₹${authorDiscount.toFixed(2)}</span>
               </div>
               <div class="cart-price-row you-pay">
@@ -8399,7 +8399,7 @@
                 "Checkout My Books" checks out your ✍️ books at −20%. Others stay in your cart.
               </div>
               <button class="cart-checkout-btn" style="background:rgba(255,255,255,0.05);border:1px solid var(--border);color:var(--cream);margin-bottom:0.5rem;" onclick="prepareAndCheckout('${checkoutUrl}')">Checkout All →</button>
-              <button class="cart-checkout-btn" onclick="authorDiscountCheckout('${checkoutUrl}')">✍️ Checkout My Books (−20%) →</button>
+              <button class="cart-checkout-btn" onclick="authorDiscountCheckout('${checkoutUrl}')">✍️ Checkout My Books (−10%) →</button>
             ` : isAuthorMode && authorDiscount > 0 ? `
               <button class="cart-checkout-btn" onclick="prepareAndCheckout('${checkoutUrl}')">✍️ Checkout with Author Discount →</button>
             ` : `
@@ -8412,7 +8412,7 @@
     }
 
     // "Checkout My Books" — creates a sub-cart with only the author's submitted
-    // book lines and applies AUTHOR20 exclusively to those items.
+    // book lines and applies AUTHOR10 exclusively to those items.
     // The remaining (non-submitted) items stay in the original cart.
     async function authorDiscountCheckout(baseUrl) {
       if (!_cartId) { openCheckout(baseUrl); return; }
@@ -8452,11 +8452,11 @@
           const idUrl = idJson?.data?.cartBuyerIdentityUpdate?.cart?.checkoutUrl;
           if (idUrl) subCartUrl = idUrl;
         }
-        // Apply AUTHOR20 — now safe because sub-cart contains ONLY submitted books
+        // Apply AUTHOR10 — now safe because sub-cart contains ONLY submitted books
         const discJson = await sfFetch(`
           mutation CartDiscountCodesUpdate($cartId: ID!, $discountCodes: [String!]!) {
             cartDiscountCodesUpdate(cartId: $cartId, discountCodes: $discountCodes) { cart { checkoutUrl } }
-          }`, { cartId: subCartId, discountCodes: ['AUTHOR20'] });
+          }`, { cartId: subCartId, discountCodes: ['AUTHOR10'] });
         const discUrl = discJson?.data?.cartDiscountCodesUpdate?.cart?.checkoutUrl;
         openCheckout(discUrl || subCartUrl);
       } catch(e) {
@@ -10126,7 +10126,7 @@
 
     // ── Author discount data — loaded after author login ─────────────────────
     // Numeric Shopify product IDs (e.g. "12345678") of books the logged-in
-    // author has submitted; used to display the 20% AUTHOR20 discount in cart.
+    // author has submitted; used to display the 10% AUTHOR10 discount in cart.
     var authorSubmittedProductIds = [];
     // Full submission records from Publisher Portal (all statuses)
     var authorSubmissions = [];
@@ -10276,7 +10276,7 @@
         if (shopifyCards) {
           html += `
             <p style="font-size:0.75rem;color:var(--muted);margin-bottom:1rem;">
-              🎉 As the author, you get <strong style="color:var(--gold);">20% off</strong> at checkout using code <strong style="color:var(--gold);">AUTHOR20</strong>.
+              🎉 As the author, you get <strong style="color:var(--gold);">10% off</strong> at checkout using code <strong style="color:var(--gold);">AUTHOR10</strong>.
             </p>
             <div class="author-shop-grid">${shopifyCards}</div>`;
         }

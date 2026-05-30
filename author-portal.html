@@ -1290,7 +1290,15 @@
     }
     #mysales-screen.active { display: flex; flex-direction: column; }
 
-    .sales-table-wrap { overflow-x: auto; margin-top: 1.5rem; }
+    .sales-table-wrap { overflow-x: auto; margin-top: 1rem; }
+
+    .ms-preset {
+      padding: 0.3rem 0.85rem; border-radius: 20px; font-size: 0.74rem; font-weight: 600;
+      border: 1px solid rgba(201,146,42,0.3); background: rgba(201,146,42,0.06);
+      color: #9B95A8; cursor: pointer; transition: all 0.15s; font-family: 'Inter', sans-serif;
+    }
+    .ms-preset:hover  { border-color: rgba(201,146,42,0.6); color: var(--cream); }
+    .ms-preset.active { background: rgba(201,146,42,0.2); border-color: var(--gold); color: var(--gold); }
 
     .sales-table {
       width: 100%;
@@ -2464,6 +2472,25 @@
         <h2 class="mybooks-heading">My Sales</h2>
         <p id="ms-email-label" class="mybooks-sub"></p>
 
+        <!-- Date range filter -->
+        <div style="margin-bottom:1.2rem;">
+          <!-- Preset chips -->
+          <div style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-bottom:0.75rem;">
+            <button class="ms-preset active" data-days="7"   onclick="msSelectPreset(this,7)">Last 7 Days</button>
+            <button class="ms-preset"        data-days="30"  onclick="msSelectPreset(this,30)">Last 30 Days</button>
+            <button class="ms-preset"        data-days="90"  onclick="msSelectPreset(this,90)">Last 3 Months</button>
+            <button class="ms-preset"        data-days="365" onclick="msSelectPreset(this,365)">This Year</button>
+            <button class="ms-preset"        data-days="0"   onclick="msSelectPreset(this,0)">All Time</button>
+          </div>
+          <!-- Custom range -->
+          <div style="display:flex;flex-wrap:wrap;align-items:center;gap:0.5rem;">
+            <label style="font-size:0.75rem;color:var(--muted);">Custom:</label>
+            <input type="date" id="ms-from" style="padding:0.3rem 0.55rem;border-radius:7px;border:1px solid rgba(201,146,42,0.25);background:rgba(255,255,255,0.05);color:var(--cream);font-size:0.78rem;" onchange="msCustomRange()" />
+            <span style="font-size:0.75rem;color:var(--muted);">to</span>
+            <input type="date" id="ms-to"   style="padding:0.3rem 0.55rem;border-radius:7px;border:1px solid rgba(201,146,42,0.25);background:rgba(255,255,255,0.05);color:var(--cream);font-size:0.78rem;" onchange="msCustomRange()" />
+          </div>
+        </div>
+
         <div id="ms-loading" class="mb-state">
           <div class="mb-icon">⏳</div>
           Loading your sales data…
@@ -3271,7 +3298,12 @@
       document.getElementById('mysales-screen').classList.add('active');
       window.scrollTo(0, 0);
       document.getElementById('ms-email-label').textContent = currentEmail || '';
-      fetchSales();
+      // Reset to "Last 7 Days" preset each time the screen opens
+      document.querySelectorAll('.ms-preset').forEach(function(b) { b.classList.remove('active'); });
+      var firstPreset = document.querySelector('.ms-preset[data-days="7"]');
+      if (firstPreset) firstPreset.classList.add('active');
+      var range = msInitDates(7);
+      fetchSales(range.from, range.to);
     }
 
     function showSubmitForm() {
@@ -3435,7 +3467,51 @@
       window.location.href = 'https://yellowfeather.netlify.app/';
     }
 
-    async function fetchSales() {
+    // ── Date range helpers ────────────────────────────────────────────────
+    function msIsoDate(d) {
+      // Returns YYYY-MM-DD in local time
+      var y = d.getFullYear(), m = d.getMonth()+1, day = d.getDate();
+      return y + '-' + (m<10?'0':'')+m + '-' + (day<10?'0':'')+day;
+    }
+
+    function msInitDates(days) {
+      var today = new Date();
+      var toStr = msIsoDate(today);
+      var fromStr;
+      if (!days) {
+        fromStr = '2020-01-01'; // "All Time" — far past
+      } else {
+        var from = new Date(today);
+        from.setDate(from.getDate() - days);
+        fromStr = msIsoDate(from);
+      }
+      document.getElementById('ms-from').value = fromStr;
+      document.getElementById('ms-to').value   = toStr;
+      return { from: fromStr, to: toStr };
+    }
+
+    function msSelectPreset(btn, days) {
+      document.querySelectorAll('.ms-preset').forEach(function(b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      var range = msInitDates(days);
+      fetchSales(range.from, range.to);
+    }
+
+    function msCustomRange() {
+      var from = document.getElementById('ms-from').value;
+      var to   = document.getElementById('ms-to').value;
+      if (!from || !to) return;
+      // Deactivate all presets
+      document.querySelectorAll('.ms-preset').forEach(function(b) { b.classList.remove('active'); });
+      fetchSales(from, to);
+    }
+
+    async function fetchSales(from, to) {
+      // Default to last 7 days if not specified
+      if (!from || !to) {
+        var range = msInitDates(7);
+        from = range.from; to = range.to;
+      }
       document.getElementById('ms-loading').style.display = 'flex';
       document.getElementById('ms-empty').style.display   = 'none';
       document.getElementById('ms-list').style.display    = 'none';
@@ -3444,7 +3520,7 @@
         var res  = await fetch(GET_SALES_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: currentEmail })
+          body: JSON.stringify({ email: currentEmail, from: from, to: to })
         });
         var raw   = await res.json();
         var data  = Array.isArray(raw) ? raw[0] : raw;

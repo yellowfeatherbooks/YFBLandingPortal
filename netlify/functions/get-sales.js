@@ -46,8 +46,13 @@ exports.handler = async (event) => {
   if (event.httpMethod !== 'POST')    return json({ sales: [] });
 
   try {
-    const { email } = JSON.parse(event.body || '{}');
+    const { email, from, to } = JSON.parse(event.body || '{}');
     if (!email) return json({ sales: [] });
+
+    // Build date clause for Shopify query  e.g.  created_at:>='2026-05-23' created_at:<='2026-05-30'
+    let dateClause = '';
+    if (from) dateClause += ` created_at:>='${from}'`;
+    if (to)   dateClause += ` created_at:<='${to}T23:59:59'`;
 
     if (!SHOPIFY_TOKEN) {
       return json({ sales: [], error: 'SHOPIFY_ADMIN_TOKEN not set' });
@@ -94,7 +99,7 @@ exports.handler = async (event) => {
     const sales      = [];
     let ordersScanned = 0;
 
-    for (const statusFilter of ['status:open', 'status:closed', 'status:cancelled']) {
+    for (const statusFilter of [`status:open${dateClause}`, `status:closed${dateClause}`, `status:cancelled${dateClause}`]) {
       let cursor  = null;
       let hasMore = true;
       let pages   = 0;
@@ -168,7 +173,9 @@ exports.handler = async (event) => {
         products_found: products.length,
         product_titles: products.map(p => p.title),
         orders_scanned: ordersScanned,
-        sales_found:    sales.length
+        sales_found:    sales.length,
+        date_from:      from || 'any',
+        date_to:        to   || 'any'
       }
     });
 

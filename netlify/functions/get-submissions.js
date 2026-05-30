@@ -115,7 +115,17 @@ exports.handler = async (event) => {
     return {
       statusCode: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ submissions })
+      body: JSON.stringify({
+        submissions,
+        _debug: {
+          email,
+          supabase_count:    supabaseRows.length,
+          shopify_count:     shopifyRows.length,
+          known_shopify_ids: [...knownShopifyIds],
+          shopify_token_set: !!SHOPIFY_TOKEN,
+          tag_queried:       `tag:'submittedby:${email}'`
+        }
+      })
     };
 
   } catch (err) {

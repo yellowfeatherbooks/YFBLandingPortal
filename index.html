@@ -42,10 +42,13 @@
     },
     "contactPoint": {
       "@type": "ContactPoint",
-      "telephone": "+91-96056-89946",
+      "telephone": "+91-94004-48000",
       "contactType": "customer service"
     },
-    "sameAs": []
+    "sameAs": [
+      "https://yellowfeatherbookstore.in",
+      "https://www.instagram.com/yellowfeatherbooks"
+    ]
   }
   </script>
 
@@ -2949,6 +2952,8 @@
     .admin-table tr:last-child td { border-bottom: none; }
     .admin-table tr:hover td { background: rgba(255,255,255,0.02); }
     .admin-table .muted { color: var(--muted); font-size: 0.75rem; }
+    .rzp-mismatch-row td { background: rgba(248,113,113,0.06) !important; }
+    .rzp-mismatch-row:hover td { background: rgba(248,113,113,0.1) !important; }
 
     /* Status badges */
     .abadge {
@@ -3014,6 +3019,33 @@
       background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);
       border-radius: 12px; padding: 1.25rem 1.5rem; margin-bottom: 1.25rem;
     }
+    /* Flash Sale admin cards */
+    .flash-admin-grid { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 0.75rem; }
+    .flash-admin-card {
+      display: flex; align-items: center; gap: 0.75rem;
+      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.09);
+      border-radius: 10px; padding: 0.6rem 0.75rem;
+      width: calc(50% - 0.4rem); min-width: 220px;
+    }
+    .flash-admin-cover { width: 42px; height: 60px; object-fit: cover; border-radius: 5px; flex-shrink: 0; background: rgba(255,255,255,0.06); }
+    .flash-admin-info { flex: 1; min-width: 0; }
+    .flash-admin-title { font-size: 0.8rem; font-weight: 600; color: var(--text); line-height: 1.3; margin-bottom: 0.2rem;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .flash-admin-meta { font-size: 0.75rem; color: var(--gold); }
+    .flash-admin-handle { font-size: 0.65rem; color: var(--muted); margin-top: 0.15rem; word-break: break-all; }
+    .flash-remove-btn {
+      background: rgba(248,113,113,0.12); border: 1px solid rgba(248,113,113,0.25);
+      color: #f87171; border-radius: 6px; padding: 0.25rem 0.5rem;
+      font-size: 0.75rem; cursor: pointer; flex-shrink: 0; transition: background 0.15s;
+    }
+    .flash-remove-btn:hover { background: rgba(248,113,113,0.22); }
+    .flash-add-btn {
+      background: rgba(52,211,153,0.12); border: 1px solid rgba(52,211,153,0.25);
+      color: #34d399; border-radius: 6px; padding: 0.25rem 0.6rem;
+      font-size: 0.75rem; cursor: pointer; flex-shrink: 0; transition: background 0.15s;
+      white-space: nowrap;
+    }
+    .flash-add-btn:hover { background: rgba(52,211,153,0.22); }
     .tag-mgmt-card h3 { font-size: 1rem; font-weight: 700; color: var(--text); margin: 0 0 0.3rem; }
     .tag-mgmt-card p  { font-size: 0.78rem; color: var(--muted); margin: 0 0 1rem; line-height: 1.5; }
     .tag-sync-btn {
@@ -3089,6 +3121,24 @@
       z-index: 200; align-items: center; justify-content: center; padding: 1rem;
     }
     #admin-login-panel.open { display: flex; }
+
+    /* ── Author subscription gate ── */
+    #author-sub-gate {
+      display: none; position: fixed; inset: 0;
+      background: rgba(11,14,26,0.94); backdrop-filter: blur(8px);
+      z-index: 250; align-items: center; justify-content: center; padding: 1.5rem;
+    }
+    #author-sub-gate.active { display: flex; }
+    .asg-card {
+      background: #121628; border: 1px solid rgba(201,146,42,0.3);
+      border-radius: 18px; max-width: 460px; width: 100%;
+      padding: 2rem 2rem 1.6rem; text-align: center;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.7);
+    }
+    .asg-plan-row {
+      display: flex; justify-content: space-between; align-items: baseline;
+      margin-bottom: 0.2rem;
+    }
 
     /* Admin record modal */
     #admin-record-modal {
@@ -4366,6 +4416,9 @@
       <button class="admin-nav-item" data-section="tags" onclick="adminNav('tags',this)">
         <span class="admin-nav-icon">🏷️</span> Tag Management
       </button>
+      <button class="admin-nav-item" data-section="flash" onclick="adminNav('flash',this)">
+        <span class="admin-nav-icon">⚡</span> Flash Sale
+      </button>
       <div class="admin-nav-bottom">
         <button class="admin-nav-item" onclick="adminLogout()" style="color:#f87171;">
           <span class="admin-nav-icon">🚪</span> Logout
@@ -4511,6 +4564,35 @@
 
       </div><!-- /admin-section-tags -->
 
+      <!-- ── Flash Sale ── -->
+      <div id="admin-section-flash" class="admin-section">
+        <div class="admin-section-header">
+          <h2>⚡ Flash Sale Books</h2>
+        </div>
+
+        <!-- Current books -->
+        <div class="tag-mgmt-card">
+          <h3>📚 Current Flash Sale Books &nbsp;<span id="flash-count-badge" style="font-size:0.8rem;font-weight:400;color:var(--muted)">(0 / 5)</span></h3>
+          <p style="font-size:0.85rem;color:var(--muted);margin-bottom:1rem;">These books appear in the flash sale carousel on the guest landing page. Changes take effect immediately after saving.</p>
+          <div id="flash-current-books"></div>
+          <div style="display:flex;align-items:center;gap:1rem;margin-top:1rem;flex-wrap:wrap;">
+            <button class="tag-sync-btn" id="flash-save-btn" onclick="adminSaveFlashSale()">💾 Save Changes</button>
+            <span id="flash-save-status" style="font-size:0.82rem;"></span>
+          </div>
+        </div>
+
+        <!-- Search & add -->
+        <div class="tag-mgmt-card">
+          <h3>🔍 Add Books to Flash Sale</h3>
+          <div class="book-tag-search-row">
+            <input type="text" id="flash-search-input" placeholder="Search by book title…"
+              onkeydown="if(event.key==='Enter') adminSearchFlashBooks()" />
+            <button class="book-tag-search-btn" onclick="adminSearchFlashBooks()">🔍 Search</button>
+          </div>
+          <div id="flash-search-results"></div>
+        </div>
+      </div><!-- /admin-section-flash -->
+
     </main>
 
     <!-- Mobile tab bar -->
@@ -4548,6 +4630,7 @@
         <div id="admin-modal-title" class="admin-modal-title"></div>
         <div id="admin-modal-details" class="admin-modal-details"></div>
         <div id="admin-modal-actions" class="admin-modal-actions"></div>
+        <div id="admin-modal-link-books" style="display:none;margin-top:1.5rem;border-top:1px solid rgba(255,255,255,0.08);padding-top:1.2rem;"></div>
       </div>
     </div>
 
@@ -4555,6 +4638,74 @@
 
   <!-- ══ AUTHOR VIEW — shown when an author logs in (setView('author')) ══ -->
   <div id="view-author">
+
+    <!-- Subscription gate — shown when author has no active plan -->
+    <div id="author-sub-gate">
+      <div class="asg-card">
+        <div style="font-size:2.2rem;margin-bottom:0.9rem;">🔒</div>
+        <div style="font-size:1.15rem;font-weight:700;color:var(--cream);margin-bottom:0.5rem;font-family:'Playfair Display',serif;">
+          Subscription Required
+        </div>
+        <div style="font-size:0.82rem;color:var(--muted);margin-bottom:1.4rem;line-height:1.6;">
+          To view your books and track your sales, you need an active plan.<br>
+          Even our <strong style="color:var(--gold);">Starter at ₹99/month</strong> gives you full access.
+        </div>
+        <!-- Plan tiles -->
+        <div style="display:flex;flex-direction:column;gap:0.55rem;margin-bottom:1.4rem;text-align:left;">
+          <div style="padding:0.7rem 0.9rem;border-radius:10px;border:1px solid rgba(255,255,255,0.09);background:rgba(255,255,255,0.03);">
+            <div class="asg-plan-row">
+              <span style="font-weight:700;font-size:0.85rem;">Starter</span>
+              <span style="color:var(--gold);font-size:0.8rem;font-weight:600;">₹99 / month</span>
+            </div>
+            <div style="font-size:0.7rem;color:var(--muted);">1 book submission · Portal access · Sales tracking</div>
+          </div>
+          <div style="padding:0.7rem 0.9rem;border-radius:10px;border:1px solid rgba(201,146,42,0.4);background:rgba(201,146,42,0.05);">
+            <div class="asg-plan-row">
+              <span style="font-weight:700;font-size:0.85rem;">Growth ⭐ <span style="font-size:0.62rem;background:rgba(201,146,42,0.2);color:var(--gold);border-radius:4px;padding:0.1rem 0.4rem;font-weight:700;">POPULAR</span></span>
+              <span style="color:var(--gold);font-size:0.8rem;font-weight:600;">₹199 / month</span>
+            </div>
+            <div style="font-size:0.7rem;color:var(--muted);">3 submissions · Everything in Starter</div>
+          </div>
+          <div style="padding:0.7rem 0.9rem;border-radius:10px;border:1px solid rgba(255,255,255,0.09);background:rgba(255,255,255,0.03);">
+            <div class="asg-plan-row">
+              <span style="font-weight:700;font-size:0.85rem;">Publisher</span>
+              <span style="color:var(--gold);font-size:0.8rem;font-weight:600;">₹499 / month</span>
+            </div>
+            <div style="font-size:0.7rem;color:var(--muted);">10 submissions · Priority listing · Full portal</div>
+          </div>
+        </div>
+        <button onclick="authorGoSubscribe()"
+          style="width:100%;padding:0.85rem;background:linear-gradient(135deg,#C9922A,#F5B800);
+                 color:#0B0E1A;border:none;border-radius:10px;font-weight:700;font-size:0.95rem;
+                 cursor:pointer;margin-bottom:0.8rem;font-family:'Inter',sans-serif;">
+          🚀 Subscribe Now
+        </button>
+        <button onclick="logoutAuthor()"
+          style="background:none;border:none;color:var(--muted);font-size:0.76rem;
+                 cursor:pointer;text-decoration:underline;font-family:'Inter',sans-serif;">
+          Sign out
+        </button>
+      </div>
+    </div>
+
+    <!-- Expiry warning banner -->
+    <div id="author-expiry-banner" style="display:none;position:fixed;top:64px;left:0;right:0;z-index:200;
+         background:linear-gradient(90deg,rgba(251,191,36,0.18),rgba(251,191,36,0.10));
+         border-bottom:1px solid rgba(251,191,36,0.35);padding:0.55rem 1.2rem;
+         display:none;align-items:center;gap:0.75rem;flex-wrap:wrap;">
+      <span style="font-size:1rem;">⚠️</span>
+      <span id="author-expiry-msg" style="flex:1;font-size:0.8rem;color:#fde68a;min-width:200px;"></span>
+      <button onclick="authorGoSubscribe()"
+        style="padding:0.3rem 0.85rem;border-radius:7px;border:1px solid rgba(251,191,36,0.5);
+               background:rgba(251,191,36,0.15);color:#fde68a;font-size:0.76rem;font-weight:700;
+               cursor:pointer;white-space:nowrap;font-family:'Inter',sans-serif;">
+        Renew Now
+      </button>
+      <button onclick="document.getElementById('author-expiry-banner').style.display='none'"
+        style="background:none;border:none;color:rgba(253,230,138,0.5);cursor:pointer;font-size:1rem;
+               line-height:1;padding:0 0.2rem;" title="Dismiss">✕</button>
+    </div>
+
     <!-- Mobile tile bar for authors -->
     <div class="mobile-tile-bar" id="author-tile-bar">
 
@@ -5563,6 +5714,41 @@
       setView('guest');
     }
 
+    // ── Author subscription gate helpers ────────────────────────────────────
+    function showAuthorSubGate() {
+      document.getElementById('author-sub-gate').classList.add('active');
+    }
+    function hideAuthorSubGate() {
+      document.getElementById('author-sub-gate').classList.remove('active');
+    }
+    function authorGoSubscribe() {
+      // Dismiss gate/banner and send author to portal tab to subscribe
+      hideAuthorSubGate();
+      document.getElementById('author-expiry-banner').style.display = 'none';
+      authorNavTo('portal', document.getElementById('atab-portal'));
+    }
+
+    function checkAuthorExpiryBanner(accessUntil, subStatus) {
+      const banner = document.getElementById('author-expiry-banner');
+      const msgEl  = document.getElementById('author-expiry-msg');
+      if (!banner || !msgEl) return;
+      if (!accessUntil) { banner.style.display = 'none'; return; }
+
+      const now       = new Date();
+      const until     = new Date(accessUntil);
+      const msLeft    = until - now;
+      const daysLeft  = Math.ceil(msLeft / (1000 * 60 * 60 * 24));
+
+      // Show banner if expiring within 7 days (cancelling) or already expired
+      if (subStatus === 'cancelling' && daysLeft > 0 && daysLeft <= 7) {
+        const dayWord = daysLeft === 1 ? 'day' : 'days';
+        msgEl.textContent = `Your subscription expires in ${daysLeft} ${dayWord} (${until.toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' })}). Renew to keep access to your books and sales.`;
+        banner.style.display = 'flex';
+      } else {
+        banner.style.display = 'none';
+      }
+    }
+
     // ── Listen for plan info sent back from the author portal iframe ──────────
     window.addEventListener('message', function(e) {
       if (e.origin !== window.location.origin) return;
@@ -5572,6 +5758,16 @@
       const quotaEl = document.getElementById('author-plan-quota-badge');
       if (nameEl)  nameEl.textContent  = (msg.planName || '') + ' Plan';
       if (quotaEl) quotaEl.textContent = (msg.quota || 0) + (msg.quota === 1 ? ' submission' : ' submissions') + ' / month';
+      // If iframe confirms a valid plan, dismiss the subscription gate
+      if (msg.planName) {
+        hideAuthorSubGate();
+        // Update stored session with the new plan
+        try {
+          const s = JSON.parse(localStorage.getItem('authorSession') || '{}');
+          s.plan_name = msg.planName;
+          localStorage.setItem('authorSession', JSON.stringify(s));
+        } catch(e) {}
+      }
     });
 
     // ══ ADMIN PANEL ══════════════════════════════════════════════════════════
@@ -5669,6 +5865,7 @@
       if (section === 'orders')          adminLoadOrders();
       if (section === 'book-requests')   adminLoadBookReqs();
       if (section === 'signed-requests') adminLoadSignedReqs();
+      if (section === 'flash')           adminLoadFlashSale();
       // tag section has no auto-load — user initiates actions
     }
 
@@ -5690,11 +5887,149 @@
         cancelling: 'abadge-cancelling', paid: 'abadge-paid', pending: 'abadge-pending', refunded: 'abadge-refunded' };
       return `<span class="abadge ${cls[s] || 'abadge-review'}">${status || '—'}</span>`;
     }
-    function adminLoading(el) {
-      el.innerHTML = '<div style="padding:2rem;text-align:center;color:var(--muted);font-size:0.85rem;">⏳ Loading…</div>';
+    function adminLoading(el, msg) {
+      el.innerHTML = `<div style="padding:2rem;text-align:center;color:var(--muted);font-size:0.85rem;">⏳ ${msg || 'Loading…'}</div>`;
     }
     function adminError(el, msg) {
       el.innerHTML = `<div style="padding:2rem;text-align:center;color:#f87171;font-size:0.85rem;">⚠️ ${msg}</div>`;
+    }
+
+    // ── Flash Sale Admin ──
+    var _adminFlashBooks   = [];   // books currently in flash sale (being edited)
+    var _flashSearchCache  = [];   // latest Shopify search results (avoids JSON in onclick)
+
+    async function adminLoadFlashSale() {
+      const el = document.getElementById('flash-current-books');
+      if (!el) return;
+      el.innerHTML = '<div style="color:var(--muted);font-size:0.85rem;padding:0.5rem 0;">Loading…</div>';
+      try {
+        const res  = await fetch('/.netlify/functions/admin-flash-sale');
+        const data = await res.json();
+        _adminFlashBooks = data.books || [];
+        renderAdminFlashBooks();
+      } catch(e) {
+        el.innerHTML = '<div style="color:#f87171;font-size:0.85rem;">Failed to load. Try again.</div>';
+      }
+    }
+
+    function renderAdminFlashBooks() {
+      const el      = document.getElementById('flash-current-books');
+      const countEl = document.getElementById('flash-count-badge');
+      if (countEl) countEl.textContent = `(${_adminFlashBooks.length} / 5)`;
+      if (!_adminFlashBooks.length) {
+        el.innerHTML = '<div style="color:var(--muted);font-size:0.85rem;padding:0.75rem 0;">No books added yet. Search below and add up to 5 books.</div>';
+        return;
+      }
+      el.innerHTML = `<div class="flash-admin-grid">${_adminFlashBooks.map((b, i) => `
+        <div class="flash-admin-card">
+          <img class="flash-admin-cover" src="${b.imgUrl || ''}" onerror="this.style.opacity=0" />
+          <div class="flash-admin-info">
+            <div class="flash-admin-title" title="${b.title}">${b.title}</div>
+            <div class="flash-admin-meta">₹${b.price}${b.comparePrice && parseFloat(b.comparePrice) > parseFloat(b.price) ? ` &nbsp;<span style="text-decoration:line-through;opacity:0.45;font-size:0.7rem;">₹${b.comparePrice}</span>` : ''}</div>
+            <div class="flash-admin-handle">${b.handle}</div>
+          </div>
+          <button class="flash-remove-btn" onclick="adminRemoveFlashBook(${i})">✕ Remove</button>
+        </div>`).join('')}
+      </div>`;
+    }
+
+    function adminRemoveFlashBook(index) {
+      _adminFlashBooks.splice(index, 1);
+      renderAdminFlashBooks();
+      document.getElementById('flash-save-status').textContent = '';
+    }
+
+    async function adminSearchFlashBooks() {
+      const q = (document.getElementById('flash-search-input').value || '').trim();
+      if (!q) return;
+      const resultsEl = document.getElementById('flash-search-results');
+      resultsEl.innerHTML = '<div style="color:var(--muted);font-size:0.85rem;padding:0.5rem 0;">Searching…</div>';
+      try {
+        const data = await sfFetch(`
+          query SearchFlash($q: String!) {
+            products(first: 10, query: $q, sortKey: RELEVANCE) {
+              edges { node {
+                id title vendor handle
+                images(first: 1) { edges { node { url } } }
+                priceRange          { minVariantPrice { amount } }
+                compareAtPriceRange { minVariantPrice { amount } }
+                variants(first: 1)  { edges { node { id } } }
+              } }
+            }
+          }`, { q });
+
+        const nodes = data?.data?.products?.edges?.map(e => e.node) || [];
+        if (!nodes.length) {
+          resultsEl.innerHTML = '<div style="color:var(--muted);font-size:0.85rem;padding:0.5rem 0;">No books found.</div>';
+          return;
+        }
+
+        // Cache results so onclick can reference by index (no JSON stringification in HTML)
+        _flashSearchCache = nodes.map(p => ({
+          id:           p.id,
+          handle:       p.handle,
+          title:        p.title,
+          vendor:       p.vendor || '',
+          imgUrl:       p.images?.edges?.[0]?.node?.url || '',
+          price:        parseFloat(p.priceRange?.minVariantPrice?.amount || 0).toFixed(0),
+          comparePrice: parseFloat(p.compareAtPriceRange?.minVariantPrice?.amount || 0).toFixed(0),
+          variantId:    p.variants?.edges?.[0]?.node?.id || null
+        }));
+
+        resultsEl.innerHTML = `<div class="flash-admin-grid" style="margin-top:0.75rem;">` +
+          _flashSearchCache.map((b, i) => {
+            const isAdded  = _adminFlashBooks.some(x => x.handle === b.handle);
+            const maxed    = _adminFlashBooks.length >= 5;
+            const action   = isAdded  ? '<span style="color:#34d399;font-size:0.72rem;font-weight:700;">✓ Added</span>'
+                           : maxed    ? '<span style="color:var(--muted);font-size:0.72rem;">Max 5 reached</span>'
+                           : `<button class="flash-add-btn" onclick="adminAddFlashBook(${i})">+ Add</button>`;
+            return `
+              <div class="flash-admin-card">
+                <img class="flash-admin-cover" src="${b.imgUrl}" onerror="this.style.opacity=0" />
+                <div class="flash-admin-info">
+                  <div class="flash-admin-title" title="${b.title}">${b.title}</div>
+                  <div class="flash-admin-meta">₹${b.price}${b.comparePrice && parseFloat(b.comparePrice) > parseFloat(b.price) ? ` &nbsp;<span style="text-decoration:line-through;opacity:0.45;font-size:0.7rem;">₹${b.comparePrice}</span>` : ''}</div>
+                  <div class="flash-admin-handle">${b.handle}</div>
+                </div>
+                ${action}
+              </div>`;
+          }).join('') + '</div>';
+      } catch(e) {
+        resultsEl.innerHTML = '<div style="color:#f87171;font-size:0.85rem;">Search failed. Try again.</div>';
+      }
+    }
+
+    function adminAddFlashBook(idx) {
+      const book = _flashSearchCache[idx];
+      if (!book) return;
+      if (_adminFlashBooks.length >= 5) { alert('Maximum 5 books allowed in the flash sale.'); return; }
+      if (_adminFlashBooks.some(b => b.handle === book.handle)) return;
+      _adminFlashBooks.push(book);
+      renderAdminFlashBooks();
+      // Re-render search results to flip button → "✓ Added"
+      adminSearchFlashBooks();
+      document.getElementById('flash-save-status').textContent = '';
+    }
+
+    async function adminSaveFlashSale() {
+      const btn      = document.getElementById('flash-save-btn');
+      const statusEl = document.getElementById('flash-save-status');
+      btn.disabled = true; btn.textContent = '⏳ Saving…';
+      statusEl.style.color = 'var(--muted)'; statusEl.textContent = '';
+      try {
+        const data = await adminPost('admin-flash-sale', { books: _adminFlashBooks });
+        if (data.success) {
+          statusEl.style.color = '#34d399';
+          statusEl.textContent = '✓ Saved! Flash sale updated.';
+        } else {
+          statusEl.style.color = '#f87171';
+          statusEl.textContent = data.error || 'Save failed.';
+        }
+      } catch(e) {
+        statusEl.style.color = '#f87171';
+        statusEl.textContent = 'Save failed. Try again.';
+      }
+      btn.disabled = false; btn.textContent = '💾 Save Changes';
     }
 
     // ── Submissions ──
@@ -5880,6 +6215,15 @@
 
     // ── Members ──
     var _allMembers = [];
+
+    function memberStatusBadge(validUntil) {
+      if (!validUntil) return '<span class="abadge abadge-approved">Active</span>';
+      const expired = new Date() > new Date(validUntil);
+      return expired
+        ? '<span class="abadge abadge-cancelling">Expired</span>'
+        : '<span class="abadge abadge-approved">Active</span>';
+    }
+
     async function adminLoadMembers() {
       const body = document.getElementById('admin-members-body');
       const stats = document.getElementById('admin-members-stats');
@@ -5888,55 +6232,253 @@
         const data = await adminPost('admin-members', {});
         if (!data.success) { adminError(body, data.error); return; }
         _allMembers = data.members || [];
-        stats.innerHTML = `<div class="admin-stat-card"><div class="admin-stat-num">${_allMembers.length}</div><div class="admin-stat-label">Total Members</div></div>`;
+        const now     = new Date();
+        const active  = _allMembers.filter(r => !r.valid_until || now <= new Date(r.valid_until)).length;
+        const expired = _allMembers.filter(r =>  r.valid_until && now >  new Date(r.valid_until)).length;
+        stats.innerHTML = `
+          <div class="admin-stat-card"><div class="admin-stat-num">${_allMembers.length}</div><div class="admin-stat-label">Total Members</div></div>
+          <div class="admin-stat-card"><div class="admin-stat-num" style="color:#4ade80;">${active}</div><div class="admin-stat-label">Active</div></div>
+          ${expired ? `<div class="admin-stat-card"><div class="admin-stat-num" style="color:#f87171;">${expired}</div><div class="admin-stat-label">Expired</div></div>` : ''}`;
         if (!_allMembers.length) { adminError(body, 'No members found.'); return; }
         body.innerHTML = `
           <div class="admin-table-wrap">
             <table class="admin-table">
-              <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Joined</th><th>Payment ID</th></tr></thead>
-              <tbody>${_allMembers.map((r, i) => `
-                <tr class="clickable-row" onclick="openMemberModal(${i})">
+              <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Status</th><th>Valid Until</th><th>Joined</th><th>Payment ID</th></tr></thead>
+              <tbody>${_allMembers.map((r, i) => {
+                const isExpired = r.valid_until && new Date() > new Date(r.valid_until);
+                return `
+                <tr class="clickable-row${isExpired ? ' rzp-mismatch-row' : ''}" onclick="openMemberModal(${i})">
                   <td><strong>${r.name || '—'}</strong></td>
                   <td class="muted">${r.email}</td>
                   <td class="muted">${r.phone || '—'}</td>
+                  <td>${memberStatusBadge(r.valid_until)}</td>
+                  <td class="muted">${fmtDate(r.valid_until)}</td>
                   <td class="muted">${fmtDate(r.joined_at)}</td>
                   <td class="muted" style="font-size:0.7rem;">${r.razorpay_payment_id || '—'}</td>
-                </tr>`).join('')}
+                </tr>`;
+              }).join('')}
               </tbody>
             </table>
           </div>`;
       } catch(e) { adminError(body, e.message); }
     }
 
+    // ── Link Books to Author ──────────────────────────────────────────────────
+    var _linkBooksEmail   = '';
+    var _linkBooksResults = [];
+
+    async function adminOpenLinkBooks(email) {
+      _linkBooksEmail   = email;
+      _linkBooksResults = [];
+      const panel = document.getElementById('admin-modal-link-books');
+      panel.style.display = 'block';
+      panel.innerHTML = `
+        <div style="font-size:0.85rem;font-weight:700;color:var(--text);margin-bottom:0.6rem;">📚 Link Existing Books</div>
+        <div style="font-size:0.73rem;color:var(--muted);margin-bottom:0.9rem;">
+          Search your Shopify store and attach books to
+          <strong style="color:var(--cream)">${email}</strong>.
+          They will appear in the author's portal and their sales will be tracked.
+        </div>
+        <div style="display:flex;gap:0.5rem;margin-bottom:0.8rem;">
+          <input id="link-book-q" type="text" placeholder="Search by book title…"
+            style="flex:1;padding:0.45rem 0.7rem;border-radius:8px;
+                   border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.05);
+                   color:var(--text);font-size:0.8rem;outline:none;"
+            onkeydown="if(event.key==='Enter')adminSearchLinkBooks()" />
+          <button onclick="adminSearchLinkBooks()"
+            style="padding:0.45rem 0.9rem;border-radius:8px;cursor:pointer;
+                   background:rgba(201,146,42,0.15);border:1px solid rgba(201,146,42,0.3);
+                   color:#F5B800;font-size:0.8rem;white-space:nowrap;">
+            🔍 Search
+          </button>
+        </div>
+        <div id="link-books-results" style="margin-bottom:0.8rem;"></div>
+        <div id="linked-books-list"></div>`;
+      await adminShowLinkedBooks(email);
+    }
+
+    async function adminSearchLinkBooks() {
+      const q = (document.getElementById('link-book-q')?.value || '').trim();
+      if (!q) return;
+      const resultsEl = document.getElementById('link-books-results');
+      resultsEl.innerHTML = '<div style="color:var(--muted);font-size:0.75rem;padding:0.4rem 0;">Searching…</div>';
+      try {
+        const data = await adminPost('admin-update-book-tags', { action: 'search', query: q });
+        _linkBooksResults = data.products || [];
+        if (!_linkBooksResults.length) {
+          resultsEl.innerHTML = '<div style="color:var(--muted);font-size:0.75rem;padding:0.4rem 0;">No books found.</div>';
+          return;
+        }
+        _renderLinkBooksResults();
+      } catch(e) {
+        resultsEl.innerHTML = `<div style="color:#f87171;font-size:0.75rem;">Error: ${e.message}</div>`;
+      }
+    }
+
+    function _renderLinkBooksResults() {
+      const resultsEl = document.getElementById('link-books-results');
+      if (!resultsEl) return;
+      const tag = `submittedby:${_linkBooksEmail}`;
+      resultsEl.innerHTML = `
+        <div style="font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.4rem;">Results</div>
+        <div style="display:flex;flex-direction:column;gap:0.4rem;">
+          ${_linkBooksResults.map((p, i) => {
+            const isLinked = Array.isArray(p.tags) && p.tags.includes(tag);
+            return `
+            <div style="display:flex;align-items:center;gap:0.65rem;padding:0.55rem 0.65rem;
+                        border-radius:8px;background:rgba(255,255,255,0.03);
+                        border:1px solid rgba(255,255,255,${isLinked ? '0.12' : '0.06'});">
+              ${p.imageUrl
+                ? `<img src="${p.imageUrl}" style="width:32px;height:44px;object-fit:cover;border-radius:4px;flex-shrink:0;" />`
+                : `<div style="width:32px;height:44px;background:rgba(255,255,255,0.06);border-radius:4px;flex-shrink:0;"></div>`}
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:0.78rem;font-weight:600;color:var(--text);
+                            white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.title}</div>
+                <div style="font-size:0.67rem;color:var(--muted);">${p.handle}</div>
+              </div>
+              ${isLinked
+                ? `<span style="font-size:0.68rem;color:#4ade80;font-weight:700;flex-shrink:0;margin-right:0.3rem;">✓ Linked</span>
+                   <button onclick="adminUnlinkBook(${i},this)"
+                     style="padding:0.28rem 0.6rem;border-radius:6px;cursor:pointer;flex-shrink:0;
+                            background:rgba(248,113,113,0.12);border:1px solid rgba(248,113,113,0.3);
+                            color:#f87171;font-size:0.68rem;">Unlink</button>`
+                : `<button onclick="adminLinkBook(${i},this)"
+                     style="padding:0.28rem 0.7rem;border-radius:6px;cursor:pointer;flex-shrink:0;
+                            background:rgba(201,146,42,0.15);border:1px solid rgba(201,146,42,0.3);
+                            color:#F5B800;font-size:0.68rem;">Link</button>`}
+            </div>`;
+          }).join('')}
+        </div>`;
+    }
+
+    async function adminLinkBook(idx, btn) {
+      const p = _linkBooksResults[idx];
+      if (!p) return;
+      btn.disabled = true; btn.textContent = '…';
+      try {
+        const tag     = `submittedby:${_linkBooksEmail}`;
+        const newTags = [...new Set([...(p.tags || []), tag])];
+        await adminPost('admin-update-book-tags', { action: 'update', productId: p.id, tags: newTags });
+        _linkBooksResults[idx] = { ...p, tags: newTags };
+        _renderLinkBooksResults();
+        await adminShowLinkedBooks(_linkBooksEmail);
+      } catch(e) {
+        alert('Failed to link: ' + e.message);
+        btn.disabled = false; btn.textContent = 'Link';
+      }
+    }
+
+    async function adminUnlinkBook(idx, btn) {
+      const p = _linkBooksResults[idx];
+      if (!p) return;
+      if (!confirm(`Remove "${p.title}" from this author's portal?`)) return;
+      btn.disabled = true; btn.textContent = '…';
+      try {
+        const tag     = `submittedby:${_linkBooksEmail}`;
+        const newTags = (p.tags || []).filter(t => t !== tag);
+        await adminPost('admin-update-book-tags', { action: 'update', productId: p.id, tags: newTags });
+        _linkBooksResults[idx] = { ...p, tags: newTags };
+        _renderLinkBooksResults();
+        await adminShowLinkedBooks(_linkBooksEmail);
+      } catch(e) {
+        alert('Failed to unlink: ' + e.message);
+        btn.disabled = false; btn.textContent = 'Unlink';
+      }
+    }
+
+    async function adminShowLinkedBooks(email) {
+      const listEl = document.getElementById('linked-books-list');
+      if (!listEl) return;
+      listEl.innerHTML = '<div style="color:var(--muted);font-size:0.73rem;padding:0.3rem 0;">Loading linked books…</div>';
+      try {
+        const tag  = `submittedby:${email}`;
+        const data = await adminPost('admin-update-book-tags', { action: 'search', rawQuery: `tag:'${tag}'` });
+        const linked = (data.products || []).filter(p => Array.isArray(p.tags) && p.tags.includes(tag));
+        if (!linked.length) {
+          listEl.innerHTML = '<div style="color:var(--muted);font-size:0.72rem;padding:0.3rem 0;font-style:italic;">No books linked to this author yet.</div>';
+          return;
+        }
+        listEl.innerHTML = `
+          <div style="font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.4rem;">
+            Currently Linked — ${linked.length} book${linked.length !== 1 ? 's' : ''}
+          </div>
+          <div style="display:flex;flex-direction:column;gap:0.35rem;">
+            ${linked.map(p => `
+              <div style="display:flex;align-items:center;gap:0.6rem;padding:0.45rem 0.65rem;
+                          border-radius:7px;background:rgba(74,222,128,0.05);
+                          border:1px solid rgba(74,222,128,0.15);">
+                ${p.imageUrl ? `<img src="${p.imageUrl}" style="width:26px;height:36px;object-fit:cover;border-radius:3px;flex-shrink:0;" />` : ''}
+                <div style="font-size:0.77rem;color:var(--text);flex:1;
+                            white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.title}</div>
+                <span style="font-size:0.65rem;color:#4ade80;flex-shrink:0;">✓</span>
+              </div>`).join('')}
+          </div>`;
+      } catch(e) {
+        listEl.innerHTML = '';
+      }
+    }
+
     // ── Subscriptions ──
     var _allSubs = [];
+
+    function rzpStatusBadge(rzpStatus, sbStatus) {
+      if (!rzpStatus) return '<span style="font-size:0.7rem;color:var(--muted);">—</span>';
+      const map = {
+        active:    ['#4ade80', 'Active'],
+        cancelled: ['#f87171', 'Cancelled'],
+        completed: ['#f87171', 'Completed'],
+        expired:   ['#f87171', 'Expired'],
+        pending:   ['#fbbf24', 'Pending'],
+        created:   ['#fbbf24', 'Created'],
+        halted:    ['#fb923c', 'Halted'],
+        paused:    ['#fb923c', 'Paused'],
+      };
+      const [color, label] = map[rzpStatus] || ['#9ca3af', rzpStatus];
+      // Highlight mismatch: Razorpay inactive but Supabase still shows active
+      const rzpInactive = ['cancelled','completed','expired'];
+      const mismatch = rzpInactive.includes(rzpStatus) && sbStatus === 'active';
+      return `<span style="font-size:0.7rem;font-weight:700;color:${color};${mismatch ? 'text-decoration:underline dotted;' : ''}">${label}${mismatch ? ' ⚠️' : ''}</span>`;
+    }
+
     async function adminLoadSubscriptions(status) {
       const body = document.getElementById('admin-subs-body');
       const stats = document.getElementById('admin-subs-stats');
-      adminLoading(body);
+      adminLoading(body, 'Loading & validating against Razorpay…');
       try {
         const data = await adminPost('admin-subscriptions', { status: status || 'all' });
         if (!data.success) { adminError(body, data.error); return; }
         _allSubs = data.subscriptions || [];
-        const active = _allSubs.filter(r=>r.status==='active').length;
-        const cancel = _allSubs.filter(r=>r.status==='cancelling').length;
+        const active   = _allSubs.filter(r=>r.status==='active').length;
+        const cancel   = _allSubs.filter(r=>r.status==='cancelling').length;
+        const synced   = _allSubs.filter(r=>r.rzp_synced).length;
+        const mismatch = _allSubs.filter(r => {
+          const rzpInactive = ['cancelled','completed','expired'];
+          return r.rzp_status && rzpInactive.includes(r.rzp_status) && r.status === 'active';
+        }).length;
         stats.innerHTML = `
           <div class="admin-stat-card"><div class="admin-stat-num">${_allSubs.length}</div><div class="admin-stat-label">Total</div></div>
           <div class="admin-stat-card"><div class="admin-stat-num" style="color:#4ade80;">${active}</div><div class="admin-stat-label">Active</div></div>
-          <div class="admin-stat-card"><div class="admin-stat-num" style="color:#fbbf24;">${cancel}</div><div class="admin-stat-label">Cancelling</div></div>`;
+          <div class="admin-stat-card"><div class="admin-stat-num" style="color:#fbbf24;">${cancel}</div><div class="admin-stat-label">Cancelling</div></div>
+          ${synced  ? `<div class="admin-stat-card"><div class="admin-stat-num" style="color:#60a5fa;">${synced}</div><div class="admin-stat-label">Auto-Synced</div></div>` : ''}
+          ${mismatch? `<div class="admin-stat-card"><div class="admin-stat-num" style="color:#f87171;">${mismatch}</div><div class="admin-stat-label">Mismatch ⚠️</div></div>` : ''}`;
         if (!_allSubs.length) { adminError(body, 'No subscriptions found.'); return; }
         body.innerHTML = `
           <div class="admin-table-wrap">
             <table class="admin-table">
-              <thead><tr><th>Email</th><th>Plan</th><th>Status</th><th>Access Until</th><th>Created</th></tr></thead>
-              <tbody>${_allSubs.map((r, i) => `
-                <tr class="clickable-row" onclick="openSubModal(${i})">
+              <thead><tr><th>Email</th><th>Plan</th><th>Supabase</th><th>Razorpay ✓</th><th>Access Until</th><th>Created</th></tr></thead>
+              <tbody>${_allSubs.map((r, i) => {
+                const rzpInactive = ['cancelled','completed','expired'];
+                const hasMismatch = r.rzp_status && rzpInactive.includes(r.rzp_status) && r.status === 'active';
+                return `
+                <tr class="clickable-row${hasMismatch ? ' rzp-mismatch-row' : ''}" onclick="openSubModal(${i})">
                   <td class="muted">${r.email}</td>
                   <td><span class="abadge abadge-approved">${r.plan_name || '—'}</span></td>
-                  <td>${statusBadge(r.status)}</td>
+                  <td>${statusBadge(r.status)}${r.rzp_synced ? ' <span title="Auto-synced from Razorpay" style="font-size:0.65rem;color:#60a5fa;">↺ synced</span>' : ''}</td>
+                  <td>${rzpStatusBadge(r.rzp_status, r.status)}</td>
                   <td class="muted">${fmtDate(r.access_until)}</td>
                   <td class="muted">${fmtDate(r.created_at)}</td>
-                </tr>`).join('')}
+                </tr>`;
+              }).join('')}
               </tbody>
             </table>
           </div>`;
@@ -6072,11 +6614,16 @@
 
     // ── Tag Management ────────────────────────────────────────────────────────
 
-    const SHOPIFY_TAGS = [
-      'Romantic','crime','Fiction','historic','Adventure',
-      'investigation','Memoir','murder','Period Drama','Philosophy',
-      'poetry','children','Young Adult'
+    const SHOPIFY_TAG_GROUPS = [
+      { label: '📄 Format',         tags: ['Novel','Short Stories','Novella','Poetry','Drama','Essays','Anthology','Graphic Novel','Translated'] },
+      { label: '🎭 Fiction',         tags: ['Romance','Mystery','Thriller','Horror','Fantasy','Science Fiction','Adventure','Historical Fiction','Satire','Folklore & Mythology','Social Drama','Family & Relationships'] },
+      { label: '📖 Non-Fiction',     tags: ['Biography','Autobiography','Memoir','History','Politics','Science','Travel','Self-Help','Philosophy','Spirituality','True Crime','Nature & Environment','Economics','Psychology'] },
+      { label: '👶 Age Group',       tags: ['Children','Middle Grade','Young Adult','Adult'] },
+      { label: '🏆 Recognition',     tags: ['Award Winner','Bestseller','Classic','Staff Pick','Akkitham Award','Ashitha Memorial Literary Award','Ayyappan Puraskaram','Balamani Amma Award','Basheer Award','C. V. Sreeraman Award','Cherukad Award','DC Golden Jubilee Award','Deshabhimani Award','Edasseri Award','Ezhuthachan Award','Federal Bank Literary Award','Jnanpith Award','Jnanapeetam','Kadammanitta Ramakrishnan Award','Kamala Surayya Award','Kendra Sahitya Akademi Award','Kerala Sahitya Akademi','Kunjunni Award','Lalithambika Antharjanam Smaraka Sahitya Award','Malayattoor Award','Mathrubhumi Award','Mathrubhumi Literary Award','N. V. Krishna Warrier Award','Nalappadan Award','Nooranad Haneef Award','O. N. V. Literary Award','O. V. Vijayan Literary Award','Odakkuzhal Award','P. Kesavadev Literary Award','P. Kunhiraman Nair Award','Padmaprabha Literary Award','Padmarajan Award','Puthoor Award','Samastha Kerala Sahithya Parishad Award','Saraswati Samman','Thakazhi Award','Thanima Puraskaram','Thoppil Bhasi Award','Ulloor Award','V. T. Kumaran Award','Vaikom Chandrasekharan Nair Award','Vallathol Award','Vayalar Award'] },
+      { label: '⭐ Special',         tags: ['New Arrival','Signed Copy','Limited Edition','Pre-Order','Flash Sale','Debut Author'] }
     ];
+    // Flat list for any code that needs it
+    const SHOPIFY_TAGS = SHOPIFY_TAG_GROUPS.flatMap(g => g.tags);
 
     var _tagBookSelected = null;   // { id, title, tags, imageUrl }
 
@@ -6188,12 +6735,19 @@
       document.querySelectorAll('.book-tag-result-item').forEach((el, i) =>
         el.classList.toggle('selected', i === idx));
 
-      // Build tag pill grid
-      const grid  = document.getElementById('tag-pill-grid');
+      // Build tag pill grid grouped by category
+      const grid    = document.getElementById('tag-pill-grid');
       const curTags = new Set(_tagBookSelected.tags || []);
-      grid.innerHTML = SHOPIFY_TAGS.map(t => `
-        <button class="tag-pill ${curTags.has(t) ? 'has-tag active' : ''}"
-          data-tag="${t}" onclick="adminToggleTagPill(this)">${t}</button>`).join('');
+      grid.innerHTML = SHOPIFY_TAG_GROUPS.map(group => `
+        <div style="width:100%;font-size:0.72rem;font-weight:700;color:var(--muted);
+          letter-spacing:0.06em;text-transform:uppercase;margin:0.6rem 0 0.2rem;">
+          ${group.label}
+        </div>
+        ${group.tags.map(t => `
+          <button class="tag-pill ${curTags.has(t) ? 'has-tag active' : ''}"
+            data-tag="${t}" onclick="adminToggleTagPill(this)">${t}</button>`
+        ).join('')}
+      `).join('');
 
       document.getElementById('book-tag-editor').style.display = 'block';
       document.getElementById('book-tag-status').innerHTML = '';
@@ -6323,6 +6877,8 @@
     // ── Admin record modal ──
     function closeAdminModal() {
       document.getElementById('admin-record-modal').classList.remove('open');
+      document.getElementById('admin-modal-link-books').style.display = 'none';
+      _linkBooksEmail = ''; _linkBooksResults = [];
     }
 
     function _modalRow(label, value) {
@@ -6378,8 +6934,10 @@
         _modalRow('Sub ID',       r.sub_id);
       document.getElementById('admin-modal-actions').innerHTML = `
         ${canCancel ? `<button class="admin-btn admin-btn-warning" onclick="adminCancelSubscription('${r.email}',this)">🚫 Cancel Subscription</button>` : ''}
+        <button class="admin-btn" style="background:rgba(201,146,42,0.12);color:#F5B800;border:1px solid rgba(201,146,42,0.25);" onclick="adminOpenLinkBooks('${r.email}')">📚 Link Books</button>
         <button class="admin-btn admin-btn-danger" onclick="adminDeleteAuthor('${r.email}',this)">🗑️ Delete Author</button>
         <button class="admin-btn" style="background:rgba(255,255,255,0.07);color:var(--muted)" onclick="closeAdminModal()">Close</button>`;
+      document.getElementById('admin-modal-link-books').style.display = 'none';
       document.getElementById('admin-record-modal').classList.add('open');
     }
 
@@ -7278,6 +7836,44 @@
           if (planQuotaBadge) planQuotaBadge.textContent = 'Subscribe to get started';
         }
         setView('author');
+        // Show gate immediately if no plan in stored session
+        if (!session.plan_name) {
+          showAuthorSubGate();
+        } else {
+          // Check expiry from stored session values immediately (no network needed)
+          checkAuthorExpiryBanner(session.access_until, session.sub_status);
+        }
+        // Background re-verify against Razorpay — catches expired/cancelled plans
+        fetch('/.netlify/functions/check-subscription', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: session.email })
+        }).then(r => r.json()).then(data => {
+          if (!data.found) {
+            showAuthorSubGate();
+            // Clear stale plan from session
+            try {
+              const s = JSON.parse(localStorage.getItem('authorSession') || '{}');
+              s.plan_name = null;
+              localStorage.setItem('authorSession', JSON.stringify(s));
+            } catch(e) {}
+            // Update badges
+            const nb = document.getElementById('author-plan-name-badge');
+            const qb = document.getElementById('author-plan-quota-badge');
+            if (nb) nb.textContent = 'No active plan';
+            if (qb) qb.textContent = 'Subscribe to get started';
+          } else {
+            // Subscription valid — refresh expiry banner with fresh server data
+            checkAuthorExpiryBanner(data.access_until, data.sub_status);
+            // Persist any updated values to session
+            try {
+              const s = JSON.parse(localStorage.getItem('authorSession') || '{}');
+              if (data.plan_name)    s.plan_name    = data.plan_name;
+              if (data.access_until) s.access_until = data.access_until;
+              if (data.sub_status)   s.sub_status   = data.sub_status;
+              localStorage.setItem('authorSession', JSON.stringify(s));
+            } catch(e) {}
+          }
+        }).catch(() => {});
       } catch(e) {
         // Corrupt storage — clear it
         localStorage.removeItem('authorSession');
@@ -7540,7 +8136,25 @@
         } catch(e) { openCheckout(baseCheckoutUrl); }
         return;
       }
-      if (!readerToken || !_cartId) { openCheckout(baseCheckoutUrl); return; }
+      // Guest checkout — apply FLASH5 if flash offer was used
+      if (!readerToken) {
+        if (_cartId && window._flash5Applied) {
+          try {
+            const discJson = await sfFetch(`
+              mutation CartDiscountCodesUpdate($cartId: ID!, $discountCodes: [String!]!) {
+                cartDiscountCodesUpdate(cartId: $cartId, discountCodes: $discountCodes) {
+                  cart { checkoutUrl }
+                }
+              }`, { cartId: _cartId, discountCodes: [window._flashDiscountCode || 'FLASH5'] });
+            const discUrl = discJson?.data?.cartDiscountCodesUpdate?.cart?.checkoutUrl;
+            openCheckout(discUrl || baseCheckoutUrl);
+          } catch(e) { openCheckout(baseCheckoutUrl); }
+        } else {
+          openCheckout(baseCheckoutUrl);
+        }
+        return;
+      }
+      if (!_cartId) { openCheckout(baseCheckoutUrl); return; }
 
       // Open a blank popup NOW — still inside the synchronous click handler
       const _w = Math.min(500, screen.availWidth  - 40);
@@ -7758,6 +8372,25 @@
                 <span>₹${totalSale.toFixed(2)}</span>
               </div>
               ${authorSubmittedProductIds.length > 0 ? `<div style="font-size:0.72rem;color:var(--muted);text-align:center;margin-top:0.4rem;">✍️ Add your own submitted books to unlock 20% Author Discount</div>` : ''}`}
+            </div>` : window._flash5Applied ? `
+            <div class="cart-price-breakdown">
+              ${totalMRP > totalSale ? `
+              <div class="cart-price-row">
+                <span class="label">MRP</span>
+                <span style="text-decoration:line-through;opacity:0.55;">₹${totalMRP.toFixed(2)}</span>
+              </div>
+              <div class="cart-price-row discount">
+                <span class="label">Sale Price</span>
+                <span>₹${totalSale.toFixed(2)}</span>
+              </div>` : ''}
+              <div class="cart-price-row discount">
+                <span class="label">⚡ Special Flash Offer</span>
+                <span>−₹${(totalSale * 0.05).toFixed(2)}</span>
+              </div>
+              <div class="cart-price-row you-pay">
+                <span class="label">You Pay<span class="cart-savings-badge">SAVE ₹${(totalMRP - totalSale * 0.95).toFixed(2)}</span></span>
+                <span>₹${(totalSale * 0.95).toFixed(2)}</span>
+              </div>
             </div>` : `
             <div class="cart-total">Total: <strong>₹${total}</strong></div>`}
             ${isAuthorMode && isMixedCart ? `
@@ -8616,6 +9249,21 @@
       box-shadow: 0 0 5px var(--gold2);
       animation: pulse-dot 1.8s ease-in-out infinite;
     }
+    .flash-offer-banner {
+      background: linear-gradient(90deg, #c0392b, #e74c3c, #c0392b);
+      background-size: 200% 100%;
+      animation: shimmer-red 2.4s linear infinite;
+      color: #fff;
+      font-family: 'Inter', 'Arial', sans-serif;
+      font-size: 0.75rem; font-weight: 800;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      text-align: center;
+      padding: 0.38rem 1rem;
+    }
+    @keyframes shimmer-red {
+      0%   { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
     .flash-body {
       display: flex; gap: 1.25rem; padding: 1.25rem;
       align-items: flex-start;
@@ -8680,6 +9328,41 @@
       font-family: 'Inter', sans-serif;
     }
     .flash-skip button:hover { color: var(--cream); }
+    /* Carousel nav */
+    .flash-carousel-nav {
+      display: none;
+      align-items: center; justify-content: center;
+      gap: 0.65rem; padding: 0 1.25rem 0.6rem;
+    }
+    .flash-nav-arrow {
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: var(--cream); font-size: 1.15rem; font-weight: 700;
+      width: 28px; height: 28px; border-radius: 50%;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: background 0.2s, box-shadow 0.2s, color 0.2s; flex-shrink: 0;
+    }
+    .flash-nav-arrow:hover { background: rgba(255,255,255,0.16); }
+    .flash-nav-arrow.hint {
+      background: rgba(245,184,0,0.18);
+      border-color: var(--gold);
+      color: var(--gold);
+      animation: hint-pulse 1.4s ease-in-out infinite;
+    }
+    @keyframes hint-pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(245,184,0,0.5); }
+      50%       { box-shadow: 0 0 0 6px rgba(245,184,0,0); }
+    }
+    .flash-dots { display: flex; gap: 0.4rem; align-items: center; }
+    .flash-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: rgba(255,255,255,0.22);
+      cursor: pointer; transition: all 0.25s;
+    }
+    .flash-dot.active { background: var(--gold); width: 18px; border-radius: 3px; }
+    /* Slide-fade transition on book switch */
+    .flash-body.switching { opacity: 0; transform: translateX(12px); }
+    .flash-body { transition: opacity 0.22s ease, transform 0.22s ease; }
     @media (max-width: 420px) {
       .flash-body { flex-direction: column; align-items: center; text-align: center; }
       #flash-cover { width: 110px; height: 156px; }
@@ -8692,7 +9375,8 @@
     <div id="flash-card">
       <button id="flash-card-close" onclick="closeFlashCard()" aria-label="Close">✕</button>
       <div class="flash-top-bar"><span class="ftb-dot"></span> Trending This Week</div>
-      <div class="flash-body">
+      <div class="flash-offer-banner">🔥 LIMITED TIME · 25% DISC</div>
+      <div class="flash-body" id="flash-body">
         <img id="flash-cover" src="" alt="Book cover" />
         <div class="flash-info">
           <div class="flash-title" id="flash-title">—</div>
@@ -8704,6 +9388,11 @@
           <div class="flash-badge" id="flash-discount-badge" style="display:none"></div>
           <button id="flash-add-btn" onclick="flashAddToCart(this)">🛒 Add to Cart</button>
         </div>
+      </div>
+      <div class="flash-carousel-nav" id="flash-carousel-nav">
+        <button class="flash-nav-arrow" onclick="flashPrev()">‹</button>
+        <div class="flash-dots" id="flash-dots"></div>
+        <button class="flash-nav-arrow" onclick="flashNext()">›</button>
       </div>
       <div class="flash-skip">
         <button onclick="closeFlashCard()">No thanks, continue browsing</button>
@@ -9686,7 +10375,7 @@
 
         const { name, shopifyToken } = authData;
 
-        // ── Step 2: Fetch subscription info (soft — authors can log in without a plan) ──
+        // ── Step 2: Verify subscription (required to access books & sales) ──────
         btn.textContent = 'Verifying subscription…';
         let subData = { found: false, plan_name: null };
         try {
@@ -9695,11 +10384,14 @@
             body: JSON.stringify({ email })
           });
           subData = await subRes.json();
-        } catch(e) { /* ignore — subscription info is optional at login */ }
+        } catch(e) { /* network error — treat as no subscription */ }
 
         // ── Step 3: Store session and switch to author view ──────────────────
         localStorage.setItem('authorSession', JSON.stringify({
-          email, name, shopifyToken: shopifyToken || null, plan_name: subData.plan_name || null
+          email, name, shopifyToken: shopifyToken || null,
+          plan_name:    subData.plan_name    || null,
+          sub_status:   subData.sub_status   || null,
+          access_until: subData.access_until || null
         }));
         closeAuthorLogin();
 
@@ -9746,6 +10438,12 @@
           frame.src = '/author-portal.html';
         }
         setView('author');
+        // Show subscription gate if no active plan found
+        if (!subData.found) {
+          showAuthorSubGate();
+        } else {
+          checkAuthorExpiryBanner(subData.access_until, subData.sub_status);
+        }
       } catch(e) {
         errEl.textContent = 'Connection error. Please try again.';
         btn.disabled = false; btn.textContent = 'Sign In';
@@ -9755,81 +10453,143 @@
   </script>
 
   <script>
-    // ══ FLASH CARD — Trending Book Spotlight ══
+    // ══ FLASH CARD — Trending Book Carousel ══
     (function() {
-      const FLASH_BOOK_HANDLE = 'chittilasseryile-choolamvilikkar';
-      const FLASH_SESSION_KEY = 'yfb_flash_dismissed';
-      var   _flashBook = null;
+      const FLASH_SESSION_KEY   = 'yfb_flash_dismissed';
+      const FLASH_EXTRA_PCT     = 5;
+      const FLASH_DISCOUNT_CODE = 'FLASH5';
+      window._flashDiscountCode = FLASH_DISCOUNT_CODE;
 
-      // Look up book from the already-loaded _books catalog,
-      // polling briefly in case the catalog is still loading.
-      function findBookInCatalog(maxWaitMs) {
-        return new Promise(function(resolve) {
-          var elapsed = 0;
-          var interval = 200;
-          function check() {
-            if (typeof _books !== 'undefined') {
-              var found = Object.values(_books).find(function(b) {
-                return b.handle === FLASH_BOOK_HANDLE;
-              });
-              if (found) { resolve(found); return; }
-            }
-            elapsed += interval;
-            if (elapsed < maxWaitMs) {
-              setTimeout(check, interval);
-            } else {
-              resolve(null);
-            }
-          }
-          check();
-        });
+      var _flashBooks = [];   // books for the carousel
+      var _flashIndex = 0;    // currently displayed book index
+      var _autoTimer  = null; // auto-rotate interval
+
+      // Load flash books from admin config, with Shopify API fallback for missing variantIds
+      async function loadFlashBooks() {
+        try {
+          var res  = await fetch('/.netlify/functions/admin-flash-sale');
+          var data = await res.json();
+          var books = (data.books || []).filter(function(b) { return b && b.id; });
+
+          // Ensure each book is registered in _books so addToCart works
+          books.forEach(function(b) {
+            if (typeof _books !== 'undefined' && b.id && !_books[b.id]) _books[b.id] = b;
+          });
+          return books;
+        } catch(e) {
+          return [];
+        }
       }
 
       function populateFlashCard(book) {
-        document.getElementById('flash-title').textContent  = book.title;
-        document.getElementById('flash-author').textContent = book.vendor || '';
-        document.getElementById('flash-price').textContent  = '₹' + book.price;
-        document.getElementById('flash-cover').src          = book.imgUrl;
-        document.getElementById('flash-cover').alt          = book.title;
+        var bodyEl = document.getElementById('flash-body');
+        // Slide-fade out, swap content, slide-fade in
+        if (bodyEl) bodyEl.classList.add('switching');
+        setTimeout(function() {
+          document.getElementById('flash-title').textContent  = book.title;
+          document.getElementById('flash-author').textContent = book.vendor || '';
+          document.getElementById('flash-cover').src          = book.imgUrl;
+          document.getElementById('flash-cover').alt          = book.title;
+          var compareEl = document.getElementById('flash-compare');
+          var badgeEl   = document.getElementById('flash-discount-badge');
+          if (book.comparePrice && parseFloat(book.comparePrice) > parseFloat(book.price)) {
+            var compare    = parseFloat(book.comparePrice);
+            var shopifyPct = Math.round((1 - parseFloat(book.price) / compare) * 100);
+            var totalPct   = shopifyPct + FLASH_EXTRA_PCT;
+            var flashPrice = Math.round(compare * (1 - totalPct / 100));
+            document.getElementById('flash-price').textContent = '₹' + flashPrice;
+            compareEl.textContent   = '₹' + book.comparePrice;
+            compareEl.style.display = '';
+            badgeEl.textContent     = totalPct + '% OFF';
+            badgeEl.style.display   = '';
+          } else {
+            document.getElementById('flash-price').textContent = '₹' + book.price;
+            compareEl.style.display = 'none';
+            badgeEl.style.display   = 'none';
+          }
+          // Reset add button
+          var addBtn = document.getElementById('flash-add-btn');
+          if (addBtn) { addBtn.textContent = '🛒 Add to Cart'; addBtn.disabled = false; addBtn.classList.remove('added'); }
+          if (bodyEl) bodyEl.classList.remove('switching');
+        }, bodyEl ? 200 : 0);
+      }
 
-        var compareEl = document.getElementById('flash-compare');
-        var badgeEl   = document.getElementById('flash-discount-badge');
-        if (book.comparePrice && parseFloat(book.comparePrice) > parseFloat(book.price)) {
-          compareEl.textContent   = '₹' + book.comparePrice;
-          compareEl.style.display = '';
-          var pct = Math.round((1 - parseFloat(book.price) / parseFloat(book.comparePrice)) * 100);
-          badgeEl.textContent     = pct + '% OFF';
-          badgeEl.style.display   = '';
-        } else {
-          compareEl.style.display = 'none';
-          badgeEl.style.display   = 'none';
+      function updateDots() {
+        var dotsEl = document.getElementById('flash-dots');
+        if (!dotsEl) return;
+        dotsEl.innerHTML = _flashBooks.map(function(_, i) {
+          return '<span class="flash-dot' + (i === _flashIndex ? ' active' : '') +
+                 '" onclick="flashGoTo(' + i + ')"></span>';
+        }).join('');
+        // Pulse the next arrow on the first slide as a navigation hint
+        var navEl = document.getElementById('flash-carousel-nav');
+        if (!navEl) return;
+        var arrows = navEl.querySelectorAll('.flash-nav-arrow');
+        var nextArrow = arrows[1]; // second arrow = next (›)
+        if (nextArrow) {
+          if (_flashIndex === 0) nextArrow.classList.add('hint');
+          else nextArrow.classList.remove('hint');
         }
-        _flashBook = book;
+      }
+
+      window.flashGoTo = function(idx) {
+        if (!_flashBooks.length) return;
+        _flashIndex = ((idx % _flashBooks.length) + _flashBooks.length) % _flashBooks.length;
+        populateFlashCard(_flashBooks[_flashIndex]);
+        updateDots();
+        // Restart auto-rotate on manual nav
+        if (_autoTimer) { clearInterval(_autoTimer); startAutoRotate(); }
+      };
+      window.flashPrev = function() { flashGoTo(_flashIndex - 1); };
+      window.flashNext = function() { flashGoTo(_flashIndex + 1); };
+
+      function startAutoRotate() {
+        _autoTimer = setInterval(function() {
+          _flashIndex = (_flashIndex + 1) % _flashBooks.length;
+          populateFlashCard(_flashBooks[_flashIndex]);
+          updateDots();
+        }, 4500);
       }
 
       function showFlashCard() {
         if (!document.body.classList.contains('guest-mode')) return;
         if (sessionStorage.getItem(FLASH_SESSION_KEY)) return;
         document.getElementById('flash-card-overlay').classList.add('active');
+        if (_flashBooks.length > 1) startAutoRotate();
       }
 
       window.closeFlashCard = function() {
         document.getElementById('flash-card-overlay').classList.remove('active');
         sessionStorage.setItem(FLASH_SESSION_KEY, '1');
+        if (_autoTimer) { clearInterval(_autoTimer); _autoTimer = null; }
       };
 
       window.flashAddToCart = async function(btn) {
-        if (!_flashBook || !_flashBook.id) return;
+        var book = _flashBooks[_flashIndex];
+        if (!book || !book.id) return;
         btn.textContent = '…'; btn.disabled = true;
         if (typeof addToCart === 'function') {
-          await addToCart(_flashBook.id, btn);
+          await addToCart(book.id, btn);
         }
-        // Auto-close popup a beat after the "✓ Added" confirmation
-        setTimeout(function() {
-          if (btn.classList.contains('added')) {
-            setTimeout(closeFlashCard, 900);
-          }
-        }, 300);
+        if (btn.classList.contains('added')) {
+          window._flash5Applied = true;
+          if (typeof fetchAndRenderCart === 'function') fetchAndRenderCart();
+        }
+        if (_flashBooks.length <= 1) {
+          // Single book — auto-close after confirmation
+          setTimeout(function() {
+            if (btn.classList.contains('added')) {
+              setTimeout(closeFlashCard, 900);
+            }
+          }, 300);
+        } else {
+          // Multiple books — keep overlay open so user can browse & add others
+          setTimeout(function() {
+            btn.textContent = '🛒 Add to Cart';
+            btn.classList.remove('added');
+            btn.disabled = false;
+          }, 1500);
+        }
       };
 
       // Close on backdrop click
@@ -9837,11 +10597,18 @@
         if (e.target === this) closeFlashCard();
       });
 
-      // Wait 1.5s (so the landing panel paints), then look up the book
+      // Wait 1.5s then load books from admin config
       setTimeout(async function() {
-        var book = await findBookInCatalog(5000); // poll up to 5s for catalog
-        if (!book) return;
-        populateFlashCard(book);
+        var books = await loadFlashBooks();
+        if (!books.length) return;
+        _flashBooks = books;
+        _flashIndex = 0;
+        populateFlashCard(_flashBooks[0]);
+        if (_flashBooks.length > 1) {
+          var navEl = document.getElementById('flash-carousel-nav');
+          if (navEl) navEl.style.display = 'flex';
+          updateDots();
+        }
         showFlashCard();
       }, 1500);
     })();

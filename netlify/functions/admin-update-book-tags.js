@@ -69,11 +69,16 @@ exports.handler = async (event) => {
   try {
     // ── Search ──────────────────────────────────────────────────────────────
     if (action === 'search') {
-      const q = (body.query || '').trim();
-      if (!q) return json({ products: [] });
+      const q        = (body.query    || '').trim();
+      const rawQuery = (body.rawQuery || '').trim();
+      if (!q && !rawQuery) return json({ products: [] });
+
+      // rawQuery is passed as-is to Shopify (e.g. "tag:'submittedby:email@x.com'")
+      // q does a fuzzy title match
+      const shopifyQ = rawQuery || `title:*${q.replace(/"/g, '')}* OR title:${q.replace(/"/g, '')}`;
 
       const data = await adminGQL(`{
-        products(first: 15, query: "title:*${q.replace(/"/g, '')}* OR title:${q.replace(/"/g, '')}") {
+        products(first: 50, query: "${shopifyQ.replace(/"/g, '\\"')}") {
           edges {
             node {
               id title handle tags

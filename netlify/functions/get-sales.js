@@ -109,10 +109,9 @@ exports.handler = async (event) => {
             edges {
               node {
                 name
-                orderNumber
                 createdAt
-                financialStatus
-                fulfillmentStatus
+                displayFinancialStatus
+                displayFulfillmentStatus
                 lineItems(first: 50) {
                   edges {
                     node {
@@ -149,8 +148,8 @@ exports.handler = async (event) => {
               quantity:           qty,
               unit_price:         price,
               revenue:            +(price * qty).toFixed(2),
-              financial_status:   (order.financialStatus  || '').toLowerCase(),
-              fulfillment_status: (order.fulfillmentStatus || 'unfulfilled').toLowerCase()
+              financial_status:   (order.displayFinancialStatus  || '').toLowerCase(),
+              fulfillment_status: (order.displayFulfillmentStatus || 'unfulfilled').toLowerCase()
             });
           }
         }

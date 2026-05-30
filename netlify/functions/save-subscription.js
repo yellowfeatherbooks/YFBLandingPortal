@@ -82,7 +82,6 @@ exports.handler = async (event) => {
           plan_name,
           subscription_id,
           status:          'active',
-          access_until:    null,        // clear stale cancellation date on renewal
           subscribed_date: new Date().toISOString()
         })
       }
@@ -96,6 +95,21 @@ exports.handler = async (event) => {
         body: JSON.stringify({ success: false, error: err })
       };
     }
+
+    // Clear stale cancellation date — separate PATCH so a NOT NULL constraint
+    // on access_until can never break the main upsert above
+    fetch(
+      `${SUPABASE_URL}/rest/v1/subscriptions?email=eq.${encodeURIComponent(email)}`,
+      {
+        method: 'PATCH',
+        headers: {
+          'apikey':        SUPABASE_SVC_KEY,
+          'Authorization': `Bearer ${SUPABASE_SVC_KEY}`,
+          'Content-Type':  'application/json'
+        },
+        body: JSON.stringify({ access_until: null })
+      }
+    ).catch(e => console.warn('access_until clear failed:', e.message));
 
     // Trigger n8n invoice + notification (fire and forget)
     const n8nUrl = process.env.N8N_NEW_SUB_NOTIFY_URL;

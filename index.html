@@ -8428,7 +8428,7 @@
                 <span class="label">Total</span>
                 <span>₹${totalSale.toFixed(2)}</span>
               </div>
-              ${authorSubmittedProductIds.length > 0 ? `<div style="font-size:0.72rem;color:var(--muted);text-align:center;margin-top:0.4rem;">✍️ Add your own submitted books to unlock 20% Author Discount</div>` : ''}`}
+              ${authorSubmittedProductIds.length > 0 ? `<div style="font-size:0.72rem;color:var(--muted);text-align:center;margin-top:0.4rem;">✍️ Add your own submitted books to unlock 10% Author Discount</div>` : ''}`}
             </div>` : window._flash5Applied ? `
             <div class="cart-price-breakdown">
               ${totalMRP > totalSale ? `
@@ -8464,7 +8464,8 @@
             `}
           </div>`;
       } catch(e) {
-        container.innerHTML = '<div style="color:var(--muted);padding:3rem;text-align:center;">Failed to load cart.</div>';
+        console.error('[Cart] fetchAndRenderCart error:', e?.message || e);
+        container.innerHTML = `<div style="color:var(--muted);padding:3rem;text-align:center;">Failed to load cart.<br><small style="font-size:0.7rem;opacity:0.6;">${e?.message || 'Unknown error'}</small></div>`;
       }
     }
 

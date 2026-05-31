@@ -4658,16 +4658,31 @@
         <div class="tag-mgmt-card">
           <h3>➕ Record Offline Sale</h3>
           <p style="font-size:0.84rem;color:var(--muted);margin-bottom:1rem;">Use this to log sales made directly by an author — e.g. book fairs, college events, personal sales.</p>
+
+          <!-- Book preview strip (shown after autocomplete selection) -->
+          <div id="ds-book-preview" style="display:none;align-items:center;gap:0.75rem;background:rgba(201,146,42,0.08);border:1px solid rgba(201,146,42,0.25);border-radius:8px;padding:0.6rem 0.85rem;margin-bottom:0.85rem;">
+            <img id="ds-book-cover" src="" alt="" style="width:42px;height:60px;object-fit:cover;border-radius:4px;flex-shrink:0;" />
+            <div>
+              <div id="ds-book-preview-title" style="font-size:0.88rem;font-weight:700;color:var(--text);"></div>
+              <div id="ds-book-preview-price" style="font-size:0.78rem;color:var(--gold);margin-top:0.15rem;"></div>
+            </div>
+            <button onclick="dsClearBookSelection()" title="Clear" style="margin-left:auto;background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem;line-height:1;">✕</button>
+          </div>
+
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:0.85rem;">
             <div style="display:flex;flex-direction:column;gap:0.3rem;">
               <label style="font-size:0.77rem;color:var(--muted);font-weight:600;">Author Email *</label>
               <input type="email" id="ds-author-email" placeholder="author@email.com"
                 style="font-size:0.83rem;padding:0.5rem 0.75rem;border-radius:6px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);color:var(--text);width:100%;box-sizing:border-box;" />
             </div>
-            <div style="display:flex;flex-direction:column;gap:0.3rem;">
+            <div style="display:flex;flex-direction:column;gap:0.3rem;position:relative;">
               <label style="font-size:0.77rem;color:var(--muted);font-weight:600;">Book Title *</label>
-              <input type="text" id="ds-book-title" placeholder="e.g. My First Novel"
+              <input type="text" id="ds-book-title" placeholder="Start typing to search…" autocomplete="off"
+                oninput="dsBookTitleInput(this.value)"
+                onkeydown="dsBookTitleKeydown(event)"
                 style="font-size:0.83rem;padding:0.5rem 0.75rem;border-radius:6px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);color:var(--text);width:100%;box-sizing:border-box;" />
+              <!-- Autocomplete dropdown -->
+              <div id="ds-book-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:999;background:#1a1625;border:1px solid rgba(255,255,255,0.15);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.5);max-height:260px;overflow-y:auto;margin-top:2px;"></div>
             </div>
             <div style="display:flex;flex-direction:column;gap:0.3rem;">
               <label style="font-size:0.77rem;color:var(--muted);font-weight:600;">Sale Date *</label>
@@ -6153,6 +6168,100 @@
     }
 
     // ── Direct Sales ──
+
+    // Book title autocomplete
+    var _dsSearchTimer = null;
+    var _dsDropdownIdx = -1;
+    var _dsResults     = [];
+
+    function dsBookTitleInput(val) {
+      clearTimeout(_dsSearchTimer);
+      const dd = document.getElementById('ds-book-dropdown');
+      if (!val || val.trim().length < 2) { dd.style.display = 'none'; _dsResults = []; return; }
+      _dsSearchTimer = setTimeout(function() { dsRunBookSearch(val.trim()); }, 280);
+    }
+
+    async function dsRunBookSearch(q) {
+      const dd = document.getElementById('ds-book-dropdown');
+      dd.style.display = 'block';
+      dd.innerHTML = '<div style="padding:0.6rem 0.85rem;color:var(--muted);font-size:0.82rem;">Searching…</div>';
+      try {
+        const res  = await fetch('/.netlify/functions/admin-book-lookup', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: q })
+        });
+        const data = await res.json();
+        _dsResults     = data.books || [];
+        _dsDropdownIdx = -1;
+        if (!_dsResults.length) {
+          dd.innerHTML = '<div style="padding:0.6rem 0.85rem;color:var(--muted);font-size:0.82rem;">No books found — you can still type the title manually.</div>';
+          return;
+        }
+        dd.innerHTML = _dsResults.map(function(b, i) {
+          return '<div class="ds-dd-item" data-idx="' + i + '" onclick="dsSelectBook(' + i + ')" style="display:flex;align-items:center;gap:0.65rem;padding:0.5rem 0.75rem;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.06);">' +
+            (b.coverUrl ? '<img src="' + b.coverUrl + '" style="width:30px;height:42px;object-fit:cover;border-radius:3px;flex-shrink:0;" />' : '<div style="width:30px;height:42px;background:rgba(255,255,255,0.06);border-radius:3px;flex-shrink:0;"></div>') +
+            '<div><div style="font-size:0.83rem;font-weight:600;color:var(--text);">' + b.title + '</div>' +
+            (b.price ? '<div style="font-size:0.75rem;color:var(--gold);">' + b.price + '</div>' : '') +
+            '</div></div>';
+        }).join('');
+      } catch(e) {
+        dd.innerHTML = '<div style="padding:0.6rem 0.85rem;color:#f87171;font-size:0.82rem;">Search failed — type title manually.</div>';
+      }
+    }
+
+    function dsSelectBook(idx) {
+      const b = _dsResults[idx];
+      if (!b) return;
+      document.getElementById('ds-book-title').value        = b.title;
+      document.getElementById('ds-book-dropdown').style.display = 'none';
+      // Show inline preview
+      const preview = document.getElementById('ds-book-preview');
+      if (b.coverUrl) {
+        document.getElementById('ds-book-cover').src         = b.coverUrl;
+        document.getElementById('ds-book-cover').style.display = '';
+      } else {
+        document.getElementById('ds-book-cover').style.display = 'none';
+      }
+      document.getElementById('ds-book-preview-title').textContent = b.title;
+      document.getElementById('ds-book-preview-price').textContent = b.price || '';
+      preview.style.display = 'flex';
+    }
+
+    function dsClearBookSelection() {
+      document.getElementById('ds-book-title').value         = '';
+      document.getElementById('ds-book-preview').style.display = 'none';
+      document.getElementById('ds-book-dropdown').style.display = 'none';
+      _dsResults = [];
+    }
+
+    function dsBookTitleKeydown(e) {
+      const dd    = document.getElementById('ds-book-dropdown');
+      const items = dd.querySelectorAll('.ds-dd-item');
+      if (!items.length) return;
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        _dsDropdownIdx = Math.min(_dsDropdownIdx + 1, items.length - 1);
+        items.forEach(function(el, i) { el.style.background = i === _dsDropdownIdx ? 'rgba(201,146,42,0.15)' : ''; });
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        _dsDropdownIdx = Math.max(_dsDropdownIdx - 1, 0);
+        items.forEach(function(el, i) { el.style.background = i === _dsDropdownIdx ? 'rgba(201,146,42,0.15)' : ''; });
+      } else if (e.key === 'Enter' && _dsDropdownIdx >= 0) {
+        e.preventDefault();
+        dsSelectBook(_dsDropdownIdx);
+      } else if (e.key === 'Escape') {
+        dd.style.display = 'none';
+      }
+    }
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function(e) {
+      if (!e.target.closest('#ds-book-title') && !e.target.closest('#ds-book-dropdown')) {
+        const dd = document.getElementById('ds-book-dropdown');
+        if (dd) dd.style.display = 'none';
+      }
+    });
+
     async function adminAddDirectSale() {
       const author_email = (document.getElementById('ds-author-email').value || '').trim();
       const book_title   = (document.getElementById('ds-book-title').value   || '').trim();
@@ -6176,10 +6285,10 @@
           statusEl.style.color = '#34d399';
           statusEl.textContent = `✓ Sale recorded for ${author_email}`;
           // Clear form
-          document.getElementById('ds-book-title').value = '';
-          document.getElementById('ds-quantity').value   = '1';
-          document.getElementById('ds-amount').value     = '';
-          document.getElementById('ds-notes').value      = '';
+          dsClearBookSelection();
+          document.getElementById('ds-quantity').value = '1';
+          document.getElementById('ds-amount').value   = '';
+          document.getElementById('ds-notes').value    = '';
         } else {
           statusEl.style.color = '#f87171';
           statusEl.textContent = data.error || 'Failed to save.';

@@ -10531,7 +10531,12 @@
           }).catch(() => {});
         }
 
-        // Switch to the author's own cart bucket
+        // Switch to the author's own cart bucket.
+        // If a different author was logged in before, clear their cart so it doesn't bleed over.
+        const _prevSession = JSON.parse(localStorage.getItem('authorSession') || '{}');
+        if (_prevSession.email && _prevSession.email !== email) {
+          localStorage.removeItem('yfb_author_cart_id');
+        }
         _cartId = localStorage.getItem('yfb_author_cart_id') || null;
         refreshCartCount();
 

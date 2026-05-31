@@ -2566,15 +2566,7 @@
 
   <script>
     var RAZORPAY_KEY        = '';
-    fetch('/.netlify/functions/get-razorpay-key').then(r => r.json()).then(function(d) {
-      RAZORPAY_KEY = d.key || '';
-      // Overwrite plan IDs with whatever the server returns (allows staging vs prod separation)
-      if (d.plans) {
-        if (d.plans.starter)   PLANS.starter.plan_id   = d.plans.starter;
-        if (d.plans.growth)    PLANS.growth.plan_id     = d.plans.growth;
-        if (d.plans.publisher) PLANS.publisher.plan_id  = d.plans.publisher;
-      }
-    });
+    fetch('/.netlify/functions/get-razorpay-key').then(r => r.json()).then(function(d) { RAZORPAY_KEY = d.key || ''; });
     var CREATE_SUB_URL      = '/.netlify/functions/create-subscription';
     var CHECK_SUB_URL       = '/.netlify/functions/check-subscription';
     var SAVE_SUB_URL        = '/.netlify/functions/save-subscription';
@@ -2933,11 +2925,6 @@
         try {
           const kd = await fetch('/.netlify/functions/get-razorpay-key').then(r => r.json());
           RAZORPAY_KEY = kd.key || '';
-          if (kd.plans) {
-            if (kd.plans.starter)   PLANS.starter.plan_id   = kd.plans.starter;
-            if (kd.plans.growth)    PLANS.growth.plan_id     = kd.plans.growth;
-            if (kd.plans.publisher) PLANS.publisher.plan_id  = kd.plans.publisher;
-          }
         } catch(e) {}
       }
       if (!RAZORPAY_KEY) { alert('Payment system not ready. Please refresh and try again.'); return; }

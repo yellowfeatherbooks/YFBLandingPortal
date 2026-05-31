@@ -4471,6 +4471,9 @@
       <button class="admin-nav-item" data-section="flash" onclick="adminNav('flash',this)">
         <span class="admin-nav-icon">⚡</span> Flash Sale
       </button>
+      <button class="admin-nav-item" data-section="direct-sales" onclick="adminNav('direct-sales',this)">
+        <span class="admin-nav-icon">🤝</span> Direct Sales
+      </button>
       <div class="admin-nav-bottom">
         <button class="admin-nav-item" onclick="adminLogout()" style="color:#f87171;">
           <span class="admin-nav-icon">🚪</span> Logout
@@ -4645,6 +4648,68 @@
         </div>
       </div><!-- /admin-section-flash -->
 
+      <!-- ── Direct Sales ── -->
+      <div id="admin-section-direct-sales" class="admin-section">
+        <div class="admin-section-header">
+          <h2>🤝 Direct Sales</h2>
+        </div>
+
+        <!-- Entry form -->
+        <div class="tag-mgmt-card">
+          <h3>➕ Record Offline Sale</h3>
+          <p style="font-size:0.84rem;color:var(--muted);margin-bottom:1rem;">Use this to log sales made directly by an author — e.g. book fairs, college events, personal sales.</p>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:0.85rem;">
+            <div style="display:flex;flex-direction:column;gap:0.3rem;">
+              <label style="font-size:0.77rem;color:var(--muted);font-weight:600;">Author Email *</label>
+              <input type="email" id="ds-author-email" placeholder="author@email.com"
+                style="font-size:0.83rem;padding:0.5rem 0.75rem;border-radius:6px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);color:var(--text);width:100%;box-sizing:border-box;" />
+            </div>
+            <div style="display:flex;flex-direction:column;gap:0.3rem;">
+              <label style="font-size:0.77rem;color:var(--muted);font-weight:600;">Book Title *</label>
+              <input type="text" id="ds-book-title" placeholder="e.g. My First Novel"
+                style="font-size:0.83rem;padding:0.5rem 0.75rem;border-radius:6px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);color:var(--text);width:100%;box-sizing:border-box;" />
+            </div>
+            <div style="display:flex;flex-direction:column;gap:0.3rem;">
+              <label style="font-size:0.77rem;color:var(--muted);font-weight:600;">Sale Date *</label>
+              <input type="date" id="ds-sale-date"
+                style="font-size:0.83rem;padding:0.5rem 0.75rem;border-radius:6px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);color:var(--text);width:100%;box-sizing:border-box;" />
+            </div>
+            <div style="display:flex;flex-direction:column;gap:0.3rem;">
+              <label style="font-size:0.77rem;color:var(--muted);font-weight:600;">Quantity *</label>
+              <input type="number" id="ds-quantity" value="1" min="1"
+                style="font-size:0.83rem;padding:0.5rem 0.75rem;border-radius:6px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);color:var(--text);width:100%;box-sizing:border-box;" />
+            </div>
+            <div style="display:flex;flex-direction:column;gap:0.3rem;">
+              <label style="font-size:0.77rem;color:var(--muted);font-weight:600;">Total Amount ₹ *</label>
+              <input type="number" id="ds-amount" placeholder="e.g. 299" min="0" step="0.01"
+                style="font-size:0.83rem;padding:0.5rem 0.75rem;border-radius:6px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);color:var(--text);width:100%;box-sizing:border-box;" />
+            </div>
+            <div style="display:flex;flex-direction:column;gap:0.3rem;">
+              <label style="font-size:0.77rem;color:var(--muted);font-weight:600;">Notes (optional)</label>
+              <input type="text" id="ds-notes" placeholder="e.g. Book fair – Anna University"
+                style="font-size:0.83rem;padding:0.5rem 0.75rem;border-radius:6px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);color:var(--text);width:100%;box-sizing:border-box;" />
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
+            <button class="tag-sync-btn" id="ds-add-btn" onclick="adminAddDirectSale()">➕ Add Sale</button>
+            <span id="ds-add-status" style="font-size:0.82rem;"></span>
+          </div>
+        </div>
+
+        <!-- Listing -->
+        <div class="tag-mgmt-card">
+          <h3>📋 Recorded Direct Sales</h3>
+          <div class="book-tag-search-row" style="margin-bottom:0.75rem;">
+            <input type="email" id="ds-filter-email" placeholder="Filter by author email (leave blank for all)"
+              style="font-size:0.83rem;padding:0.5rem 0.75rem;border-radius:6px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);color:var(--text);flex:1;"
+              onkeydown="if(event.key==='Enter') adminLoadDirectSales()" />
+            <button class="book-tag-search-btn" onclick="adminLoadDirectSales()">Load</button>
+          </div>
+          <div id="ds-list-body" style="font-size:0.83rem;color:var(--muted);padding:0.5rem 0;">Click Load to view entries.</div>
+        </div>
+
+      </div><!-- /admin-section-direct-sales -->
+
     </main>
 
     <!-- Mobile tab bar -->
@@ -4672,6 +4737,9 @@
       </button>
       <button class="admin-mob-tab" data-section="tags" onclick="adminNav('tags',this)">
         <span class="tab-icon">🏷️</span>Tags
+      </button>
+      <button class="admin-mob-tab" data-section="direct-sales" onclick="adminNav('direct-sales',this)">
+        <span class="tab-icon">🤝</span>Direct
       </button>
     </div>
 
@@ -5918,7 +5986,7 @@
       if (section === 'book-requests')   adminLoadBookReqs();
       if (section === 'signed-requests') adminLoadSignedReqs();
       if (section === 'flash')           adminLoadFlashSale();
-      // tag section has no auto-load — user initiates actions
+      // direct-sales and tag sections: user initiates load via button
     }
 
     // ── Helpers ──
@@ -6082,6 +6150,103 @@
         statusEl.textContent = 'Save failed. Try again.';
       }
       btn.disabled = false; btn.textContent = '💾 Save Changes';
+    }
+
+    // ── Direct Sales ──
+    async function adminAddDirectSale() {
+      const author_email = (document.getElementById('ds-author-email').value || '').trim();
+      const book_title   = (document.getElementById('ds-book-title').value   || '').trim();
+      const sale_date    =  document.getElementById('ds-sale-date').value;
+      const quantity     =  parseInt(document.getElementById('ds-quantity').value)  || 1;
+      const amount       =  parseFloat(document.getElementById('ds-amount').value);
+      const notes        = (document.getElementById('ds-notes').value || '').trim();
+      const statusEl     =  document.getElementById('ds-add-status');
+      const btn          =  document.getElementById('ds-add-btn');
+
+      statusEl.style.color = 'var(--muted)'; statusEl.textContent = '';
+      if (!author_email || !book_title || !sale_date || !amount) {
+        statusEl.style.color = '#f87171';
+        statusEl.textContent = 'Author email, book title, date and amount are required.';
+        return;
+      }
+      btn.disabled = true; btn.textContent = '⏳ Saving…';
+      try {
+        const data = await adminPost('admin-direct-sales', { action: 'add', author_email, book_title, quantity, amount, sale_date, notes: notes || null });
+        if (data.success) {
+          statusEl.style.color = '#34d399';
+          statusEl.textContent = `✓ Sale recorded for ${author_email}`;
+          // Clear form
+          document.getElementById('ds-book-title').value = '';
+          document.getElementById('ds-quantity').value   = '1';
+          document.getElementById('ds-amount').value     = '';
+          document.getElementById('ds-notes').value      = '';
+        } else {
+          statusEl.style.color = '#f87171';
+          statusEl.textContent = data.error || 'Failed to save.';
+        }
+      } catch(e) {
+        statusEl.style.color = '#f87171';
+        statusEl.textContent = 'Connection error. Try again.';
+      }
+      btn.disabled = false; btn.textContent = '➕ Add Sale';
+    }
+
+    async function adminLoadDirectSales() {
+      const listEl       = document.getElementById('ds-list-body');
+      const author_email = (document.getElementById('ds-filter-email').value || '').trim();
+      listEl.innerHTML   = '<div style="padding:1rem;color:var(--muted);">Loading…</div>';
+      try {
+        const data = await adminPost('admin-direct-sales', { action: 'list', author_email: author_email || undefined });
+        if (!data.success) { listEl.innerHTML = `<div style="color:#f87171;padding:0.5rem;">${data.error}</div>`; return; }
+        const rows = data.sales || [];
+        if (!rows.length) { listEl.innerHTML = '<div style="padding:1rem;color:var(--muted);">No direct sales recorded yet.</div>'; return; }
+
+        const totalRev = rows.reduce((s, r) => s + parseFloat(r.amount || 0), 0);
+        listEl.innerHTML = `
+          <div class="admin-stat-card" style="display:inline-flex;margin-bottom:0.75rem;">
+            <div class="admin-stat-num" style="color:#34d399;">₹${totalRev.toFixed(2)}</div>
+            <div class="admin-stat-label">Total Revenue &nbsp;·&nbsp; ${rows.length} entries</div>
+          </div>
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead><tr>
+                <th>Author</th><th>Book Title</th><th>Date</th>
+                <th style="text-align:center">Qty</th><th>Amount</th><th>Notes</th><th></th>
+              </tr></thead>
+              <tbody>
+                ${rows.map(r => `<tr>
+                  <td class="muted">${r.author_email}</td>
+                  <td><strong>${r.book_title}</strong></td>
+                  <td class="muted" style="white-space:nowrap">${r.sale_date}</td>
+                  <td style="text-align:center">${r.quantity}</td>
+                  <td style="white-space:nowrap">₹${parseFloat(r.amount).toFixed(2)}</td>
+                  <td class="muted">${r.notes || '—'}</td>
+                  <td><button onclick="adminDeleteDirectSale(${r.id},this)"
+                    style="background:transparent;border:none;cursor:pointer;color:#f87171;font-size:1rem;" title="Delete">🗑</button></td>
+                </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>`;
+      } catch(e) {
+        listEl.innerHTML = `<div style="color:#f87171;padding:0.5rem;">${e.message}</div>`;
+      }
+    }
+
+    async function adminDeleteDirectSale(id, btn) {
+      if (!confirm('Delete this direct sale entry? This cannot be undone.')) return;
+      btn.disabled = true; btn.textContent = '…';
+      try {
+        const data = await adminPost('admin-direct-sales', { action: 'delete', id });
+        if (data.success) {
+          btn.closest('tr').remove();
+        } else {
+          alert(data.error || 'Delete failed.');
+          btn.disabled = false; btn.textContent = '🗑';
+        }
+      } catch(e) {
+        alert('Error: ' + e.message);
+        btn.disabled = false; btn.textContent = '🗑';
+      }
     }
 
     // ── Submissions ──

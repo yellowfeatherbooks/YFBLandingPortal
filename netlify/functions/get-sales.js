@@ -1,10 +1,13 @@
 // get-sales.js
 // Returns sales for all books belonging to an author (submitted OR admin-linked).
 // Finds products tagged  submittedby:{email}  then scans Shopify orders.
+// Also merges direct (offline) sales from the direct_sales Supabase table.
 
 const SHOPIFY_DOMAIN = process.env.SHOPIFY_DOMAIN || 'zgqk4e-1m.myshopify.com';
 const SHOPIFY_TOKEN  = process.env.SHOPIFY_ADMIN_TOKEN;
 const API_VERSION    = '2024-01';
+const SUPABASE_URL   = process.env.SUPABASE_URL;
+const SUPABASE_KEY   = process.env.SUPABASE_KEY;
 
 const corsHeaders = {
   'Access-Control-Allow-Origin':  '*',
@@ -154,13 +157,44 @@ exports.handler = async (event) => {
               unit_price:         price,
               revenue:            +(price * qty).toFixed(2),
               financial_status:   (order.displayFinancialStatus  || '').toLowerCase(),
-              fulfillment_status: (order.displayFulfillmentStatus || 'unfulfilled').toLowerCase()
+              fulfillment_status: (order.displayFulfillmentStatus || 'unfulfilled').toLowerCase(),
+              source:             'online'
             });
           }
         }
 
         hasMore = pageInfo.hasNextPage;
         cursor  = pageInfo.endCursor || null;
+      }
+    }
+
+    // ── Step 3: Fetch direct (offline) sales from Supabase ───────────────────
+    if (SUPABASE_URL && SUPABASE_KEY) {
+      try {
+        let directUrl = `${SUPABASE_URL}/rest/v1/direct_sales?author_email=eq.${encodeURIComponent(email)}&order=sale_date.desc`;
+        if (from) directUrl += `&sale_date=gte.${from}`;
+        if (to)   directUrl += `&sale_date=lte.${to}`;
+        const dRes = await fetch(directUrl, {
+          headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+        });
+        if (dRes.ok) {
+          const directRows = await dRes.json();
+          for (const d of (directRows || [])) {
+            sales.push({
+              book_title:         d.book_title,
+              order_number:       d.notes || '—',
+              date:               d.sale_date,
+              quantity:           d.quantity || 1,
+              unit_price:         d.quantity ? +(d.amount / d.quantity).toFixed(2) : +d.amount,
+              revenue:            +d.amount,
+              financial_status:   'paid',
+              fulfillment_status: 'fulfilled',
+              source:             'direct'
+            });
+          }
+        }
+      } catch (dErr) {
+        console.warn('direct_sales fetch failed:', dErr.message);
       }
     }
 

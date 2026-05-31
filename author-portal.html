@@ -3567,18 +3567,22 @@
           var payClass = s.financial_status === 'paid' ? 'status-paid' : s.financial_status === 'pending' ? 'status-pending' : 'status-refund';
           var fulClass = s.fulfillment_status === 'fulfilled' ? 'status-fulfilled' : 'status-unfulfilled';
           // order_number from API already includes '#' (e.g. '#1042')
+          var isDirect = s.source === 'direct';
           var orderNum = (s.order_number || '—');
-          if (orderNum !== '—' && !orderNum.startsWith('#')) orderNum = '#' + orderNum;
+          if (!isDirect && orderNum !== '—' && !orderNum.startsWith('#')) orderNum = '#' + orderNum;
           var rev = s.revenue || 0;
           totalRevenue += rev;
+          var sourceBadge = isDirect
+            ? '<span style="display:inline-block;margin-left:0.35rem;font-size:0.7rem;padding:0.1rem 0.45rem;border-radius:20px;background:rgba(251,191,36,0.15);color:#fbbf24;font-weight:600;vertical-align:middle;">🤝 Direct</span>'
+            : '';
           tbody.innerHTML += '<tr>' +
-            '<td>' + (s.book_title || '—') + '</td>' +
+            '<td>' + (s.book_title || '—') + sourceBadge + '</td>' +
             '<td>' + orderNum + '</td>' +
             '<td style="white-space:nowrap">' + date + '</td>' +
             '<td style="text-align:center">' + (s.quantity || 1) + '</td>' +
             '<td style="white-space:nowrap">₹' + (rev ? rev.toFixed(2) : '—') + '</td>' +
-            '<td><span class="status-badge ' + payClass + '">' + (s.financial_status || '—') + '</span></td>' +
-            '<td><span class="status-badge ' + fulClass + '">' + (s.fulfillment_status || 'unfulfilled') + '</span></td>' +
+            '<td>' + (isDirect ? '<span class="status-badge status-paid">paid</span>' : '<span class="status-badge ' + payClass + '">' + (s.financial_status || '—') + '</span>') + '</td>' +
+            '<td>' + (isDirect ? '<span class="status-badge status-fulfilled">fulfilled</span>' : '<span class="status-badge ' + fulClass + '">' + (s.fulfillment_status || 'unfulfilled') + '</span>') + '</td>' +
           '</tr>';
         });
         // Summary row

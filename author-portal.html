@@ -2566,7 +2566,7 @@
 
   <script>
     var RAZORPAY_KEY        = '';
-    fetch('/.netlify/functions/get-razorpay-key').then(r => r.json()).then(d => { RAZORPAY_KEY = d.key; });
+    fetch('/.netlify/functions/get-razorpay-key').then(r => r.json()).then(function(d) { RAZORPAY_KEY = d.key || ''; });
     var CREATE_SUB_URL      = '/.netlify/functions/create-subscription';
     var CHECK_SUB_URL       = '/.netlify/functions/check-subscription';
     var SAVE_SUB_URL        = '/.netlify/functions/save-subscription';
@@ -2924,7 +2924,7 @@
       if (!RAZORPAY_KEY) {
         try {
           const kd = await fetch('/.netlify/functions/get-razorpay-key').then(r => r.json());
-          RAZORPAY_KEY = kd.key;
+          RAZORPAY_KEY = kd.key || '';
         } catch(e) {}
       }
       if (!RAZORPAY_KEY) { alert('Payment system not ready. Please refresh and try again.'); return; }
@@ -3272,6 +3272,16 @@
     }
 
     function showMyBooks() {
+      if (!currentPlanName) {
+        showPortalHome();
+        var banner = document.createElement('div');
+        banner.style.cssText = 'position:fixed;top:1.2rem;left:50%;transform:translateX(-50%);background:#e63946;color:#fff;padding:0.7rem 1.4rem;border-radius:8px;font-size:0.88rem;font-weight:600;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,0.3);text-align:center;';
+        banner.textContent = '📚 A subscription is required to view your books. Please choose a plan below.';
+        document.body.appendChild(banner);
+        setTimeout(function() { banner.remove(); }, 5000);
+        setTimeout(function() { var el = document.getElementById('pricing'); if (el) el.scrollIntoView({ behavior: 'smooth' }); }, 200);
+        return;
+      }
       closeAuthorWelcome();
       ['success-screen','sub-success-screen','mysales-screen','submit-screen'].forEach(function(id) {
         var el = document.getElementById(id); if (el) el.classList.remove('active');
@@ -3291,6 +3301,16 @@
     }
 
     function showMySales() {
+      if (!currentPlanName) {
+        showPortalHome();
+        var banner = document.createElement('div');
+        banner.style.cssText = 'position:fixed;top:1.2rem;left:50%;transform:translateX(-50%);background:#e63946;color:#fff;padding:0.7rem 1.4rem;border-radius:8px;font-size:0.88rem;font-weight:600;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,0.3);text-align:center;';
+        banner.textContent = '📈 A subscription is required to view sales data. Please choose a plan below.';
+        document.body.appendChild(banner);
+        setTimeout(function() { banner.remove(); }, 5000);
+        setTimeout(function() { var el = document.getElementById('pricing'); if (el) el.scrollIntoView({ behavior: 'smooth' }); }, 200);
+        return;
+      }
       closeAuthorWelcome();
       ['success-screen','sub-success-screen','mybooks-screen','submit-screen'].forEach(function(id) {
         var el = document.getElementById(id); if (el) el.classList.remove('active');

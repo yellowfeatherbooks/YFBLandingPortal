@@ -1830,6 +1830,13 @@
     .alp-btn:disabled { opacity: 0.6; cursor: not-allowed; }
     .alp-footer-note { text-align: center; font-size: 0.75rem; color: var(--muted); margin-top: 1.1rem; }
     .alp-footer-note a { color: var(--gold); }
+    /* ── Sign In / Sign Up tabs ── */
+    .alp-tabs { display: flex; border-bottom: 1px solid rgba(201,146,42,0.2); margin-bottom: 1.25rem; }
+    .alp-tab  { flex: 1; padding: 0.5rem; background: none; border: none; color: var(--muted);
+                font-family: 'Inter',sans-serif; font-size: 0.85rem; font-weight: 600; cursor: pointer;
+                border-bottom: 2px solid transparent; margin-bottom: -1px; transition: color 0.2s; }
+    .alp-tab.active { color: var(--gold); border-bottom-color: var(--gold); }
+    .alp-tab:hover:not(.active) { color: var(--cream); }
 
     /* ── BOOK CLUB LOGIN PANEL ── */
     #bc-login-panel {
@@ -3708,28 +3715,73 @@
         <a href="/author-terms.html" class="hpc-tc-link" target="_blank" rel="noopener" style="margin-top:0.5rem;display:inline-block;">Terms &amp; Conditions</a>
       </div>
 
-      <!-- Login column -->
+      <!-- Login / Signup column -->
       <div class="alp-login-col">
         <div class="alp-card">
           <div class="alp-logo"><span>✍️</span></div>
           <div class="alp-title">Author's Space</div>
-          <div class="alp-sub">Sign in to manage your book listings and publisher profile.</div>
-          <div class="alp-field">
-            <label>Email Address</label>
-            <input type="email" id="alp-email" class="alp-input" placeholder="you@example.com" onkeydown="if(event.key==='Enter')alpSubmit()"/>
+
+          <!-- Tabs -->
+          <div class="alp-tabs">
+            <button class="alp-tab active" id="alp-tab-signin" onclick="alpSwitchTab('signin')">Sign In</button>
+            <button class="alp-tab"        id="alp-tab-signup" onclick="alpSwitchTab('signup')">New Author</button>
           </div>
-          <div class="alp-field">
-            <label>Password</label>
-            <div class="pw-wrap">
-              <input type="password" id="alp-password" class="alp-input" placeholder="••••••••" onkeydown="if(event.key==='Enter')alpSubmit()"/>
-              <button type="button" class="pw-eye" onclick="togglePw('alp-password',this)" tabindex="-1" aria-label="Show password">👁</button>
+
+          <!-- ── Sign In Form ── -->
+          <div id="alp-signin-form">
+            <div class="alp-field">
+              <label>Email Address</label>
+              <input type="email" id="alp-email" class="alp-input" placeholder="you@example.com" onkeydown="if(event.key==='Enter')alpSubmit()"/>
+            </div>
+            <div class="alp-field">
+              <label>Password</label>
+              <div class="pw-wrap">
+                <input type="password" id="alp-password" class="alp-input" placeholder="••••••••" onkeydown="if(event.key==='Enter')alpSubmit()"/>
+                <button type="button" class="pw-eye" onclick="togglePw('alp-password',this)" tabindex="-1" aria-label="Show password">👁</button>
+              </div>
+            </div>
+            <div class="alp-error" id="alp-error"></div>
+            <button class="alp-btn" id="alp-btn" onclick="alpSubmit()">Sign In</button>
+            <div class="alp-footer-note">
+              <a href="#" onclick="event.preventDefault();alpSwitchTab('signup')">New author? Create account →</a>
             </div>
           </div>
-          <div class="alp-error" id="alp-error"></div>
-          <button class="alp-btn" id="alp-btn" onclick="alpSubmit()">Sign In</button>
-          <div class="alp-footer-note">
-            Don't have an account? <a href="/author-portal.html" target="_blank">Register here</a>
+
+          <!-- ── Sign Up Form ── -->
+          <div id="alp-signup-form" style="display:none;">
+            <div class="alp-field">
+              <label>Full Name</label>
+              <input type="text" id="alp-reg-name" class="alp-input" placeholder="Your name"/>
+            </div>
+            <div class="alp-field">
+              <label>Email Address</label>
+              <input type="email" id="alp-reg-email" class="alp-input" placeholder="you@example.com"/>
+            </div>
+            <div class="alp-field">
+              <label>Phone <span style="color:var(--muted);font-weight:400;">(optional)</span></label>
+              <input type="tel" id="alp-reg-phone" class="alp-input" placeholder="+91 98765 43210"/>
+            </div>
+            <div class="alp-field">
+              <label>Password</label>
+              <div class="pw-wrap">
+                <input type="password" id="alp-reg-password" class="alp-input" placeholder="Min 8 characters" onkeydown="if(event.key==='Enter')alpSignupSubmit()"/>
+                <button type="button" class="pw-eye" onclick="togglePw('alp-reg-password',this)" tabindex="-1" aria-label="Show password">👁</button>
+              </div>
+            </div>
+            <div class="alp-field">
+              <label>Confirm Password</label>
+              <div class="pw-wrap">
+                <input type="password" id="alp-reg-confirm" class="alp-input" placeholder="Repeat password" onkeydown="if(event.key==='Enter')alpSignupSubmit()"/>
+                <button type="button" class="pw-eye" onclick="togglePw('alp-reg-confirm',this)" tabindex="-1" aria-label="Show password">👁</button>
+              </div>
+            </div>
+            <div class="alp-error" id="alp-reg-error"></div>
+            <button class="alp-btn" id="alp-reg-btn" onclick="alpSignupSubmit()">Create Account</button>
+            <div class="alp-footer-note">
+              Already registered? <a href="#" onclick="event.preventDefault();alpSwitchTab('signin')">Sign in →</a>
+            </div>
           </div>
+
         </div>
       </div>
     </div>
@@ -10347,6 +10399,52 @@
       document.getElementById('author-login-panel').style.display = 'none';
       document.getElementById('page-content').classList.remove('pane-mode');
     }
+    function alpSwitchTab(tab) {
+      const isSignin = tab === 'signin';
+      document.getElementById('alp-signin-form').style.display = isSignin ? '' : 'none';
+      document.getElementById('alp-signup-form').style.display = isSignin ? 'none' : '';
+      document.getElementById('alp-tab-signin').classList.toggle('active', isSignin);
+      document.getElementById('alp-tab-signup').classList.toggle('active', !isSignin);
+      document.getElementById('alp-error').textContent    = '';
+      document.getElementById('alp-reg-error').textContent = '';
+    }
+
+    async function alpSignupSubmit() {
+      const name     = (document.getElementById('alp-reg-name').value    || '').trim();
+      const email    = (document.getElementById('alp-reg-email').value   || '').trim();
+      const phone    = (document.getElementById('alp-reg-phone').value   || '').trim();
+      const password =  document.getElementById('alp-reg-password').value;
+      const confirm  =  document.getElementById('alp-reg-confirm').value;
+      const errEl    =  document.getElementById('alp-reg-error');
+      const btn      =  document.getElementById('alp-reg-btn');
+      errEl.textContent = '';
+      if (!name || !email || !password) { errEl.textContent = 'Name, email and password are required.'; return; }
+      if (password.length < 8)          { errEl.textContent = 'Password must be at least 8 characters.'; return; }
+      if (password !== confirm)          { errEl.textContent = 'Passwords do not match.'; return; }
+      btn.disabled = true; btn.textContent = 'Creating account…';
+      try {
+        const res  = await fetch('/.netlify/functions/register-user', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ name, email, phone: phone || null, password, marketing_consent: true })
+        });
+        const data = await res.json();
+        if (!data.success) {
+          errEl.textContent = data.error || 'Registration failed. Please try again.';
+          btn.disabled = false; btn.textContent = 'Create Account';
+          return;
+        }
+        // Auto-login: populate sign-in fields and call alpSubmit()
+        document.getElementById('alp-email').value    = email;
+        document.getElementById('alp-password').value = password;
+        alpSwitchTab('signin');
+        await alpSubmit();
+      } catch(e) {
+        errEl.textContent = 'Connection error. Please try again.';
+        btn.disabled = false; btn.textContent = 'Create Account';
+      }
+    }
+
     async function alpSubmit() {
       const email    = document.getElementById('alp-email').value.trim();
       const password = document.getElementById('alp-password').value;

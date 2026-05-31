@@ -3758,7 +3758,7 @@
               <input type="email" id="alp-reg-email" class="alp-input" placeholder="you@example.com"/>
             </div>
             <div class="alp-field">
-              <label>Phone <span style="color:var(--muted);font-weight:400;">(optional)</span></label>
+              <label>Phone</label>
               <input type="tel" id="alp-reg-phone" class="alp-input" placeholder="+91 98765 43210"/>
             </div>
             <div class="alp-field">
@@ -10418,7 +10418,7 @@
       const errEl    =  document.getElementById('alp-reg-error');
       const btn      =  document.getElementById('alp-reg-btn');
       errEl.textContent = '';
-      if (!name || !email || !password) { errEl.textContent = 'Name, email and password are required.'; return; }
+      if (!name || !email || !phone || !password) { errEl.textContent = 'Name, email, phone and password are required.'; return; }
       if (password.length < 8)          { errEl.textContent = 'Password must be at least 8 characters.'; return; }
       if (password !== confirm)          { errEl.textContent = 'Passwords do not match.'; return; }
       btn.disabled = true; btn.textContent = 'Creating account…';
@@ -10426,7 +10426,7 @@
         const res  = await fetch('/.netlify/functions/register-user', {
           method:  'POST',
           headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ name, email, phone: phone || null, password, marketing_consent: true })
+          body:    JSON.stringify({ name, email, phone, password, marketing_consent: true })
         });
         const data = await res.json();
         if (!data.success) {

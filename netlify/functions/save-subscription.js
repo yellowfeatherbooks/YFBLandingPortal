@@ -24,9 +24,10 @@ exports.handler = async (event) => {
     // ── Verify Razorpay payment signature ──────────────────────────────────
     // Formula: HMAC-SHA256(subscription_id + "|" + payment_id, secret)
     if (RZP_SECRET && payment_id && razorpay_signature) {
+      // Razorpay subscription signature format: payment_id + "|" + subscription_id
       const expected = crypto
         .createHmac('sha256', RZP_SECRET)
-        .update(`${subscription_id}|${payment_id}`)
+        .update(`${payment_id}|${subscription_id}`)
         .digest('hex');
       if (expected !== razorpay_signature) {
         console.error('Subscription payment signature mismatch');

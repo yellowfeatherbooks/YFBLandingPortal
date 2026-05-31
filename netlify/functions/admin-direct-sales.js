@@ -53,7 +53,7 @@ exports.handler = async (event) => {
 
   // ── ADD ────────────────────────────────────────────────────────────────────
   if (action === 'add') {
-    const { author_email, book_title, quantity, amount, sale_date, notes } = body;
+    const { author_email, book_title, quantity, amount, sale_date, order_number, payment_status, notes } = body;
     if (!author_email || !book_title || !amount || !sale_date) {
       return json({ success: false, error: 'author_email, book_title, amount and sale_date are required.' });
     }
@@ -70,11 +70,13 @@ exports.handler = async (event) => {
         body: JSON.stringify({
           author_email,
           book_title,
-          quantity:  parseInt(quantity)   || 1,
-          amount:    parseFloat(amount),
+          quantity:       parseInt(quantity) || 1,
+          amount:         parseFloat(amount),
           sale_date,
-          notes:     notes || null,
-          source:    'direct'
+          order_number:   order_number   || null,
+          payment_status: payment_status || 'paid',
+          notes:          notes          || null,
+          source:         'direct'
         })
       }
     );

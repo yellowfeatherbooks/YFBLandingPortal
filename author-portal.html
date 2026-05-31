@@ -3581,7 +3581,7 @@
             '<td style="white-space:nowrap">' + date + '</td>' +
             '<td style="text-align:center">' + (s.quantity || 1) + '</td>' +
             '<td style="white-space:nowrap">₹' + (rev ? rev.toFixed(2) : '—') + '</td>' +
-            '<td>' + (isDirect ? '<span class="status-badge status-paid">paid</span>' : '<span class="status-badge ' + payClass + '">' + (s.financial_status || '—') + '</span>') + '</td>' +
+            '<td><span class="status-badge ' + payClass + '">' + (s.financial_status || 'paid') + '</span></td>' +
             '<td>' + (isDirect ? '<span class="status-badge status-fulfilled">fulfilled</span>' : '<span class="status-badge ' + fulClass + '">' + (s.fulfillment_status || 'unfulfilled') + '</span>') + '</td>' +
           '</tr>';
         });

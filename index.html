@@ -4687,7 +4687,7 @@
             <div style="display:flex;flex-direction:column;gap:0.3rem;">
               <label style="font-size:0.77rem;color:var(--muted);font-weight:600;">Sale Date *</label>
               <input type="date" id="ds-sale-date"
-                style="font-size:0.83rem;padding:0.5rem 0.75rem;border-radius:6px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);color:var(--text);width:100%;box-sizing:border-box;" />
+                style="font-size:0.83rem;padding:0.5rem 0.75rem;border-radius:6px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);color:var(--text);width:100%;box-sizing:border-box;color-scheme:dark;" />
             </div>
             <div style="display:flex;flex-direction:column;gap:0.3rem;">
               <label style="font-size:0.77rem;color:var(--muted);font-weight:600;">Quantity *</label>
@@ -4698,6 +4698,19 @@
               <label style="font-size:0.77rem;color:var(--muted);font-weight:600;">Total Amount ₹ *</label>
               <input type="number" id="ds-amount" placeholder="e.g. 299" min="0" step="0.01"
                 style="font-size:0.83rem;padding:0.5rem 0.75rem;border-radius:6px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);color:var(--text);width:100%;box-sizing:border-box;" />
+            </div>
+            <div style="display:flex;flex-direction:column;gap:0.3rem;">
+              <label style="font-size:0.77rem;color:var(--muted);font-weight:600;">Order / Invoice # (optional)</label>
+              <input type="text" id="ds-order-number" placeholder="e.g. YFB4139"
+                style="font-size:0.83rem;padding:0.5rem 0.75rem;border-radius:6px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);color:var(--text);width:100%;box-sizing:border-box;" />
+            </div>
+            <div style="display:flex;flex-direction:column;gap:0.3rem;">
+              <label style="font-size:0.77rem;color:var(--muted);font-weight:600;">Payment Status *</label>
+              <select id="ds-payment-status"
+                style="font-size:0.83rem;padding:0.5rem 0.75rem;border-radius:6px;background:#1a1625;border:1px solid rgba(255,255,255,0.12);color:var(--text);width:100%;box-sizing:border-box;cursor:pointer;">
+                <option value="paid">✅ Paid</option>
+                <option value="unpaid">⏳ Unpaid</option>
+              </select>
             </div>
             <div style="display:flex;flex-direction:column;gap:0.3rem;">
               <label style="font-size:0.77rem;color:var(--muted);font-weight:600;">Notes (optional)</label>
@@ -6263,12 +6276,14 @@
     });
 
     async function adminAddDirectSale() {
-      const author_email = (document.getElementById('ds-author-email').value || '').trim();
-      const book_title   = (document.getElementById('ds-book-title').value   || '').trim();
-      const sale_date    =  document.getElementById('ds-sale-date').value;
-      const quantity     =  parseInt(document.getElementById('ds-quantity').value)  || 1;
-      const amount       =  parseFloat(document.getElementById('ds-amount').value);
-      const notes        = (document.getElementById('ds-notes').value || '').trim();
+      const author_email     = (document.getElementById('ds-author-email').value    || '').trim();
+      const book_title       = (document.getElementById('ds-book-title').value      || '').trim();
+      const sale_date        =  document.getElementById('ds-sale-date').value;
+      const quantity         =  parseInt(document.getElementById('ds-quantity').value) || 1;
+      const amount           =  parseFloat(document.getElementById('ds-amount').value);
+      const order_number     = (document.getElementById('ds-order-number').value    || '').trim();
+      const payment_status   =  document.getElementById('ds-payment-status').value;
+      const notes            = (document.getElementById('ds-notes').value            || '').trim();
       const statusEl     =  document.getElementById('ds-add-status');
       const btn          =  document.getElementById('ds-add-btn');
 
@@ -6280,15 +6295,17 @@
       }
       btn.disabled = true; btn.textContent = '⏳ Saving…';
       try {
-        const data = await adminPost('admin-direct-sales', { action: 'add', author_email, book_title, quantity, amount, sale_date, notes: notes || null });
+        const data = await adminPost('admin-direct-sales', { action: 'add', author_email, book_title, quantity, amount, sale_date, order_number: order_number || null, payment_status, notes: notes || null });
         if (data.success) {
           statusEl.style.color = '#34d399';
           statusEl.textContent = `✓ Sale recorded for ${author_email}`;
           // Clear form
           dsClearBookSelection();
-          document.getElementById('ds-quantity').value = '1';
-          document.getElementById('ds-amount').value   = '';
-          document.getElementById('ds-notes').value    = '';
+          document.getElementById('ds-quantity').value        = '1';
+          document.getElementById('ds-amount').value          = '';
+          document.getElementById('ds-order-number').value    = '';
+          document.getElementById('ds-payment-status').value  = 'paid';
+          document.getElementById('ds-notes').value           = '';
         } else {
           statusEl.style.color = '#f87171';
           statusEl.textContent = data.error || 'Failed to save.';
@@ -6320,19 +6337,24 @@
             <table class="admin-table">
               <thead><tr>
                 <th>Author</th><th>Book Title</th><th>Date</th>
-                <th style="text-align:center">Qty</th><th>Amount</th><th>Notes</th><th></th>
+                <th style="text-align:center">Qty</th><th>Amount</th><th>Invoice #</th><th>Payment</th><th>Notes</th><th></th>
               </tr></thead>
               <tbody>
-                ${rows.map(r => `<tr>
-                  <td class="muted">${r.author_email}</td>
-                  <td><strong>${r.book_title}</strong></td>
-                  <td class="muted" style="white-space:nowrap">${r.sale_date}</td>
-                  <td style="text-align:center">${r.quantity}</td>
-                  <td style="white-space:nowrap">₹${parseFloat(r.amount).toFixed(2)}</td>
-                  <td class="muted">${r.notes || '—'}</td>
-                  <td><button onclick="adminDeleteDirectSale(${r.id},this)"
-                    style="background:transparent;border:none;cursor:pointer;color:#f87171;font-size:1rem;" title="Delete">🗑</button></td>
-                </tr>`).join('')}
+                ${rows.map(r => {
+                  const isPaid = (r.payment_status || 'paid') === 'paid';
+                  return `<tr>
+                    <td class="muted">${r.author_email}</td>
+                    <td><strong>${r.book_title}</strong></td>
+                    <td class="muted" style="white-space:nowrap">${r.sale_date}</td>
+                    <td style="text-align:center">${r.quantity}</td>
+                    <td style="white-space:nowrap">₹${parseFloat(r.amount).toFixed(2)}</td>
+                    <td class="muted">${r.order_number || '—'}</td>
+                    <td>${isPaid ? '<span class="abadge abadge-paid">paid</span>' : '<span class="abadge abadge-pending">unpaid</span>'}</td>
+                    <td class="muted">${r.notes || '—'}</td>
+                    <td><button onclick="adminDeleteDirectSale(${r.id},this)"
+                      style="background:transparent;border:none;cursor:pointer;color:#f87171;font-size:1rem;" title="Delete">🗑</button></td>
+                  </tr>`;
+                }).join('')}
               </tbody>
             </table>
           </div>`;

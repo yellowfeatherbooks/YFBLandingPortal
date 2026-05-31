@@ -182,12 +182,12 @@ exports.handler = async (event) => {
           for (const d of (directRows || [])) {
             sales.push({
               book_title:         d.book_title,
-              order_number:       d.notes || '—',
+              order_number:       d.order_number || '—',
               date:               d.sale_date,
               quantity:           d.quantity || 1,
               unit_price:         d.quantity ? +(d.amount / d.quantity).toFixed(2) : +d.amount,
               revenue:            +d.amount,
-              financial_status:   'paid',
+              financial_status:   d.payment_status || 'paid',
               fulfillment_status: 'fulfilled',
               source:             'direct'
             });

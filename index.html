@@ -5221,7 +5221,7 @@
         <button class="browse-pill"        data-col="award-winners"     onclick="loadBrowseCollection('award-winners',this)">🏆 Award Winning Titles</button>
         <button class="browse-pill"        data-col="poetry"            onclick="loadBrowseCollection('poetry',this)">🪶 Poetry</button>
         <button class="browse-pill"        data-col="self-help"         onclick="loadBrowseCollection('self-help',this)">💡 Self Help</button>
-        <button class="browse-pill"        data-col="childrens-books"   onclick="loadBrowseCollection('childrens-books',this)">🌟 Children's Books</button>
+        <button class="browse-pill"        data-col="children"          onclick="loadBrowseCollection('children',this)">🌟 Children's Books</button>
         <button class="browse-pill"        data-col="classics"          onclick="loadBrowseCollection('classics',this)">🏛️ Classics</button>
         <button class="browse-pill"        data-col="world-literature"  onclick="loadBrowseCollection('world-literature',this)">🌍 World Literature</button>
       </div>
@@ -7226,7 +7226,12 @@
 
       if (tab === 'wishlist')   renderWishlist();
       if (tab === 'cart')       fetchAndRenderCart();
-      if (tab === 'browse' && !_browseState.key) loadBrowseCollection('just-arrived', document.querySelector('.browse-pill[data-col="just-arrived"]'));
+      if (tab === 'browse') {
+        const _browseGrid = document.getElementById('browse-books-grid');
+        if (!_browseState.key || !_browseGrid || !_browseGrid.hasChildNodes()) {
+          loadBrowseCollection('just-arrived', document.querySelector('.browse-pill[data-col="just-arrived"]'));
+        }
+      }
       if (tab === 'members')    loadMembersContent();
       if (tab === 'curated')    loadCuratedPicks();
       if (tab === 'ai-search')  _fabToPanel();

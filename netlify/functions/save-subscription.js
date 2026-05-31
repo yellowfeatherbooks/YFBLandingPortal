@@ -89,10 +89,11 @@ exports.handler = async (event) => {
 
     if (!res.ok) {
       const err = await res.text();
+      console.error('Supabase upsert failed:', res.status, err);
       return {
         statusCode: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ success: false, error: err })
+        body: JSON.stringify({ success: false, error: `Supabase ${res.status}: ${err}` })
       };
     }
 

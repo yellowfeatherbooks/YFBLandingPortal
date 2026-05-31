@@ -2565,6 +2565,12 @@
   </footer>
 
   <script>
+    // If loaded standalone (not embedded as an iframe), redirect to the landing page
+    // which has the inline author login/signup panel.
+    if (window.self === window.top) {
+      window.location.replace('/?author=1');
+    }
+
     var RAZORPAY_KEY        = '';
     fetch('/.netlify/functions/get-razorpay-key').then(r => r.json()).then(function(d) { RAZORPAY_KEY = d.key || ''; });
     var CREATE_SUB_URL      = '/.netlify/functions/create-subscription';

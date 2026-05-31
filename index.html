@@ -10086,6 +10086,11 @@
         var t = document.getElementById('trending');
         if (t) t.scrollIntoView();
       }
+      // Auto-open author login panel when redirected from /author-portal
+      if (new URLSearchParams(window.location.search).get('author') === '1') {
+        history.replaceState(null, '', window.location.pathname); // clean up the URL
+        setTimeout(showAuthorLogin, 400); // small delay so page finishes rendering
+      }
     });
 
     // ── BOOK CLUB LOGIN PANEL ─────────────────────────────────────────────────

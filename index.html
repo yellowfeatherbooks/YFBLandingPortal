@@ -3989,6 +3989,28 @@
     </div>
   </section>
 
+  <!-- ══ CLASSICS ══ -->
+  <section id="classics" style="padding: 4rem 0;">
+    <div class="container">
+      <div class="section-header">
+        <h2 class="section-title">🏛️ <span>Classics</span></h2>
+        <a href="#" onclick="openGenreBrowse('classics');return false;" class="section-see-all">See all →</a>
+      </div>
+      <div class="book-carousel-wrap">
+        <button class="carousel-arrow left" onclick="scrollCarousel('classics', -1)">‹</button>
+        <div class="book-carousel" id="carousel-classics">
+          <div class="skeleton"><div class="skeleton-cover"></div><div class="skeleton-line"></div><div class="skeleton-line short"></div></div>
+          <div class="skeleton"><div class="skeleton-cover"></div><div class="skeleton-line"></div><div class="skeleton-line short"></div></div>
+          <div class="skeleton"><div class="skeleton-cover"></div><div class="skeleton-line"></div><div class="skeleton-line short"></div></div>
+          <div class="skeleton"><div class="skeleton-cover"></div><div class="skeleton-line"></div><div class="skeleton-line short"></div></div>
+          <div class="skeleton"><div class="skeleton-cover"></div><div class="skeleton-line"></div><div class="skeleton-line short"></div></div>
+          <div class="skeleton"><div class="skeleton-cover"></div><div class="skeleton-line"></div><div class="skeleton-line short"></div></div>
+        </div>
+        <button class="carousel-arrow right" onclick="scrollCarousel('classics', 1)">›</button>
+      </div>
+    </div>
+  </section>
+
   <!-- ══ TRENDING ══ -->
   <section id="trending" style="background: var(--navy2); padding: 4rem 0;">
     <div class="container">
@@ -9047,6 +9069,7 @@
     async function loadAll() {
       const carousels = [
         { key: 'offer-zone',        id: 'offer-zone'        },
+        { key: 'classics',          id: 'classics'          },
         { key: 'trending',          id: 'trending'          },
         { key: 'just-arrived',      id: 'just-arrived'      },
         { key: 'best-sellers',      id: 'best-sellers'      },

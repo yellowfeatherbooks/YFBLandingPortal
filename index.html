@@ -5269,7 +5269,7 @@
     </div>
 
     <!-- Orders tab -->
-    <div class="orders-content" id="panel-orders">
+    <div class="orders-content" id="panel-orders" style="display:none;">
       <div class="orders-loading" id="orders-loading">
         <div class="order-skeleton"><div class="skel-line w60"></div><div class="skel-line w40"></div><div class="skel-line w80"></div></div>
         <div class="order-skeleton"><div class="skel-line w60"></div><div class="skel-line w40"></div><div class="skel-line w80"></div></div>
@@ -5564,7 +5564,7 @@
         };
       } catch(e) {
         console.error('fetchCollection error for', collectionKey, e.message);
-        return { products: [], hasNextPage: false, endCursor: null };
+        throw e;  // propagate so callers can distinguish network errors from empty collections
       }
     }
 
@@ -8252,14 +8252,12 @@
     if (readerToken) {
       setView('member');  // switch immediately — before any async work
       updateNavForLoggedIn();
-      // Club members land on Welcome tab — don't burn a Shopify call until they click My Orders.
-      // Regular members land on My Orders, so prefetch makes sense for them.
-      if (!isBookClubMember) prefetchOrders();
-    }
-    if (readerToken && isBookClubMember) {
-      // Restore member view immediately — no need to log in again
-      ['tab-btn-members','tab-btn-curated','tab-btn-prebook'].forEach(id => { document.getElementById(id).style.display = ''; });
-      openOrdersPanel();   // switches to member-mode view + fetches orders
+      if (isBookClubMember) {
+        // Show club-only tabs before openOrdersPanel switches to the Welcome tab
+        ['tab-btn-members','tab-btn-curated','tab-btn-prebook'].forEach(id => { document.getElementById(id).style.display = ''; });
+      }
+      // openOrdersPanel handles both club (→ Welcome) and non-club (→ My Orders + fetchOrders)
+      openOrdersPanel();
     }
 
     // ── Restore author session (persists across page reloads via localStorage) ──
@@ -9017,15 +9015,18 @@
       if (cached) {
         grid.innerHTML = cached;
         btn.style.display = 'none'; // refresh will update this
-        // Silent background refresh
+        // Silent background refresh — only update cache if we get real books
         _browseState.loading = true;
         try {
           const { products, hasNextPage, endCursor } = await fetchCollection(key, 16);
-          _browseState.cursor = endCursor; _browseState.hasNextPage = hasNextPage;
-          const html = products.map(p => renderBookCard(p)).join('') || '<div style="color:var(--muted);padding:2rem;text-align:center;">No books found.</div>';
-          grid.innerHTML = html; _setBrowseCache(key, html);
-          btn.style.display = hasNextPage ? '' : 'none';
-        } catch(e) { /* keep cached content */ }
+          if (products.length > 0) {
+            _browseState.cursor = endCursor; _browseState.hasNextPage = hasNextPage;
+            const html = products.map(p => renderBookCard(p)).join('');
+            grid.innerHTML = html; _setBrowseCache(key, html);
+            btn.style.display = hasNextPage ? '' : 'none';
+          }
+          // If empty, keep cached content shown — don't overwrite with "No books found"
+        } catch(e) { /* keep cached content on error */ }
         _browseState.loading = false;
         return;
       }
@@ -9038,15 +9039,20 @@
         const { products, hasNextPage, endCursor } = await fetchCollection(key, 16);
         _browseState.cursor      = endCursor;
         _browseState.hasNextPage = hasNextPage;
-        const html = products.map(p => renderBookCard(p)).join('') ||
-          '<div style="color:var(--muted);padding:2rem;text-align:center;">No books found.</div>';
-        grid.innerHTML = html;
-        _setBrowseCache(key, html);
-        btn.style.display = hasNextPage ? '' : 'none';
-        // Only scrollIntoView when panel is actually visible to avoid layout issues
-        if (grid.offsetParent !== null) grid.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        if (products.length > 0) {
+          const html = products.map(p => renderBookCard(p)).join('');
+          grid.innerHTML = html;
+          _setBrowseCache(key, html);  // only cache real results
+          btn.style.display = hasNextPage ? '' : 'none';
+          // Only scrollIntoView when panel is actually visible to avoid layout issues
+          if (grid.offsetParent !== null) grid.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else {
+          grid.innerHTML = '<div style="color:var(--muted);padding:2rem;text-align:center;">No books found.</div>';
+          // Don't cache empty — retry fresh next time
+        }
       } catch(e) {
         grid.innerHTML = '<div style="color:var(--muted);padding:2rem;text-align:center;">Failed to load. Please try again.</div>';
+        // Don't cache errors
       }
       _browseState.loading = false;
     }

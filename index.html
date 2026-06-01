@@ -7608,6 +7608,9 @@
       _fabInPanel = false;
     }
 
+    // ── Browse state (declared here so switchOrdersTab can safely access it) ──
+    const _browseState = { key: null, cursor: null, hasNextPage: false, loading: false };
+
     // ── Orders panel tabs ──
     function switchOrdersTab(tab) {
       // If AI search content is in the panel and we're switching away, restore it
@@ -9000,7 +9003,6 @@
     }
 
     // ── Browse-in-panel ──
-    const _browseState = { key: null, cursor: null, hasNextPage: false, loading: false };
     // Cache browse results in localStorage keyed by collection
     // v2 prefix invalidates any stale "No books found" entries written by old code
     const _BROWSE_VER = 'v2_';

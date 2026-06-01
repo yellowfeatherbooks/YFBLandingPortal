@@ -3431,6 +3431,7 @@
     </div>
 
     <ul class="nav-links">
+      <li><a href="#classics"    onclick="closeFindABook();closeIframePanel();closeBcLoginPanel();if(!_isMobile())showGuestSection('classics');">Classics</a></li>
       <li><a href="#trending"    onclick="closeFindABook();closeIframePanel();closeBcLoginPanel();if(!_isMobile())showGuestSection('trending');">Trending</a></li>
       <li><a href="#best-sellers" onclick="closeFindABook();closeIframePanel();closeBcLoginPanel();if(!_isMobile())showGuestSection('best-sellers');">Best Sellers</a></li>
       <li><a href="#genres"      onclick="closeFindABook();closeIframePanel();closeBcLoginPanel();if(!_isMobile())showGuestSection('genres');">Browse Genres</a></li>
@@ -3524,6 +3525,7 @@
     </div>
     <nav class="mobile-drawer-nav">
       <div class="drawer-section-label">Shop</div>
+      <button onclick="closeMobileDrawer();showMobilePanel('classics',document.querySelector('[data-panel=classics]'))">🏛️&nbsp; Classics</button>
       <button onclick="closeMobileDrawer();showMobilePanel('trending',document.querySelector('[data-panel=trending]'))">📈&nbsp; Trending</button>
       <button onclick="closeMobileDrawer();showMobilePanel('bestsellers',document.querySelector('[data-panel=bestsellers]'))">⭐&nbsp; Best Sellers</button>
       <button onclick="closeMobileDrawer();showMobilePanel('browse',document.querySelector('[data-panel=browse]'))">📚&nbsp; Browse Genres</button>
@@ -3549,6 +3551,7 @@
   <div id="desktop-sidebar">
     <div class="ds-nav">
       <div class="ds-section-label">Shop</div>
+      <a href="#classics"    class="ds-nav-link" onclick="closeSearch();closeFindABook();closeGuestCart();closeIframePanel();closeAuthorLogin();closeBcLoginPanel();if(!_isMobile())showGuestSection('classics');">🏛️&nbsp; Classics</a>
       <a href="#trending"    class="ds-nav-link" onclick="closeSearch();closeFindABook();closeGuestCart();closeIframePanel();closeAuthorLogin();closeBcLoginPanel();if(!_isMobile())showGuestSection('trending');">📈&nbsp; Trending</a>
       <a href="#best-sellers" class="ds-nav-link" onclick="closeSearch();closeFindABook();closeGuestCart();closeIframePanel();closeAuthorLogin();closeBcLoginPanel();if(!_isMobile())showGuestSection('best-sellers');">⭐&nbsp; Best Sellers</a>
       <a href="#genres"      class="ds-nav-link" onclick="closeSearch();closeFindABook();closeGuestCart();closeIframePanel();closeAuthorLogin();closeBcLoginPanel();if(!_isMobile())showGuestSection('genres');">📚&nbsp; Browse Genres</a>
@@ -3573,6 +3576,10 @@
     <button class="mobile-tile active" data-panel="home" onclick="closeGuestCart();closeIframePanel();closeAuthorLogin();closeBcLoginPanel();showMobilePanel('home',this)">
       <div class="mobile-tile-icon">🏠</div>
       <div class="mobile-tile-label">Home</div>
+    </button>
+    <button class="mobile-tile" data-panel="classics" onclick="closeGuestCart();closeIframePanel();closeAuthorLogin();closeBcLoginPanel();showMobilePanel('classics',this)">
+      <div class="mobile-tile-icon">🏛️</div>
+      <div class="mobile-tile-label">Classics</div>
     </button>
     <button class="mobile-tile" data-panel="trending" onclick="closeGuestCart();closeIframePanel();closeAuthorLogin();closeBcLoginPanel();showMobilePanel('trending',this)">
       <div class="mobile-tile-icon">📈</div>
@@ -10006,6 +10013,7 @@
     // ── Mobile Panel System ────────────────────────────────────────────────
     const _MOBILE_PANEL_SELECTORS = {
       home:        '#mobile-home-panel',
+      classics:    '#classics',
       trending:    '#trending',
       bestsellers: '#best-sellers',
       browse:      '#genres',

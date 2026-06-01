@@ -5258,7 +5258,7 @@
     </div>
     <div class="orders-tabs-bar">
       <button class="orders-tab"        id="tab-btn-members"  onclick="switchOrdersTab('members')" style="display:none;">🏆 Welcome</button>
-      <button class="orders-tab active" id="tab-btn-orders"   onclick="switchOrdersTab('orders')">📦 My Orders</button>
+      <button class="orders-tab"        id="tab-btn-orders"   onclick="switchOrdersTab('orders')">📦 My Orders</button>
       <button class="orders-tab"        id="tab-btn-wishlist" onclick="switchOrdersTab('wishlist')">❤️ Wishlist</button>
       <button class="orders-tab"        id="tab-btn-cart"     onclick="switchOrdersTab('cart')">🛒 My Cart</button>
       <button class="orders-tab"        id="tab-btn-browse"    onclick="switchOrdersTab('browse')">📚 Browse Books</button>
@@ -8256,8 +8256,10 @@
         // Show club-only tabs before openOrdersPanel switches to the Welcome tab
         ['tab-btn-members','tab-btn-curated','tab-btn-prebook'].forEach(id => { document.getElementById(id).style.display = ''; });
       }
-      // openOrdersPanel handles both club (→ Welcome) and non-club (→ My Orders + fetchOrders)
       openOrdersPanel();
+      // Force the correct starting tab explicitly — club members always land on Welcome,
+      // regular members on My Orders. This overrides anything openOrdersPanel may have set.
+      switchOrdersTab(isBookClubMember ? 'members' : 'orders');
     }
 
     // ── Restore author session (persists across page reloads via localStorage) ──

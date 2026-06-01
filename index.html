@@ -5556,12 +5556,11 @@
         const json = await res.json();
         if (json.errors) {
           console.error('Shopify API errors for', collectionKey, json.errors);
-          throw new Error('API errors: ' + JSON.stringify(json.errors).slice(0, 200));
+          throw new Error('Shopify API error');
         }
         if (!json?.data?.collection) {
-          const detail = 'HTTP ' + res.status + ' — ' + JSON.stringify(json).slice(0, 200);
-          console.warn('No collection data for', collectionKey, detail);
-          throw new Error('No collection returned. ' + detail);
+          console.warn('No collection data for', collectionKey, 'HTTP', res.status);
+          throw new Error('Collection not found');
         }
         const col  = json?.data?.collection?.products;
         return {
@@ -9071,7 +9070,7 @@
           // Don't cache empty — retry fresh next time
         }
       } catch(e) {
-        grid.innerHTML = '<div style="color:var(--muted);padding:2rem;text-align:center;">Failed to load — ' + (e.message || 'unknown error') + '</div>';
+        grid.innerHTML = '<div style="color:var(--muted);padding:2rem;text-align:center;">Failed to load. Please try again.</div>';
         // Don't cache errors
       }
       _browseState.loading = false;

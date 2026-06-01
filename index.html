@@ -8996,8 +8996,19 @@
     // ── Browse-in-panel ──
     const _browseState = { key: null, cursor: null, hasNextPage: false, loading: false };
     // Cache browse results in localStorage keyed by collection
-    function _getBrowseCache(key) { try { return JSON.parse(localStorage.getItem('yfb_browse_' + key) || 'null'); } catch(e) { return null; } }
-    function _setBrowseCache(key, html) { try { localStorage.setItem('yfb_browse_' + key, JSON.stringify(html)); } catch(e) {} }
+    // v2 prefix invalidates any stale "No books found" entries written by old code
+    const _BROWSE_VER = 'v2_';
+    function _getBrowseCache(key) {
+      try {
+        const val = localStorage.getItem('yfb_browse_' + _BROWSE_VER + key);
+        if (!val) return null;
+        const html = JSON.parse(val);
+        // Sanity-check: only return cache if it contains actual book cards, not error states
+        if (typeof html !== 'string' || !html.includes('book-card')) return null;
+        return html;
+      } catch(e) { return null; }
+    }
+    function _setBrowseCache(key, html) { try { localStorage.setItem('yfb_browse_' + _BROWSE_VER + key, JSON.stringify(html)); } catch(e) {} }
 
     async function loadBrowseCollection(key, pillEl) {
       if (_browseState.loading) return;
@@ -9220,16 +9231,20 @@
       const first = carousels.slice(0, 3);
       const rest  = carousels.slice(3);
       await Promise.all(first.map(async (c) => {
-        const { products, hasNextPage, endCursor } = await fetchCollection(c.key, 16);
-        renderCarousel(c.id, products);
-        _carouselState[c.id] = { key: c.key, cursor: endCursor, hasNextPage, loading: false };
-        setupCarouselPagination(c.id);
+        try {
+          const { products, hasNextPage, endCursor } = await fetchCollection(c.key, 16);
+          renderCarousel(c.id, products);
+          _carouselState[c.id] = { key: c.key, cursor: endCursor, hasNextPage, loading: false };
+          setupCarouselPagination(c.id);
+        } catch(e) { console.error('carousel load failed:', c.key, e.message); }
       }));
       await Promise.all(rest.map(async (c) => {
-        const { products, hasNextPage, endCursor } = await fetchCollection(c.key, 16);
-        renderCarousel(c.id, products);
-        _carouselState[c.id] = { key: c.key, cursor: endCursor, hasNextPage, loading: false };
-        setupCarouselPagination(c.id);
+        try {
+          const { products, hasNextPage, endCursor } = await fetchCollection(c.key, 16);
+          renderCarousel(c.id, products);
+          _carouselState[c.id] = { key: c.key, cursor: endCursor, hasNextPage, loading: false };
+          setupCarouselPagination(c.id);
+        } catch(e) { console.error('carousel load failed:', c.key, e.message); }
       }));
     }
 

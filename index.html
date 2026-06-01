@@ -5554,8 +5554,15 @@
           body: JSON.stringify({ query, variables: { id: gid, first: count, after } })
         });
         const json = await res.json();
-        if (json.errors) console.error('Shopify API errors for', collectionKey, json.errors);
-        if (!json?.data?.collection) console.warn('No collection data for', collectionKey, '| HTTP', res.status, '| Response:', JSON.stringify(json).slice(0, 300));
+        if (json.errors) {
+          console.error('Shopify API errors for', collectionKey, json.errors);
+          throw new Error('API errors: ' + JSON.stringify(json.errors).slice(0, 200));
+        }
+        if (!json?.data?.collection) {
+          const detail = 'HTTP ' + res.status + ' — ' + JSON.stringify(json).slice(0, 200);
+          console.warn('No collection data for', collectionKey, detail);
+          throw new Error('No collection returned. ' + detail);
+        }
         const col  = json?.data?.collection?.products;
         return {
           products:    col?.edges?.map(e => e.node) || [],
@@ -9064,7 +9071,7 @@
           // Don't cache empty — retry fresh next time
         }
       } catch(e) {
-        grid.innerHTML = '<div style="color:var(--muted);padding:2rem;text-align:center;">Failed to load. Please try again.</div>';
+        grid.innerHTML = '<div style="color:var(--muted);padding:2rem;text-align:center;">Failed to load — ' + (e.message || 'unknown error') + '</div>';
         // Don't cache errors
       }
       _browseState.loading = false;

@@ -7813,7 +7813,9 @@
       } else {
         switchOrdersTab('orders');
       }
-      fetchOrders(); // pre-fetch in background so Orders tab is instant when clicked
+      // Only pre-fetch orders for regular (non-club) members who land on the Orders tab.
+      // Club members land on Welcome — skip the Shopify trip until they actually click My Orders.
+      if (!isBookClubMember) fetchOrders();
       setView('member');
       // Sync mobile tile-bar highlight (no tile for Welcome, so clear all for club members)
       document.querySelectorAll('#member-tile-bar .mobile-tile').forEach(t => t.classList.remove('active'));
@@ -8250,7 +8252,9 @@
     if (readerToken) {
       setView('member');  // switch immediately — before any async work
       updateNavForLoggedIn();
-      prefetchOrders();
+      // Club members land on Welcome tab — don't burn a Shopify call until they click My Orders.
+      // Regular members land on My Orders, so prefetch makes sense for them.
+      if (!isBookClubMember) prefetchOrders();
     }
     if (readerToken && isBookClubMember) {
       // Restore member view immediately — no need to log in again

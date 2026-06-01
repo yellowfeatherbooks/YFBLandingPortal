@@ -951,7 +951,7 @@
     .orders-empty p  { font-size: 0.85rem; line-height: 1.6; }
 
     .orders-loading {
-      display: flex;
+      display: none;
       flex-direction: column;
       gap: 1rem;
       padding: 2rem 0;
@@ -4820,10 +4820,10 @@
     <div id="author-sub-gate">
       <div class="asg-card">
         <div style="font-size:2.2rem;margin-bottom:0.9rem;">🔒</div>
-        <div style="font-size:1.15rem;font-weight:700;color:var(--cream);margin-bottom:0.5rem;font-family:'Playfair Display',serif;">
+        <div id="asg-title" style="font-size:1.15rem;font-weight:700;color:var(--cream);margin-bottom:0.5rem;font-family:'Playfair Display',serif;">
           Subscription Required
         </div>
-        <div style="font-size:0.82rem;color:var(--muted);margin-bottom:1.4rem;line-height:1.6;">
+        <div id="asg-msg" style="font-size:0.82rem;color:var(--muted);margin-bottom:1.4rem;line-height:1.6;">
           To view your books and track your sales, you need an active plan.<br>
           Even our <strong style="color:var(--gold);">Starter at ₹99/month</strong> gives you full access.
         </div>
@@ -4891,6 +4891,7 @@
         <div style="font-size:0.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:0.3rem;">Current Plan</div>
         <div id="author-plan-name-badge" style="font-size:0.9rem;font-weight:700;color:var(--gold);font-family:'Playfair Display',serif;"></div>
         <div id="author-plan-quota-badge" style="font-size:0.7rem;color:var(--muted);margin-top:0.2rem;"></div>
+        <div id="author-plan-cancelling-notice" style="display:none;margin-top:0.45rem;font-size:0.68rem;color:#F5B800;line-height:1.4;">⚠️ Cancelled · Access until<br><span id="author-plan-access-until" style="font-weight:700;"></span></div>
       </div>
 
       <button class="mobile-tile active" id="atab-portal" onclick="authorNavTo('portal',this)">
@@ -4929,7 +4930,7 @@
         <div class="mobile-tile-icon">📬</div>
         <div class="mobile-tile-label">Request</div>
       </button>
-      <button class="mobile-tile" onclick="authorNavTo('cancel',this)" style="color:#f87171;">
+      <button id="atab-cancel" class="mobile-tile" onclick="authorNavTo('cancel',this)" style="color:#f87171;">
         <div class="mobile-tile-icon">❌</div>
         <div class="mobile-tile-label">Cancel Subscription</div>
       </button>
@@ -5689,10 +5690,10 @@
     }
 
     // ── Reader authentication ──
-    var readerToken       = sessionStorage.getItem('yfb_reader_token')  || null;
-    var readerEmail       = sessionStorage.getItem('yfb_reader_email')  || null;
-    var isBookClubMember  = sessionStorage.getItem('yfb_club_member') === 'true';
-    var bookClubMemberName = sessionStorage.getItem('yfb_club_name')  || '';
+    var readerToken       = localStorage.getItem('yfb_reader_token')  || null;
+    var readerEmail       = localStorage.getItem('yfb_reader_email')  || null;
+    var isBookClubMember  = localStorage.getItem('yfb_club_member') === 'true';
+    var bookClubMemberName = localStorage.getItem('yfb_club_name')  || '';
 
     async function readerLogin() {
       const email    = document.getElementById('reader-email').value.trim();
@@ -5729,6 +5730,10 @@
         const prevEmail = localStorage.getItem('yfb_last_member_email') || '';
         if (!prevEmail || prevEmail !== email.toLowerCase()) {
           sessionStorage.setItem('yfb_user_just_switched', '1');
+          // Clear previous user's cached orders so new user never sees stale data
+          localStorage.removeItem('yfb_orders_cache');
+          sessionStorage.removeItem('yfb_orders_cache');
+          _ordersCache = null;
         }
         localStorage.removeItem('yfb_member_cart_id');
         localStorage.removeItem('yfb_member_wishlist');
@@ -5736,8 +5741,8 @@
 
         readerToken = accessToken;
         readerEmail = email;
-        sessionStorage.setItem('yfb_reader_token', readerToken);
-        sessionStorage.setItem('yfb_reader_email', readerEmail);
+        localStorage.setItem('yfb_reader_token', readerToken);
+        localStorage.setItem('yfb_reader_email', readerEmail);
         prefetchOrders();
         btn.textContent = 'Checking membership…';
         await checkAndSetMembership(email);
@@ -5877,11 +5882,12 @@
       readerToken = null; readerEmail = null;
       isBookClubMember = false; bookClubMemberName = '';
       _ordersCache = null; _ordersFetchPromise = null;
-      sessionStorage.removeItem('yfb_reader_token');
-      sessionStorage.removeItem('yfb_reader_email');
+      localStorage.removeItem('yfb_reader_token');
+      localStorage.removeItem('yfb_reader_email');
+      localStorage.removeItem('yfb_club_member');
+      localStorage.removeItem('yfb_club_name');
+      localStorage.removeItem('yfb_orders_cache');
       sessionStorage.removeItem('yfb_orders_cache');
-      sessionStorage.removeItem('yfb_club_member');
-      sessionStorage.removeItem('yfb_club_name');
       // Preserve member cart/wishlist for next login; switch back to guest buckets
       _cartId = localStorage.getItem('yfb_guest_cart_id') || null;
       refreshCartCount();
@@ -5892,11 +5898,29 @@
     }
 
     // ── Author subscription gate helpers ────────────────────────────────────
-    function showAuthorSubGate() {
+    function showAuthorSubGate(expired) {
+      const titleEl = document.getElementById('asg-title');
+      const msgEl   = document.getElementById('asg-msg');
+      const isExp   = expired || isAuthorAccessExpired();
+      if (titleEl) titleEl.textContent = isExp ? 'Your Access Has Ended' : 'Subscription Required';
+      if (msgEl) msgEl.innerHTML = isExp
+        ? 'Your subscription period has ended. <strong style="color:var(--gold);">Renew your plan</strong> to access your submissions, sales data and shop again.'
+        : 'To view your books and track your sales, you need an active plan.<br>Even our <strong style="color:var(--gold);">Starter at ₹99/month</strong> gives you full access.';
       document.getElementById('author-sub-gate').classList.add('active');
     }
     function hideAuthorSubGate() {
       document.getElementById('author-sub-gate').classList.remove('active');
+    }
+
+    // Returns true if author's subscription has expired (cancelling + access_until in the past)
+    function isAuthorAccessExpired() {
+      const session = JSON.parse(localStorage.getItem('authorSession') || '{}');
+      if (session.sub_status === 'cancelling' && session.access_until) {
+        return new Date() > new Date(session.access_until);
+      }
+      // Also block if status is 'cancelled' with no active plan
+      if (session.sub_status === 'cancelled') return true;
+      return false;
     }
     function authorGoSubscribe() {
       // Dismiss gate/banner and send author to portal tab to subscribe
@@ -5908,6 +5932,23 @@
     function checkAuthorExpiryBanner(accessUntil, subStatus) {
       const banner = document.getElementById('author-expiry-banner');
       const msgEl  = document.getElementById('author-expiry-msg');
+
+      // ── Sidebar cancelling notice (always shown when cancelling) ──
+      const sideNotice   = document.getElementById('author-plan-cancelling-notice');
+      const sideUntilEl  = document.getElementById('author-plan-access-until');
+      const cancelTabBtn = document.getElementById('atab-cancel');
+      if (sideNotice && sideUntilEl) {
+        if (subStatus === 'cancelling' && accessUntil) {
+          const untilDate = new Date(accessUntil);
+          sideUntilEl.textContent = untilDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+          sideNotice.style.display = 'block';
+          if (cancelTabBtn) cancelTabBtn.style.display = 'none'; // already cancelled — hide button
+        } else {
+          sideNotice.style.display = 'none';
+          if (cancelTabBtn) cancelTabBtn.style.display = ''; // show for active subscribers
+        }
+      }
+
       if (!banner || !msgEl) return;
       if (!accessUntil) { banner.style.display = 'none'; return; }
 
@@ -5930,18 +5971,37 @@
     window.addEventListener('message', function(e) {
       if (e.origin !== window.location.origin) return;
       const msg = e.data;
+
+      // Author just cancelled their subscription — update sidebar immediately
+      if (msg && msg.type === 'yfb_cancelled') {
+        // Update authorSession so isAuthorAccessExpired() works right away
+        try {
+          const s = JSON.parse(localStorage.getItem('authorSession') || '{}');
+          s.sub_status   = 'cancelling';
+          s.access_until = msg.accessUntil || null;
+          localStorage.setItem('authorSession', JSON.stringify(s));
+        } catch(e) {}
+        // Hide cancel button, show cancelling notice in sidebar
+        checkAuthorExpiryBanner(msg.accessUntil || null, 'cancelling');
+        return;
+      }
+
       if (!msg || msg.type !== 'yfb_plan') return;
       const nameEl  = document.getElementById('author-plan-name-badge');
       const quotaEl = document.getElementById('author-plan-quota-badge');
       if (nameEl)  nameEl.textContent  = (msg.planName || '') + ' Plan';
       if (quotaEl) quotaEl.textContent = (msg.quota || 0) + (msg.quota === 1 ? ' submission' : ' submissions') + ' / month';
+      checkAuthorExpiryBanner(msg.accessUntil || null, msg.subStatus || null);
       // If iframe confirms a valid plan, dismiss the subscription gate
       if (msg.planName) {
         hideAuthorSubGate();
-        // Update stored session with the new plan
+        // Update stored session with the new plan — also clear any stale cancellation data
+        // from a previously logged-in author on this device
         try {
           const s = JSON.parse(localStorage.getItem('authorSession') || '{}');
-          s.plan_name = msg.planName;
+          s.plan_name    = msg.planName;
+          s.sub_status   = msg.subStatus   || 'active';
+          s.access_until = msg.accessUntil || null;
           localStorage.setItem('authorSession', JSON.stringify(s));
         } catch(e) {}
       }
@@ -7451,6 +7511,22 @@
     }
 
     function authorNavTo(tab, el) {
+      // Block restricted tabs if subscription has expired
+      const restrictedTabs = ['submit', 'mybooks', 'sales'];
+      if (restrictedTabs.includes(tab) && isAuthorAccessExpired()) {
+        showAuthorSubGate();
+        return;
+      }
+
+      // Block cancel if subscription is already cancelling
+      if (tab === 'cancel') {
+        const session = JSON.parse(localStorage.getItem('authorSession') || '{}');
+        if (session.sub_status === 'cancelling') {
+          alert('Your subscription is already cancelled. You have access until ' +
+            (session.access_until ? new Date(session.access_until).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) : 'your billing period ends') + '.');
+          return;
+        }
+      }
       // Dismiss any open overlays first so they don't stay visible on top
       fabCloseModal();    // Request a Book modal
       closeSearch();      // Regular search overlay
@@ -7549,11 +7625,14 @@
       const activeTile = tileMap[tab] ? document.getElementById(tileMap[tab]) : null;
       if (activeTile) activeTile.classList.add('active');
 
+      if (tab === 'orders')     fetchOrders();
       if (tab === 'wishlist')   renderWishlist();
       if (tab === 'cart')       fetchAndRenderCart();
       if (tab === 'browse') {
         const _browseGrid = document.getElementById('browse-books-grid');
+        // Always reload if no content or no key — reset loading flag first to avoid stuck state
         if (!_browseState.key || !_browseGrid || !_browseGrid.hasChildNodes()) {
+          _browseState.loading = false;  // reset stuck flag
           loadBrowseCollection('just-arrived', document.querySelector('.browse-pill[data-col="just-arrived"]'));
         }
       }
@@ -7964,8 +8043,16 @@
       }).join('')}</div>`;
     }
 
-    // Seed cache from sessionStorage so repeat visits are instant
-    var _ordersCache        = JSON.parse(sessionStorage.getItem('yfb_orders_cache') || 'null');
+    // Seed cache — try sessionStorage first (same tab), then localStorage (cross-refresh)
+    var _ordersCache = (function() {
+      try {
+        return JSON.parse(sessionStorage.getItem('yfb_orders_cache') || localStorage.getItem('yfb_orders_cache') || 'null');
+      } catch(e) {
+        // Corrupt cache — wipe and start fresh
+        try { sessionStorage.removeItem('yfb_orders_cache'); localStorage.removeItem('yfb_orders_cache'); } catch(_) {}
+        return null;
+      }
+    })();
     var _ordersFetchPromise = null;
 
     const ORDERS_QUERY = `
@@ -8021,10 +8108,14 @@
       }
     }
 
-    // Save orders to sessionStorage cache
+    // Save orders to both sessionStorage and localStorage so cache survives refresh
     function _saveOrdersCache(orders) {
       _ordersCache = orders;
-      try { sessionStorage.setItem('yfb_orders_cache', JSON.stringify(orders)); } catch(e) {}
+      try {
+        const json = JSON.stringify(orders);
+        sessionStorage.setItem('yfb_orders_cache', json);
+        localStorage.setItem('yfb_orders_cache', json);
+      } catch(e) {}
     }
 
     // Start a background pre-fetch (called right after login or page load)
@@ -8039,9 +8130,7 @@
 
     // Called when user opens My Orders tab
     async function fetchOrders() {
-      document.getElementById('orders-list').innerHTML = '';
-
-      // Instant render from cache
+      // Instant render from cache — don't clear list to avoid flash
       if (_ordersCache !== null) {
         document.getElementById('orders-loading').style.display = 'none';
         renderOrders(_ordersCache);
@@ -8052,8 +8141,9 @@
         return;
       }
 
-      // Show skeleton while waiting (reuse in-progress fetch if available)
-      document.getElementById('orders-loading').style.display = '';
+      // No cache — clear list and show skeleton while fetching
+      document.getElementById('orders-list').innerHTML = '';
+      document.getElementById('orders-loading').style.display = 'flex';
       const orders = await (_ordersFetchPromise || _doFetchOrders());
       document.getElementById('orders-loading').style.display = 'none';
       if (orders === null) {
@@ -8158,6 +8248,7 @@
 
     // ── Restore session on load ──
     if (readerToken) {
+      setView('member');  // switch immediately — before any async work
       updateNavForLoggedIn();
       prefetchOrders();
     }
@@ -8172,8 +8263,12 @@
       try {
         const stored = localStorage.getItem('authorSession');
         if (!stored) return;
-        const session = JSON.parse(stored);
+        let session;
+        try { session = JSON.parse(stored); } catch(e) { localStorage.removeItem('authorSession'); return; }
         if (!session || !session.email) return;
+        // Switch to author view IMMEDIATELY — before any async work, so the user
+        // never sees the guest page on refresh
+        setView('author');
         // Populate nav chip
         const chip = document.getElementById('nav-author-chip');
         if (chip) {
@@ -8217,7 +8312,6 @@
           if (planNameBadge)  planNameBadge.textContent  = 'No active plan';
           if (planQuotaBadge) planQuotaBadge.textContent = 'Subscribe to get started';
         }
-        setView('author');
         // Show gate immediately if no plan in stored session
         if (!session.plan_name) {
           showAuthorSubGate();
@@ -8897,6 +8991,9 @@
 
     // ── Browse-in-panel ──
     const _browseState = { key: null, cursor: null, hasNextPage: false, loading: false };
+    // Cache browse results in localStorage keyed by collection
+    function _getBrowseCache(key) { try { return JSON.parse(localStorage.getItem('yfb_browse_' + key) || 'null'); } catch(e) { return null; } }
+    function _setBrowseCache(key, html) { try { localStorage.setItem('yfb_browse_' + key, JSON.stringify(html)); } catch(e) {} }
 
     async function loadBrowseCollection(key, pillEl) {
       if (_browseState.loading) return;
@@ -8907,10 +9004,29 @@
       _browseState.key = key;
       _browseState.cursor = null;
       _browseState.hasNextPage = false;
-      _browseState.loading = true;
 
       const grid = document.getElementById('browse-books-grid');
       const btn  = document.getElementById('browse-load-more');
+
+      // Show cached HTML instantly if available
+      const cached = _getBrowseCache(key);
+      if (cached) {
+        grid.innerHTML = cached;
+        btn.style.display = 'none'; // refresh will update this
+        // Silent background refresh
+        _browseState.loading = true;
+        try {
+          const { products, hasNextPage, endCursor } = await fetchCollection(key, 16);
+          _browseState.cursor = endCursor; _browseState.hasNextPage = hasNextPage;
+          const html = products.map(p => renderBookCard(p)).join('') || '<div style="color:var(--muted);padding:2rem;text-align:center;">No books found.</div>';
+          grid.innerHTML = html; _setBrowseCache(key, html);
+          btn.style.display = hasNextPage ? '' : 'none';
+        } catch(e) { /* keep cached content */ }
+        _browseState.loading = false;
+        return;
+      }
+
+      _browseState.loading = true;
       grid.innerHTML = '<div style="color:var(--muted);padding:2rem;text-align:center;">Loading…</div>';
       btn.style.display = 'none';
 
@@ -8918,10 +9034,13 @@
         const { products, hasNextPage, endCursor } = await fetchCollection(key, 16);
         _browseState.cursor      = endCursor;
         _browseState.hasNextPage = hasNextPage;
-        grid.innerHTML = products.map(p => renderBookCard(p)).join('') ||
+        const html = products.map(p => renderBookCard(p)).join('') ||
           '<div style="color:var(--muted);padding:2rem;text-align:center;">No books found.</div>';
+        grid.innerHTML = html;
+        _setBrowseCache(key, html);
         btn.style.display = hasNextPage ? '' : 'none';
-        grid.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        // Only scrollIntoView when panel is actually visible to avoid layout issues
+        if (grid.offsetParent !== null) grid.scrollIntoView({ behavior: 'smooth', block: 'start' });
       } catch(e) {
         grid.innerHTML = '<div style="color:var(--muted);padding:2rem;text-align:center;">Failed to load. Please try again.</div>';
       }
@@ -9117,8 +9236,8 @@
         if (data.member) {
           isBookClubMember   = true;
           bookClubMemberName = data.name || email.split('@')[0];
-          sessionStorage.setItem('yfb_club_member', 'true');
-          sessionStorage.setItem('yfb_club_name',   bookClubMemberName);
+          localStorage.setItem('yfb_club_member', 'true');
+          localStorage.setItem('yfb_club_name',   bookClubMemberName);
           ['tab-btn-members','tab-btn-curated','tab-btn-prebook'].forEach(id => { document.getElementById(id).style.display = ''; });
           document.getElementById('club-coupon-chip').style.display = '';
         }
@@ -9447,6 +9566,10 @@
               const prevEmailBc = localStorage.getItem('yfb_last_member_email') || '';
               if (!prevEmailBc || prevEmailBc !== email.toLowerCase()) {
                 sessionStorage.setItem('yfb_user_just_switched', '1');
+                // Clear previous user's cached orders so new user never sees stale data
+                localStorage.removeItem('yfb_orders_cache');
+                sessionStorage.removeItem('yfb_orders_cache');
+                _ordersCache = null;
               }
               localStorage.removeItem('yfb_member_cart_id');
               localStorage.removeItem('yfb_member_wishlist');
@@ -9457,9 +9580,9 @@
               isBookClubMember   = true;
               bookClubMemberName = name;
               readerEmail        = email;
-              sessionStorage.setItem('yfb_club_member',  'true');
-              sessionStorage.setItem('yfb_club_name',    name);
-              sessionStorage.setItem('yfb_reader_email', email);
+              localStorage.setItem('yfb_club_member',  'true');
+              localStorage.setItem('yfb_club_name',    name);
+              localStorage.setItem('yfb_reader_email', email);
               (function() {
                 ['tab-btn-members','tab-btn-curated','tab-btn-prebook'].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = ''; });
                 const couponChip = document.getElementById('club-coupon-chip');
@@ -9481,7 +9604,7 @@
                   const token = loginJson?.data?.customerAccessTokenCreate?.customerAccessToken?.accessToken;
                   if (token) {
                     readerToken = token;
-                    sessionStorage.setItem('yfb_reader_token', token);
+                    localStorage.setItem('yfb_reader_token', token);
                     prefetchOrders();
                     // Tag as 'book-club-member' so member segments apply (fire-and-forget)
                     fetch('/.netlify/functions/tag-member-customer', {
@@ -10457,9 +10580,17 @@
       };
 
       const finishLogin = async (token) => {
+        // Clear previous user's orders cache if the account has changed
+        const prevEmailFl = localStorage.getItem('yfb_last_member_email') || '';
+        if (!prevEmailFl || prevEmailFl !== email.toLowerCase()) {
+          localStorage.removeItem('yfb_orders_cache');
+          sessionStorage.removeItem('yfb_orders_cache');
+          _ordersCache = null;
+        }
+        localStorage.setItem('yfb_last_member_email', email.toLowerCase());
         readerToken = token; readerEmail = email;
-        sessionStorage.setItem('yfb_reader_token', token);
-        sessionStorage.setItem('yfb_reader_email', email);
+        localStorage.setItem('yfb_reader_token', token);
+        localStorage.setItem('yfb_reader_email', email);
         prefetchOrders();
         btn.textContent = 'Checking membership…';
         await checkAndSetMembership(email);
@@ -10552,6 +10683,7 @@
 
     // ── SHOP MY BOOKS PANEL ───────────────────────────────────────────────────
     function openAuthorShop(el) {
+      if (isAuthorAccessExpired()) { showAuthorSubGate(); return; }
       fabCloseModal();
       closeSearch();
       closeAuthorCart();
@@ -10823,6 +10955,9 @@
         } catch(e) { /* network error — treat as no subscription */ }
 
         // ── Step 3: Store session and switch to author view ──────────────────
+        // Always clear previous session first — prevents stale cancellation status
+        // from a previously logged-in author bleeding into the new session
+        localStorage.removeItem('authorSession');
         localStorage.setItem('authorSession', JSON.stringify({
           email, name, shopifyToken: shopifyToken || null,
           plan_name:    subData.plan_name    || null,

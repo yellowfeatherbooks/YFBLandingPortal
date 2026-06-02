@@ -46,31 +46,19 @@ exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: cors, body: '' };
   if (event.httpMethod !== 'POST')    return json({ success: false, error: 'Method Not Allowed' }, 405);
 
-  const { adminEmail, adminKey, debug } = JSON.parse(event.body || '{}');
+  const { adminEmail, adminKey } = JSON.parse(event.body || '{}');
   if (!await verifyAdmin(adminEmail, adminKey)) {
     return json({ success: false, error: 'Unauthorized' }, 401);
   }
 
   try {
     // Step 1 — Get all product metafield definitions under "shopify" namespace
-    const defQuery = `{
+    const defData = await shopifyGql(`{
       metafieldDefinitions(ownerType: PRODUCT, namespace: "shopify", first: 20) {
-        edges {
-          node {
-            key
-            name
-            type { name }
-            validations { name value }
-          }
-        }
+        edges { node { key validations { name value } } }
       }
-    }`;
-    const defData = await shopifyGql(defQuery);
+    }`);
     const defs = (defData?.data?.metafieldDefinitions?.edges || []).map(e => e.node);
-
-    if (debug) {
-      return json({ success: true, debug: true, defs });
-    }
 
     // Step 2 — For each field, find the metaobject definition GID from validations
     const FIELDS = {

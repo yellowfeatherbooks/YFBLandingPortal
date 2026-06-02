@@ -4874,6 +4874,9 @@
       <button class="admin-nav-item" data-section="direct-sales" onclick="adminNav('direct-sales',this)">
         <span class="admin-nav-icon">🤝</span> Direct Sales
       </button>
+      <button class="admin-nav-item" data-section="sales-team" onclick="adminNav('sales-team',this)">
+        <span class="admin-nav-icon">📊</span> Sales Team
+      </button>
       <div class="admin-nav-bottom">
         <button class="admin-nav-item" onclick="adminLogout()" style="color:#f87171;">
           <span class="admin-nav-icon">🚪</span> Logout
@@ -5302,6 +5305,60 @@
         </div>
 
       </div><!-- /admin-section-direct-sales -->
+
+      <!-- ── Sales Team ── -->
+      <div id="admin-section-sales-team" class="admin-section">
+        <div class="admin-section-header">
+          <h2>📊 Sales Team</h2>
+          <button class="admin-filter-btn active" onclick="adminShowCreateSales()">➕ New Account</button>
+        </div>
+
+        <!-- Create form -->
+        <div id="admin-sales-create-form" style="display:none;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:1.2rem;margin-bottom:1.2rem;max-width:500px;">
+          <div style="font-size:0.8rem;font-weight:700;color:#38BDB2;margin-bottom:0.8rem;text-transform:uppercase;letter-spacing:0.05em;">Create Sales Account</div>
+          <div id="admin-sales-create-error" style="display:none;background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.3);color:#fca5a5;border-radius:7px;padding:0.5rem 0.7rem;font-size:0.78rem;margin-bottom:0.7rem;"></div>
+          <div id="admin-sales-create-ok"    style="display:none;background:rgba(74,222,128,0.1);border:1px solid rgba(74,222,128,0.3);color:#86efac;border-radius:7px;padding:0.5rem 0.7rem;font-size:0.78rem;margin-bottom:0.7rem;"></div>
+          <div style="display:flex;gap:0.7rem;flex-wrap:wrap;margin-bottom:0.7rem;">
+            <div style="flex:1;min-width:160px;">
+              <label class="ab-label">Full Name</label>
+              <input id="sc-name" type="text" class="ab-input" placeholder="e.g. Arjun Kumar" />
+            </div>
+            <div style="flex:1;min-width:180px;">
+              <label class="ab-label">Email *</label>
+              <input id="sc-email" type="email" class="ab-input" placeholder="arjun@yellowfeatherbooks.com" />
+            </div>
+          </div>
+          <div style="display:flex;gap:0.7rem;flex-wrap:wrap;margin-bottom:0.9rem;">
+            <div style="flex:1;min-width:180px;">
+              <label class="ab-label">Password *</label>
+              <input id="sc-password" type="password" class="ab-input" placeholder="Min 8 characters" />
+            </div>
+          </div>
+          <div style="display:flex;gap:0.6rem;">
+            <button id="sc-save-btn" onclick="adminCreateSalesAccount()" class="admin-filter-btn active">Create Account</button>
+            <button onclick="adminHideCreateSales()" class="admin-filter-btn">Cancel</button>
+          </div>
+        </div>
+
+        <!-- Reset password form -->
+        <div id="admin-sales-reset-form" style="display:none;background:rgba(255,255,255,0.03);border:1px solid rgba(201,146,42,0.2);border-radius:10px;padding:1.2rem;margin-bottom:1.2rem;max-width:500px;">
+          <div style="font-size:0.8rem;font-weight:700;color:var(--gold);margin-bottom:0.8rem;text-transform:uppercase;letter-spacing:0.05em;">Reset Password for <span id="sc-reset-email-label"></span></div>
+          <div id="admin-sales-reset-error" style="display:none;background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.3);color:#fca5a5;border-radius:7px;padding:0.5rem 0.7rem;font-size:0.78rem;margin-bottom:0.7rem;"></div>
+          <div id="admin-sales-reset-ok"    style="display:none;background:rgba(74,222,128,0.1);border:1px solid rgba(74,222,128,0.3);color:#86efac;border-radius:7px;padding:0.5rem 0.7rem;font-size:0.78rem;margin-bottom:0.7rem;"></div>
+          <div style="display:flex;gap:0.7rem;flex-wrap:wrap;margin-bottom:0.9rem;">
+            <div style="flex:1;min-width:200px;">
+              <label class="ab-label">New Password *</label>
+              <input id="sc-new-password" type="password" class="ab-input" placeholder="New password" />
+            </div>
+          </div>
+          <div style="display:flex;gap:0.6rem;">
+            <button id="sc-reset-btn" onclick="adminResetSalesPassword()" class="admin-filter-btn active">Reset Password</button>
+            <button onclick="adminHideResetSales()" class="admin-filter-btn">Cancel</button>
+          </div>
+        </div>
+
+        <div id="admin-sales-team-body"></div>
+      </div><!-- /admin-section-sales-team -->
 
     </main>
 
@@ -6621,6 +6678,119 @@
     }
 
     // ── Logout ──
+    // ══ Admin: Sales Team Management ════════════════════════════════════════
+    var _scResetEmail = null;
+
+    async function adminLoadSalesTeam() {
+      const bodyEl = document.getElementById('admin-sales-team-body');
+      bodyEl.innerHTML = '<div style="color:var(--muted);font-size:0.84rem;">⏳ Loading…</div>';
+      try {
+        const data = await adminPost('admin-manage-sales-team', { action: 'list' });
+        if (!data.success) throw new Error(data.error);
+        const members = data.members || [];
+        if (!members.length) {
+          bodyEl.innerHTML = '<div style="color:var(--muted);font-size:0.84rem;">No sales accounts yet. Create one above.</div>';
+          return;
+        }
+        bodyEl.innerHTML = `
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead><tr><th>Name</th><th>Email</th><th>Created</th><th>Actions</th></tr></thead>
+              <tbody>${members.map(m => `
+                <tr>
+                  <td style="font-weight:600;color:var(--text);">${m.name || '—'}</td>
+                  <td style="color:#38BDB2;">${m.email}</td>
+                  <td style="font-size:0.75rem;color:var(--muted);">${m.created_at ? new Date(m.created_at).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) : '—'}</td>
+                  <td style="display:flex;gap:0.5rem;">
+                    <button onclick="adminShowResetSales('${m.email}')" class="admin-filter-btn" style="font-size:0.7rem;padding:0.2rem 0.6rem;">🔑 Reset PW</button>
+                    <button onclick="adminDeleteSales('${m.id}','${m.email}')" class="admin-filter-btn" style="font-size:0.7rem;padding:0.2rem 0.6rem;color:#f87171;border-color:rgba(248,113,113,0.3);">🗑 Delete</button>
+                  </td>
+                </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>`;
+      } catch(e) {
+        bodyEl.innerHTML = `<div style="color:#f87171;font-size:0.84rem;">Error: ${e.message}</div>`;
+      }
+    }
+
+    function adminShowCreateSales() {
+      document.getElementById('admin-sales-create-form').style.display = '';
+      document.getElementById('admin-sales-reset-form').style.display  = 'none';
+      document.getElementById('admin-sales-create-error').style.display = 'none';
+      document.getElementById('admin-sales-create-ok').style.display    = 'none';
+      ['sc-name','sc-email','sc-password'].forEach(id => document.getElementById(id).value = '');
+    }
+    function adminHideCreateSales() {
+      document.getElementById('admin-sales-create-form').style.display = 'none';
+    }
+
+    async function adminCreateSalesAccount() {
+      const name     = document.getElementById('sc-name').value.trim();
+      const email    = document.getElementById('sc-email').value.trim();
+      const password = document.getElementById('sc-password').value;
+      const errEl    = document.getElementById('admin-sales-create-error');
+      const okEl     = document.getElementById('admin-sales-create-ok');
+      const btn      = document.getElementById('sc-save-btn');
+      errEl.style.display = 'none'; okEl.style.display = 'none';
+      if (!email || !password) { errEl.textContent = 'Email and password are required.'; errEl.style.display = 'block'; return; }
+      if (password.length < 8) { errEl.textContent = 'Password must be at least 8 characters.'; errEl.style.display = 'block'; return; }
+      btn.disabled = true; btn.textContent = 'Creating…';
+      try {
+        const data = await adminPost('admin-manage-sales-team', { action: 'create', email, name, password });
+        if (!data.success) throw new Error(data.error);
+        okEl.textContent = `✅ Account created for ${email}`;
+        okEl.style.display = 'block';
+        ['sc-name','sc-email','sc-password'].forEach(id => document.getElementById(id).value = '');
+        adminLoadSalesTeam();
+      } catch(e) {
+        errEl.textContent = e.message; errEl.style.display = 'block';
+      } finally {
+        btn.disabled = false; btn.textContent = 'Create Account';
+      }
+    }
+
+    function adminShowResetSales(email) {
+      _scResetEmail = email;
+      document.getElementById('sc-reset-email-label').textContent = email;
+      document.getElementById('sc-new-password').value = '';
+      document.getElementById('admin-sales-reset-error').style.display = 'none';
+      document.getElementById('admin-sales-reset-ok').style.display    = 'none';
+      document.getElementById('admin-sales-reset-form').style.display  = '';
+      document.getElementById('admin-sales-create-form').style.display = 'none';
+    }
+    function adminHideResetSales() {
+      document.getElementById('admin-sales-reset-form').style.display = 'none';
+    }
+
+    async function adminResetSalesPassword() {
+      const password = document.getElementById('sc-new-password').value;
+      const errEl    = document.getElementById('admin-sales-reset-error');
+      const okEl     = document.getElementById('admin-sales-reset-ok');
+      const btn      = document.getElementById('sc-reset-btn');
+      errEl.style.display = 'none'; okEl.style.display = 'none';
+      if (!password || password.length < 8) { errEl.textContent = 'Password must be at least 8 characters.'; errEl.style.display = 'block'; return; }
+      btn.disabled = true; btn.textContent = 'Resetting…';
+      try {
+        const data = await adminPost('admin-manage-sales-team', { action: 'reset-password', email: _scResetEmail, password });
+        if (!data.success) throw new Error(data.error);
+        okEl.textContent = `✅ Password reset for ${_scResetEmail}`;
+        okEl.style.display = 'block';
+        document.getElementById('sc-new-password').value = '';
+      } catch(e) {
+        errEl.textContent = e.message; errEl.style.display = 'block';
+      } finally {
+        btn.disabled = false; btn.textContent = 'Reset Password';
+      }
+    }
+
+    async function adminDeleteSales(id, email) {
+      if (!confirm(`Delete sales account for ${email}? This cannot be undone.`)) return;
+      await adminPost('admin-manage-sales-team', { action: 'delete', id });
+      adminLoadSalesTeam();
+    }
+    // ═════════════════════════════════════════════════════════════════════════
+
     // ══ SALES PORTAL ════════════════════════════════════════════════════════
     var _salesSession = null;
 
@@ -7126,7 +7296,8 @@
       if (section === 'book-requests')   adminLoadBookReqs();
       if (section === 'signed-requests') adminLoadSignedReqs();
       if (section === 'flash')           adminLoadFlashSale();
-      if (section === 'add-book') { abBuildTagGrid(); abLoadMetafields(); }
+      if (section === 'add-book')    { abBuildTagGrid(); abLoadMetafields(); }
+      if (section === 'sales-team')  adminLoadSalesTeam();
       // direct-sales and tag sections: user initiates load via button
     }
 

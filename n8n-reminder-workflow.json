@@ -33,7 +33,7 @@
       "parameters": {
         "resource": "message",
         "operation": "send",
-        "toList": "={{ $json.to }}",
+        "sendTo": "={{ $json.to }}",
         "subject": "={{ $json.subject }}",
         "message": "={{ $json.emailHtml }}",
         "options": { "emailType": "html" }

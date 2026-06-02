@@ -4652,6 +4652,17 @@
                 <option>Story Slate</option><option>Vidyarthi Mithram</option>
                 <option value="Other">Other</option>
               </select>
+              <script>
+                (function(){
+                  const sel = document.currentScript.previousElementSibling;
+                  const first = sel.options[0], last = sel.options[sel.options.length-1];
+                  const mid = Array.from(sel.options).slice(1,-1).sort((a,b)=>a.text.localeCompare(b.text));
+                  sel.innerHTML = '';
+                  sel.add(first);
+                  mid.forEach(o => sel.add(o));
+                  sel.add(last);
+                })();
+              </script>
             </div>
             <div class="ab-field" id="ab-publisher-other-wrap" style="display:none;">
               <label class="ab-label">Publisher Name *</label>
@@ -4661,19 +4672,19 @@
               <label class="ab-label">Genre *</label>
               <select id="ab-genre" class="ab-input">
                 <option value="">Select a genre</option>
-                <option>Fiction</option><option>Non-Fiction</option><option>Romance</option><option>Mystery</option>
-                <option>Thriller</option><option>Fantasy</option><option>Science Fiction</option>
-                <option>Historical Fiction</option><option>Horror</option><option>Adventure</option>
-                <option>Biography</option><option>Autobiography</option><option>Memoir</option>
-                <option>Self-Help</option><option>Poetry</option><option>Drama</option>
-                <option>Children's Literature</option><option>Young Adult (YA)</option><option>Crime</option>
-                <option>Suspense</option><option>Spiritual / Religious</option><option>Philosophy</option>
-                <option>Travel</option><option>Humor / Comedy</option><option>Business / Finance</option>
-                <option>Health &amp; Wellness</option><option>Cookbooks</option>
-                <option>Graphic Novels / Comics</option><option>Classic Literature</option>
-                <option>Literary Fiction</option><option>Short Stories</option><option>Novel</option>
-                <option>Tantric</option><option>Translations</option><option>Socio-Political</option>
-                <option>Travelogues</option><option>Thriller &amp; Crime</option><option>Anthologies</option>
+                <option>Adventure</option><option>Anthologies</option><option>Autobiography</option>
+                <option>Biography</option><option>Business / Finance</option><option>Children's Literature</option>
+                <option>Classic Literature</option><option>Cookbooks</option><option>Crime</option>
+                <option>Drama</option><option>Fantasy</option><option>Fiction</option>
+                <option>Graphic Novels / Comics</option><option>Health &amp; Wellness</option>
+                <option>Historical Fiction</option><option>Horror</option><option>Humor / Comedy</option>
+                <option>Literary Fiction</option><option>Memoir</option><option>Mystery</option>
+                <option>Non-Fiction</option><option>Novel</option><option>Philosophy</option>
+                <option>Poetry</option><option>Romance</option><option>Science Fiction</option>
+                <option>Self-Help</option><option>Short Stories</option><option>Socio-Political</option>
+                <option>Spiritual / Religious</option><option>Suspense</option><option>Tantric</option>
+                <option>Thriller</option><option>Thriller &amp; Crime</option><option>Translations</option>
+                <option>Travel</option><option>Travelogues</option><option>Young Adult (YA)</option>
               </select>
             </div>
           </div>
@@ -7466,12 +7477,12 @@
     // ── Tag Management ────────────────────────────────────────────────────────
 
     const SHOPIFY_TAG_GROUPS = [
-      { label: '📄 Format',         tags: ['Novel','Short Stories','Novella','Poetry','Drama','Essays','Anthology','Graphic Novel','Translated'] },
-      { label: '🎭 Fiction',         tags: ['Romance','Mystery','Thriller','Horror','Fantasy','Science Fiction','Adventure','Historical Fiction','Satire','Folklore & Mythology','Social Drama','Family & Relationships'] },
-      { label: '📖 Non-Fiction',     tags: ['Biography','Autobiography','Memoir','History','Politics','Science','Travel','Self-Help','Philosophy','Spirituality','True Crime','Nature & Environment','Economics','Psychology'] },
-      { label: '👶 Age Group',       tags: ['Children','Middle Grade','Young Adult','Adult'] },
-      { label: '🏆 Recognition',     tags: ['Award Winner','Bestseller','Classic','Staff Pick','Akkitham Award','Ashitha Memorial Literary Award','Ayyappan Puraskaram','Balamani Amma Award','Basheer Award','C. V. Sreeraman Award','Cherukad Award','DC Golden Jubilee Award','Deshabhimani Award','Edasseri Award','Ezhuthachan Award','Federal Bank Literary Award','Jnanpith Award','Jnanapeetam','Kadammanitta Ramakrishnan Award','Kamala Surayya Award','Kendra Sahitya Akademi Award','Kerala Sahitya Akademi','Kunjunni Award','Lalithambika Antharjanam Smaraka Sahitya Award','Malayattoor Award','Mathrubhumi Award','Mathrubhumi Literary Award','N. V. Krishna Warrier Award','Nalappadan Award','Nooranad Haneef Award','O. N. V. Literary Award','O. V. Vijayan Literary Award','Odakkuzhal Award','P. Kesavadev Literary Award','P. Kunhiraman Nair Award','Padmaprabha Literary Award','Padmarajan Award','Puthoor Award','Samastha Kerala Sahithya Parishad Award','Saraswati Samman','Thakazhi Award','Thanima Puraskaram','Thoppil Bhasi Award','Ulloor Award','V. T. Kumaran Award','Vaikom Chandrasekharan Nair Award','Vallathol Award','Vayalar Award'] },
-      { label: '⭐ Special',         tags: ['New Arrival','Signed Copy','Limited Edition','Pre-Order','Flash Sale','Debut Author'] }
+      { label: '📄 Format',         tags: ['Anthology','Drama','Essays','Graphic Novel','Novel','Novella','Poetry','Short Stories','Translated'] },
+      { label: '🎭 Fiction',         tags: ['Adventure','Fantasy','Family & Relationships','Folklore & Mythology','Historical Fiction','Horror','Mystery','Romance','Satire','Science Fiction','Social Drama','Thriller'] },
+      { label: '📖 Non-Fiction',     tags: ['Autobiography','Biography','Economics','History','Memoir','Nature & Environment','Philosophy','Politics','Psychology','Science','Self-Help','Spirituality','Travel','True Crime'] },
+      { label: '👶 Age Group',       tags: ['Adult','Children','Middle Grade','Young Adult'] },
+      { label: '🏆 Recognition',     tags: ['Akkitham Award','Ashitha Memorial Literary Award','Award Winner','Ayyappan Puraskaram','Balamani Amma Award','Basheer Award','Bestseller','C. V. Sreeraman Award','Cherukad Award','Classic','DC Golden Jubilee Award','Deshabhimani Award','Edasseri Award','Ezhuthachan Award','Federal Bank Literary Award','Jnanapeetam','Jnanpith Award','Kadammanitta Ramakrishnan Award','Kamala Surayya Award','Kendra Sahitya Akademi Award','Kerala Sahitya Akademi','Kunjunni Award','Lalithambika Antharjanam Smaraka Sahitya Award','Malayattoor Award','Mathrubhumi Award','Mathrubhumi Literary Award','N. V. Krishna Warrier Award','Nalappadan Award','Nooranad Haneef Award','O. N. V. Literary Award','O. V. Vijayan Literary Award','Odakkuzhal Award','P. Kesavadev Literary Award','P. Kunhiraman Nair Award','Padmaprabha Literary Award','Padmarajan Award','Puthoor Award','Samastha Kerala Sahithya Parishad Award','Saraswati Samman','Staff Pick','Thakazhi Award','Thanima Puraskaram','Thoppil Bhasi Award','Ulloor Award','V. T. Kumaran Award','Vaikom Chandrasekharan Nair Award','Vallathol Award','Vayalar Award'] },
+      { label: '⭐ Special',         tags: ['Debut Author','Flash Sale','Limited Edition','New Arrival','Pre-Order','Signed Copy'] }
     ];
     // Flat list for any code that needs it
     const SHOPIFY_TAGS = SHOPIFY_TAG_GROUPS.flatMap(g => g.tags);

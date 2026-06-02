@@ -4718,6 +4718,9 @@
       <button class="sales-nav-item" data-section="direct-sales" onclick="salesNav('direct-sales',this)">
         <span class="sales-nav-icon">🤝</span> Direct Sales
       </button>
+      <button class="sales-nav-item" data-section="add-book" onclick="salesNav('add-book',this)">
+        <span class="sales-nav-icon">➕</span> Add Book
+      </button>
       <div class="sales-nav-bottom">
         <button class="sales-nav-item" onclick="salesLogout()" style="color:#f87171;">
           <span class="sales-nav-icon">🚪</span> Logout
@@ -4832,6 +4835,157 @@
           </button>
         </div>
         <div id="sales-ds-body"></div>
+      </div>
+
+      <!-- ── Add Book ── -->
+      <div id="sales-section-add-book" class="sales-section">
+        <div class="sales-section-header">
+          <h2>➕ Add Book</h2>
+          <p style="font-size:0.8rem;color:var(--muted);margin:0;">Submitted books go to <strong style="color:var(--gold);">Admin Review</strong> before going live on Shopify.</p>
+        </div>
+
+        <div class="ab-form-wrap">
+          <div id="sab-error"   class="ab-msg ab-msg-error"   style="display:none;"></div>
+          <div id="sab-success" class="ab-msg ab-msg-success" style="display:none;"></div>
+
+          <div class="ab-section-label">Book Information</div>
+          <div class="ab-row">
+            <div class="ab-field">
+              <label class="ab-label">Book Title *</label>
+              <input id="sab-book" type="text" class="ab-input" placeholder="Full title of the book" />
+            </div>
+            <div class="ab-field">
+              <label class="ab-label">Author Name *</label>
+              <input id="sab-author" type="text" class="ab-input" placeholder="Full name of the author" />
+            </div>
+          </div>
+          <div class="ab-row">
+            <div class="ab-field">
+              <label class="ab-label">Publisher *</label>
+              <select id="sab-publisher" class="ab-input" onchange="sabToggleOtherPublisher(this.value)">
+                <option value="">Select a publisher</option>
+                <option>Aura Tales</option><option>Bibliophilic Insanities</option><option>Book Carry</option>
+                <option>Chintha Publishers</option><option>Current Books</option><option>DC Books</option>
+                <option>Don Books</option><option>Dream Bookbindery</option><option>EB Books</option>
+                <option>Green Books</option><option>H&amp;C Publishing House</option><option>Insight Publica</option>
+                <option>Islamic Publishing House</option><option>Kairali Books</option>
+                <option>Kerala Books and Publications Society (KBPS)</option><option>Kerala Sahitya Akademi</option>
+                <option>Lipi Publications</option><option>Litmus</option><option>Logos Books</option>
+                <option>Maithri Books</option><option>Mankind Literature</option><option>Manorama Books</option>
+                <option>Mathrubhumi Books</option><option>National Book Stall (NBS)</option>
+                <option>Olive Publications</option><option>Poorna Publications</option><option>Pravada Books</option>
+                <option>Sahitya Pravarthaka Co-operative Society</option><option>Saikatham Books</option>
+                <option>Story Slate</option><option>Vidyarthi Mithram</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div class="ab-field" id="sab-publisher-other-wrap" style="display:none;">
+              <label class="ab-label">Publisher Name *</label>
+              <input id="sab-publisher-other" type="text" class="ab-input" placeholder="Enter publisher name" />
+            </div>
+            <div class="ab-field">
+              <label class="ab-label">Genre *</label>
+              <select id="sab-genre" class="ab-input">
+                <option value="">Select a genre</option>
+                <option>Adventure</option><option>Anthologies</option><option>Autobiography</option>
+                <option>Biography</option><option>Business / Finance</option><option>Children's Literature</option>
+                <option>Classic Literature</option><option>Cookbooks</option><option>Crime</option>
+                <option>Drama</option><option>Fantasy</option><option>Fiction</option>
+                <option>Graphic Novels / Comics</option><option>Health &amp; Wellness</option>
+                <option>Historical Fiction</option><option>Horror</option><option>Humor / Comedy</option>
+                <option>Literary Fiction</option><option>Memoir</option><option>Mystery</option>
+                <option>Non-Fiction</option><option>Novel</option><option>Philosophy</option>
+                <option>Poetry</option><option>Romance</option><option>Science Fiction</option>
+                <option>Self-Help</option><option>Short Stories</option><option>Socio-Political</option>
+                <option>Spiritual / Religious</option><option>Suspense</option><option>Tantric</option>
+                <option>Thriller</option><option>Thriller &amp; Crime</option><option>Translations</option>
+                <option>Travel</option><option>Travelogues</option><option>Young Adult (YA)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="ab-section-label">Pricing</div>
+          <div class="ab-row">
+            <div class="ab-field">
+              <label class="ab-label">MRP (₹) *</label>
+              <input id="sab-mrp" type="number" class="ab-input" placeholder="e.g. 299" min="0" />
+              <div class="ab-hint">Maximum retail price</div>
+            </div>
+            <div class="ab-field">
+              <label class="ab-label">Sale Price (₹)</label>
+              <input id="sab-sale" type="number" class="ab-input" placeholder="Leave blank if no discount" min="0" />
+              <div class="ab-hint">Optional</div>
+            </div>
+          </div>
+
+          <div class="ab-section-label">Description &amp; Cover</div>
+          <div class="ab-field">
+            <label class="ab-label">Short Description</label>
+            <textarea id="sab-desc" class="ab-textarea" placeholder="Brief description (max 500 characters)…" maxlength="500"
+              oninput="document.getElementById('sab-char-count').textContent=(this.value.length)+' / 500'"></textarea>
+            <div class="ab-hint" id="sab-char-count">0 / 500</div>
+          </div>
+          <div class="ab-field">
+            <label class="ab-label">Cover Image</label>
+            <div class="ab-cover-drop" id="sab-cover-drop" onclick="document.getElementById('sab-cover-file').click()" ondragover="event.preventDefault()" ondrop="sabHandleDrop(event)">
+              <input type="file" id="sab-cover-file" accept="image/jpeg,image/png,image/webp" style="display:none;" onchange="sabHandleCover(event)" />
+              <div id="sab-cover-placeholder">🖼️ <strong>Click to upload</strong> or drag &amp; drop &nbsp;·&nbsp; JPG / PNG / WEBP · Max 2 MB</div>
+              <div id="sab-cover-preview" style="display:none;align-items:center;gap:0.75rem;">
+                <img id="sab-cover-thumb" src="" alt="" style="width:56px;height:80px;object-fit:cover;border-radius:4px;" />
+                <div>
+                  <div id="sab-cover-name" style="font-size:0.8rem;color:var(--cream);"></div>
+                  <div id="sab-cover-size" style="font-size:0.72rem;color:var(--muted);"></div>
+                  <button onclick="sabRemoveCover(event)" style="margin-top:0.35rem;background:none;border:1px solid rgba(255,255,255,0.2);color:var(--muted);border-radius:4px;padding:0.15rem 0.5rem;font-size:0.72rem;cursor:pointer;">✕ Remove</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="ab-section-label">Additional Details</div>
+          <div class="ab-row">
+            <div class="ab-field">
+              <label class="ab-label">Barcode / ISBN *</label>
+              <input id="sab-barcode" type="text" class="ab-input" placeholder="13-digit barcode" />
+            </div>
+            <div class="ab-field">
+              <label class="ab-label">Phone Number</label>
+              <input id="sab-phone" type="tel" class="ab-input" placeholder="+91 XXXXX XXXXX" />
+            </div>
+          </div>
+
+          <div class="ab-section-label">Category Metafields <span style="font-size:0.72rem;color:var(--muted);font-weight:400;">— optional, set before admin approval</span></div>
+          <div id="sab-metafields-loading" style="font-size:0.78rem;color:var(--muted);">⏳ Loading options…</div>
+          <div id="sab-metafields-wrap" style="display:none;">
+            <div class="ab-mf-group">
+              <div class="ab-label">Genre</div>
+              <div id="sab-mf-genre" class="ab-mf-chips"></div>
+            </div>
+            <div class="ab-row">
+              <div class="ab-mf-group" style="flex:1;">
+                <div class="ab-label">Book Cover Type</div>
+                <div id="sab-mf-cover-type" class="ab-mf-chips"></div>
+              </div>
+              <div class="ab-mf-group" style="flex:1;">
+                <div class="ab-label">Language Version</div>
+                <div id="sab-mf-language" class="ab-mf-chips"></div>
+              </div>
+              <div class="ab-mf-group" style="flex:1;">
+                <div class="ab-label">Target Audience</div>
+                <div id="sab-mf-audience" class="ab-mf-chips"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="ab-section-label">Shopify Tags <span style="font-size:0.72rem;color:var(--muted);font-weight:400;">— select all that apply</span></div>
+          <div id="sab-tags-grid" class="ab-tags-grid"></div>
+
+          <div style="background:rgba(201,146,42,0.07);border:1px solid rgba(201,146,42,0.2);border-radius:8px;padding:0.75rem 1rem;margin-bottom:1rem;font-size:0.8rem;color:var(--gold);">
+            ⏳ This submission will be sent for <strong>Admin Review</strong>. Once approved, it will go live on Shopify.
+          </div>
+          <button id="sab-submit-btn" class="ab-submit-btn" onclick="salesSubmitBook()">
+            📋 Submit for Review
+          </button>
+        </div>
       </div>
 
     </main>
@@ -6710,6 +6864,145 @@
     }
 
     // ── Logout ──
+    // ══ Sales: Add Book ══════════════════════════════════════════════════════
+    var _sabCoverBase64 = null;
+
+    function sabToggleOtherPublisher(val) {
+      document.getElementById('sab-publisher-other-wrap').style.display = val === 'Other' ? '' : 'none';
+    }
+
+    function sabHandleCover(e) { if (e.target.files[0]) sabLoadCover(e.target.files[0]); }
+    function sabHandleDrop(e)  { e.preventDefault(); if (e.dataTransfer.files[0]) sabLoadCover(e.dataTransfer.files[0]); }
+    function sabLoadCover(file) {
+      if (file.size > 2 * 1024 * 1024) { alert('Cover image must be under 2 MB.'); return; }
+      const reader = new FileReader();
+      reader.onload = ev => {
+        _sabCoverBase64 = ev.target.result;
+        document.getElementById('sab-cover-thumb').src = _sabCoverBase64;
+        document.getElementById('sab-cover-name').textContent = file.name;
+        document.getElementById('sab-cover-size').textContent = (file.size / 1024).toFixed(0) + ' KB';
+        document.getElementById('sab-cover-placeholder').style.display = 'none';
+        document.getElementById('sab-cover-preview').style.display = 'flex';
+      };
+      reader.readAsDataURL(file);
+    }
+    function sabRemoveCover(e) {
+      e.stopPropagation();
+      _sabCoverBase64 = null;
+      document.getElementById('sab-cover-file').value = '';
+      document.getElementById('sab-cover-placeholder').style.display = '';
+      document.getElementById('sab-cover-preview').style.display = 'none';
+    }
+
+    function sabBuildTagGrid() {
+      const grid = document.getElementById('sab-tags-grid');
+      if (!grid || grid.dataset.built) return;
+      grid.innerHTML = SHOPIFY_TAG_GROUPS.map(group => `
+        <div>
+          <div class="ab-tag-group-label">${group.label}</div>
+          <div class="ab-tag-chips">
+            ${group.tags.map(tag => `<button type="button" class="ab-tag-chip" data-tag="${tag}" onclick="this.classList.toggle('active')">${tag}</button>`).join('')}
+          </div>
+        </div>`).join('');
+      grid.dataset.built = '1';
+    }
+
+    async function sabLoadMetafields() {
+      const loadEl = document.getElementById('sab-metafields-loading');
+      const wrapEl = document.getElementById('sab-metafields-wrap');
+      if (wrapEl.dataset.loaded) return;
+      try {
+        const data = await salesPost('metaobject-options');
+        if (!data.success) throw new Error(data.error || 'Failed to load');
+        function populate(id, items) {
+          document.getElementById(id).innerHTML = items.map(item =>
+            `<button type="button" class="ab-mf-chip" data-gid="${item.id}" onclick="this.classList.toggle('active')">${item.label}</button>`
+          ).join('');
+        }
+        populate('sab-mf-genre',      data.genre);
+        populate('sab-mf-cover-type', data.bookCoverType);
+        populate('sab-mf-language',   data.languageVersion);
+        populate('sab-mf-audience',   data.targetAudience);
+        loadEl.style.display  = 'none';
+        wrapEl.style.display  = '';
+        wrapEl.dataset.loaded = '1';
+      } catch(e) {
+        loadEl.textContent = '⚠️ Could not load metafield options: ' + e.message;
+      }
+    }
+
+    function sabGetSelectedGids(id) {
+      return Array.from(document.querySelectorAll(`#${id} .ab-mf-chip.active`)).map(c => c.dataset.gid);
+    }
+
+    async function salesSubmitBook() {
+      const book     = document.getElementById('sab-book').value.trim();
+      const author   = document.getElementById('sab-author').value.trim();
+      const pubSel   = document.getElementById('sab-publisher').value;
+      const pubOther = document.getElementById('sab-publisher-other').value.trim();
+      const publisher = pubSel === 'Other' ? pubOther : pubSel;
+      const genre    = document.getElementById('sab-genre').value;
+      const mrp      = document.getElementById('sab-mrp').value.trim();
+      const sale     = document.getElementById('sab-sale').value.trim();
+      const desc     = document.getElementById('sab-desc').value.trim();
+      const barcode  = document.getElementById('sab-barcode').value.trim();
+      const phone    = document.getElementById('sab-phone').value.trim();
+      const errEl    = document.getElementById('sab-error');
+      const okEl     = document.getElementById('sab-success');
+
+      errEl.style.display = 'none'; okEl.style.display = 'none';
+      if (!book || !author || !publisher || !genre || !mrp || !barcode) {
+        errEl.textContent = 'Please fill in all required fields (marked *).';
+        errEl.style.display = 'block';
+        errEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+
+      const tags = Array.from(document.querySelectorAll('#sab-tags-grid .ab-tag-chip.active')).map(c => c.dataset.tag);
+      const btn  = document.getElementById('sab-submit-btn');
+      btn.textContent = '⏳ Submitting…'; btn.disabled = true;
+
+      try {
+        const data = await salesPost('submit-book', {
+          book, author, publisher, genre,
+          shopifyTags: tags,
+          description: desc,
+          mrp: parseFloat(mrp),
+          salePrice: sale ? parseFloat(sale) : null,
+          barcode, phone,
+          cover: _sabCoverBase64 || null,
+          metafields: {
+            genreGids:           sabGetSelectedGids('sab-mf-genre'),
+            bookCoverTypeGids:   sabGetSelectedGids('sab-mf-cover-type'),
+            languageVersionGids: sabGetSelectedGids('sab-mf-language'),
+            targetAudienceGids:  sabGetSelectedGids('sab-mf-audience'),
+          }
+        });
+        if (data.success || data.status === 'success') {
+          okEl.innerHTML = `✅ <strong>${book}</strong> submitted for admin review!`;
+          okEl.style.display = 'block';
+          okEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          // Reset form
+          ['sab-book','sab-author','sab-publisher','sab-genre','sab-mrp','sab-sale','sab-desc','sab-barcode','sab-phone'].forEach(id => {
+            const el = document.getElementById(id); if (el) el.value = '';
+          });
+          sabRemoveCover({ stopPropagation: () => {} });
+          document.querySelectorAll('#sab-tags-grid .ab-tag-chip.active, .sab-mf-chips .ab-mf-chip.active, #sab-metafields-wrap .ab-mf-chip.active').forEach(c => c.classList.remove('active'));
+          document.getElementById('sab-char-count').textContent = '0 / 500';
+          document.getElementById('sab-publisher-other-wrap').style.display = 'none';
+        } else {
+          errEl.textContent = data.message || data.error || 'Submission failed. Please try again.';
+          errEl.style.display = 'block';
+        }
+      } catch(e) {
+        errEl.textContent = 'Something went wrong. Please try again.';
+        errEl.style.display = 'block';
+      } finally {
+        btn.textContent = '📋 Submit for Review'; btn.disabled = false;
+      }
+    }
+    // ═════════════════════════════════════════════════════════════════════════
+
     // ══ Admin: Reminder Email ════════════════════════════════════════════════
     var _reminderTo = '', _reminderToName = '', _reminderType = '';
 
@@ -7001,6 +7294,7 @@ Team Yellow Feather Books`;
       if (section === 'trending')     salesLoadTrending(7);
       if (section === 'requests')     salesLoadRequests();
       if (section === 'direct-sales') { salesLoadDirectSales(); document.getElementById('ds-date').value = new Date().toISOString().slice(0,10); }
+      if (section === 'add-book')     { sabBuildTagGrid(); sabLoadMetafields(); }
     }
 
     // ── Orders ──────────────────────────────────────────────────────────────

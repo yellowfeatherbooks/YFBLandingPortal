@@ -38,6 +38,50 @@ async function shopifyGql(query, variables = {}) {
   return res.json();
 }
 
+// Enable inventory tracking + set stock to 1 at the first location
+async function setupInventory(productGid) {
+  // 1 — Get variant inventory item ID
+  const prodData = await shopifyGql(`
+    query($id: ID!) {
+      product(id: $id) {
+        variants(first: 1) {
+          edges { node { inventoryItem { id } } }
+        }
+      }
+    }`, { id: productGid });
+
+  const inventoryItemId = prodData?.data?.product?.variants?.edges?.[0]?.node?.inventoryItem?.id;
+  if (!inventoryItemId) return;
+
+  // 2 — Enable tracking + get first location (run in parallel)
+  const [, locData] = await Promise.all([
+    shopifyGql(`
+      mutation($id: ID!, $input: InventoryItemInput!) {
+        inventoryItemUpdate(id: $id, input: $input) {
+          userErrors { field message }
+        }
+      }`, { id: inventoryItemId, input: { tracked: true } }),
+    shopifyGql(`{ locations(first: 1) { edges { node { id } } } }`)
+  ]);
+
+  const locationId = locData?.data?.locations?.edges?.[0]?.node?.id;
+  if (!locationId) return;
+
+  // 3 — Set quantity to 1
+  await shopifyGql(`
+    mutation($input: InventorySetQuantitiesInput!) {
+      inventorySetQuantities(input: $input) {
+        userErrors { field message }
+      }
+    }`, {
+    input: {
+      name: 'available',
+      reason: 'correction',
+      quantities: [{ inventoryItemId, locationId, quantity: 1 }]
+    }
+  });
+}
+
 // Find the "Print Books" taxonomy category GID
 async function getPrintBooksCategoryGid() {
   const data = await shopifyGql(`{
@@ -138,6 +182,9 @@ exports.handler = async function (event) {
           console.warn('productUpdate warnings:', JSON.stringify(errors));
         }
       }
+
+      // 2d — Enable inventory tracking and set stock to 1
+      await setupInventory(productGid);
     }
 
     // Step 3 — Save to Supabase as 'listed'

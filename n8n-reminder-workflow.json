@@ -1,0 +1,142 @@
+{
+  "name": "YFB — Member/Author Reminder",
+  "nodes": [
+    {
+      "id": "node-webhook",
+      "name": "Reminder Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [0, 0],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "yfb-reminder",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "node-extract",
+      "name": "Extract Fields",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [240, 0],
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || $input.first().json;\n\nconst to       = body.to       || '';\nconst toName   = body.toName   || to.split('@')[0] || 'there';\nconst subject  = body.subject  || 'A message from Yellow Feather Books';\nconst bodyText = body.bodyText || '';\nconst type     = body.type     || 'general'; // 'author' | 'member' | 'general'\n\n// Normalise phone for WhatsApp (91XXXXXXXXXX format)\nconst rawPhone = (body.phone || '').replace(/[^0-9]/g, '').replace(/^0+/, '');\nconst waPhone  = rawPhone.length === 10 ? '91' + rawPhone\n               : rawPhone.startsWith('91') && rawPhone.length === 12 ? rawPhone\n               : rawPhone;\n\n// Convert plain-text body to HTML (preserve line breaks)\nconst htmlBody = bodyText\n  .split('\\n')\n  .map(line => line.trim() ? `<p style=\"margin:0 0 12px;font-size:15px;color:#333;line-height:1.7;\">${line}</p>` : '<br/>')\n  .join('');\n\nconst emailHtml = `<!DOCTYPE html>\n<html lang=\"en\">\n<head><meta charset=\"UTF-8\"/><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"/></head>\n<body style=\"margin:0;padding:0;background:#f4f4f4;font-family:Arial,sans-serif;\">\n<div style=\"max-width:620px;margin:32px auto;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,0.08);\">\n  <div style=\"background:#1a1a2e;padding:24px 32px;text-align:center;\">\n    <img src=\"https://yellowfeather.netlify.app/logo-landscape.png\" alt=\"Yellow Feather Books\" height=\"44\"\n      onerror=\"this.style.display='none'\" style=\"display:block;margin:0 auto;\"/>\n  </div>\n  <div style=\"padding:36px 32px;\">\n    ${htmlBody}\n  </div>\n  <div style=\"background:#f5f0e8;padding:18px 32px;font-size:12px;color:#666;line-height:1.8;border-top:1px solid #e5e0d8;\">\n    Yellow Feather Books &nbsp;&middot;&nbsp;\n    <a href=\"https://yellowfeather.netlify.app\" style=\"color:#C9922A;\">yellowfeather.netlify.app</a>\n    &nbsp;&middot;&nbsp; +91 9400446565\n  </div>\n</div>\n</body></html>`;\n\nreturn [{ json: { to, toName, subject, bodyText, emailHtml, waPhone, type, hasPhone: waPhone.length >= 10 } }];"
+      }
+    },
+    {
+      "id": "node-send-email",
+      "name": "Send Reminder Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [480, -120],
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "toList": "={{ $json.to }}",
+        "subject": "={{ $json.subject }}",
+        "message": "={{ $json.emailHtml }}",
+        "options": { "emailType": "html" }
+      },
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "n4S10HXIC145nr8L",
+          "name": "Gmail account 2"
+        }
+      }
+    },
+    {
+      "id": "node-has-phone",
+      "name": "Has Phone?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [480, 120],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "loose" },
+          "conditions": [
+            {
+              "id": "cond-phone",
+              "leftValue": "={{ $json.hasPhone }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "node-whatsapp",
+      "name": "Send WhatsApp Reminder",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [720, 120],
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.facebook.com/v20.0/1178132198705778/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"messaging_product\": \"whatsapp\",\n  \"to\": \"{{ $('Extract Fields').first().json.waPhone }}\",\n  \"type\": \"text\",\n  \"text\": {\n    \"body\": {{ JSON.stringify($('Extract Fields').first().json.bodyText) }}\n  }\n}",
+        "options": {}
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "PduyAvcBaYt6Afke",
+          "name": "WhatsApp-YFB"
+        }
+      }
+    },
+    {
+      "id": "node-no-phone",
+      "name": "No WhatsApp (skip)",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [720, 300],
+      "parameters": {}
+    },
+    {
+      "id": "node-respond",
+      "name": "Respond OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [960, 0],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"success\": true }"
+      }
+    }
+  ],
+  "connections": {
+    "Reminder Webhook": {
+      "main": [[{ "node": "Extract Fields", "type": "main", "index": 0 }]]
+    },
+    "Extract Fields": {
+      "main": [[
+        { "node": "Send Reminder Email", "type": "main", "index": 0 },
+        { "node": "Has Phone?",          "type": "main", "index": 0 }
+      ]]
+    },
+    "Send Reminder Email": {
+      "main": [[{ "node": "Respond OK", "type": "main", "index": 0 }]]
+    },
+    "Has Phone?": {
+      "main": [
+        [{ "node": "Send WhatsApp Reminder", "type": "main", "index": 0 }],
+        [{ "node": "No WhatsApp (skip)",     "type": "main", "index": 0 }]
+      ]
+    },
+    "Send WhatsApp Reminder": {
+      "main": [[{ "node": "Respond OK", "type": "main", "index": 0 }]]
+    },
+    "No WhatsApp (skip)": {
+      "main": [[{ "node": "Respond OK", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "tags": ["yfb", "reminder", "email", "whatsapp"]
+}

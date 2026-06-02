@@ -1,7 +1,5 @@
 // Fetches metaobject entries for the 4 book category metafields.
-// Discovers the metaobject type dynamically from the metafield definitions.
-// POST { adminEmail, adminKey }
-// Returns: { genre, bookCoverType, languageVersion, targetAudience }
+// POST { adminEmail, adminKey, debug? }
 
 const crypto         = require('crypto');
 const SUPABASE_URL    = process.env.SUPABASE_URL;
@@ -41,100 +39,87 @@ async function shopifyGql(query, variables = {}) {
       body:    JSON.stringify({ query, variables })
     }
   );
-  const data = await res.json();
-  if (data.errors) throw new Error(data.errors[0]?.message || 'Shopify GQL error');
-  return data;
-}
-
-// Step 1: Get the metaobject definition GID from a metafield definition's validations
-async function getMetaobjectType(namespace, key) {
-  const data = await shopifyGql(`
-    query {
-      metafieldDefinitions(ownerType: PRODUCT, namespace: "${namespace}", key: "${key}", first: 1) {
-        edges {
-          node {
-            validations { name value }
-          }
-        }
-      }
-    }`);
-  const validations = data?.data?.metafieldDefinitions?.edges?.[0]?.node?.validations || [];
-  // The validation contains the metaobject definition GID e.g. gid://shopify/MetaobjectDefinition/123
-  const v = validations.find(v => v.name === 'metaobject_definition_id');
-  return v?.value || null;
-}
-
-// Step 2: Given a MetaobjectDefinition GID, get its type handle, then fetch all entries
-async function fetchMetaobjectsByDefinitionGid(definitionGid) {
-  // Get the type handle from the definition GID
-  const defData = await shopifyGql(`
-    query($id: ID!) {
-      metaobjectDefinition(id: $id) {
-        type
-        name
-      }
-    }`, { id: definitionGid });
-  const type = defData?.data?.metaobjectDefinition?.type;
-  if (!type) return [];
-  return fetchMetaobjectsByType(type);
-}
-
-// Fetch all metaobject entries of a given type handle
-async function fetchMetaobjectsByType(type) {
-  const data = await shopifyGql(`
-    query($type: String!) {
-      metaobjects(type: $type, first: 250) {
-        edges {
-          node {
-            id
-            displayName
-            handle
-          }
-        }
-      }
-    }`, { type });
-  const edges = data?.data?.metaobjects?.edges || [];
-  return edges
-    .map(e => ({ id: e.node.id, label: e.node.displayName || e.node.handle }))
-    .sort((a, b) => a.label.localeCompare(b.label));
-}
-
-// Fetch options for one field — tries definition lookup first, falls back to guessed type names
-async function fetchOptions(namespace, key, fallbackTypes) {
-  try {
-    const defGid = await getMetaobjectType(namespace, key);
-    if (defGid) return fetchMetaobjectsByDefinitionGid(defGid);
-  } catch(e) {
-    console.warn(`Definition lookup failed for ${namespace}.${key}:`, e.message);
-  }
-  // Fallback: try known type handle patterns
-  for (const type of fallbackTypes) {
-    try {
-      const results = await fetchMetaobjectsByType(type);
-      if (results.length > 0) return results;
-    } catch(e) { /* try next */ }
-  }
-  return [];
+  return res.json();
 }
 
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: cors, body: '' };
   if (event.httpMethod !== 'POST')    return json({ success: false, error: 'Method Not Allowed' }, 405);
 
-  const { adminEmail, adminKey } = JSON.parse(event.body || '{}');
+  const { adminEmail, adminKey, debug } = JSON.parse(event.body || '{}');
   if (!await verifyAdmin(adminEmail, adminKey)) {
     return json({ success: false, error: 'Unauthorized' }, 401);
   }
 
   try {
+    // Step 1 — Get all product metafield definitions under "shopify" namespace
+    const defQuery = `{
+      metafieldDefinitions(ownerType: PRODUCT, namespace: "shopify", first: 20) {
+        edges {
+          node {
+            key
+            name
+            type { name }
+            validations { name value }
+          }
+        }
+      }
+    }`;
+    const defData = await shopifyGql(defQuery);
+    const defs = (defData?.data?.metafieldDefinitions?.edges || []).map(e => e.node);
+
+    if (debug) {
+      return json({ success: true, debug: true, defs });
+    }
+
+    // Step 2 — For each field, find the metaobject definition GID from validations
+    const FIELDS = {
+      genre:           'genre',
+      bookCoverType:   'book-cover-type',
+      languageVersion: 'language-version',
+      targetAudience:  'target-audience',
+    };
+
+    const defMap = {};
+    for (const [fieldKey, shopifyKey] of Object.entries(FIELDS)) {
+      const def = defs.find(d => d.key === shopifyKey);
+      const v   = (def?.validations || []).find(v => v.name === 'metaobject_definition_id');
+      defMap[fieldKey] = v?.value || null;
+    }
+
+    // Step 3 — For each found definition GID, get type handle then fetch entries
+    async function fetchByDefGid(gid) {
+      if (!gid) return [];
+      const typeData = await shopifyGql(
+        `query($id: ID!) { metaobjectDefinition(id: $id) { type } }`,
+        { id: gid }
+      );
+      const type = typeData?.data?.metaobjectDefinition?.type;
+      if (!type) return [];
+
+      const entriesData = await shopifyGql(
+        `query($type: String!) {
+          metaobjects(type: $type, first: 250) {
+            edges { node { id displayName handle } }
+          }
+        }`,
+        { type }
+      );
+      const edges = entriesData?.data?.metaobjects?.edges || [];
+      return edges
+        .map(e => ({ id: e.node.id, label: e.node.displayName || e.node.handle }))
+        .sort((a, b) => a.label.localeCompare(b.label));
+    }
+
     const [genre, bookCoverType, languageVersion, targetAudience] = await Promise.all([
-      fetchOptions('shopify', 'genre',            ['shopify--genre', 'genre']),
-      fetchOptions('shopify', 'book-cover-type',  ['shopify--book-cover-type', 'book_cover_type', 'book-cover-type']),
-      fetchOptions('shopify', 'language-version', ['shopify--language-version', 'language_version', 'language-version']),
-      fetchOptions('shopify', 'target-audience',  ['shopify--target-audience', 'target_audience', 'target-audience']),
+      fetchByDefGid(defMap.genre),
+      fetchByDefGid(defMap.bookCoverType),
+      fetchByDefGid(defMap.languageVersion),
+      fetchByDefGid(defMap.targetAudience),
     ]);
 
-    return json({ success: true, genre, bookCoverType, languageVersion, targetAudience });
+    return json({ success: true, genre, bookCoverType, languageVersion, targetAudience, _defMap: defMap });
+
   } catch (e) {
     console.error('admin-metaobject-options error:', e.message);
     return json({ success: false, error: e.message }, 500);

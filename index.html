@@ -4722,7 +4722,8 @@
 
           <!-- ── Shopify Category Metafields ── -->
           <div class="ab-section-label">Category Metafields <span style="font-size:0.72rem;color:var(--muted);font-weight:400;">— populated directly on the Shopify product</span></div>
-          <div id="ab-metafields-loading" style="font-size:0.78rem;color:var(--muted);">⏳ Loading options…</div>
+          <div id="ab-metafields-loading" style="font-size:0.78rem;color:var(--muted);">⏳ Loading options… <button onclick="abDebugMetafields()" style="margin-left:0.5rem;font-size:0.68rem;background:none;border:1px solid rgba(255,255,255,0.2);color:var(--muted);border-radius:4px;padding:0.1rem 0.4rem;cursor:pointer;">Debug</button></div>
+          <pre id="ab-metafields-debug" style="display:none;font-size:0.65rem;color:#86efac;background:rgba(0,0,0,0.3);padding:0.75rem;border-radius:6px;overflow:auto;max-height:200px;margin-top:0.5rem;"></pre>
           <div id="ab-metafields-wrap" style="display:none;">
             <div class="ab-row">
               <div class="ab-field">
@@ -6327,6 +6328,18 @@
     // ── Navigation ──
     // ══ Add Book (Admin) ══════════════════════════════════════════════════════
     var _abCoverBase64 = null;
+
+    async function abDebugMetafields() {
+      const pre = document.getElementById('ab-metafields-debug');
+      pre.style.display = 'block';
+      pre.textContent = 'Fetching debug info…';
+      const res  = await fetch('/.netlify/functions/admin-metaobject-options', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adminEmail: _adminSession.email, adminKey: _adminSession.adminKey, debug: true })
+      });
+      const data = await res.json();
+      pre.textContent = JSON.stringify(data, null, 2);
+    }
 
     async function abLoadMetafields() {
       const loadEl = document.getElementById('ab-metafields-loading');

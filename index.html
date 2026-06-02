@@ -2940,6 +2940,118 @@
     .admin-section { display: none; }
     .admin-section.active { display: block; }
 
+    /* ══ SALES MODE ══════════════════════════════════════════════════════════ */
+    body.sales-mode #page-content        { display: none !important; }
+    body.sales-mode #desktop-sidebar     { display: none !important; }
+    body.sales-mode #mobile-tile-bar     { display: none !important; }
+    body.sales-mode #mobile-drawer       { display: none !important; }
+    body.sales-mode #mobile-drawer-overlay { display: none !important; }
+    body.sales-mode #nav-hamburger       { display: none !important; }
+    body.sales-mode .nav-stats           { display: none !important; }
+    body.sales-mode .nav-links           { display: none !important; }
+    body.sales-mode #nav-guest-actions   { display: none !important; }
+    body.sales-mode #nav-member-actions  { display: none !important; }
+    body.sales-mode #nav-author-actions  { display: none !important; }
+    body.sales-mode #nav-admin-actions   { display: none !important; }
+    body.sales-mode #nav-sales-actions   { display: flex !important; align-items: center; gap: 0.6rem; }
+
+    #view-sales { display: none; }
+    body.sales-mode #view-sales { display: flex; margin-top: 64px; min-height: calc(100vh - 64px); }
+
+    #sales-sidebar {
+      width: 220px; flex-shrink: 0;
+      background: #0a1020;
+      border-right: 1px solid rgba(255,255,255,0.07);
+      display: flex; flex-direction: column;
+      position: sticky; top: 64px; height: calc(100vh - 64px); overflow-y: auto;
+    }
+    .sales-brand {
+      padding: 1.2rem 1rem 0.8rem;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+      font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em;
+    }
+    .sales-brand strong { display: block; font-size: 0.95rem; color: #38BDB2; text-transform: none; letter-spacing: 0; margin-top: 0.15rem; }
+    .sales-nav-item {
+      display: flex; align-items: center; gap: 0.7rem;
+      padding: 0.75rem 1rem; font-size: 0.84rem; color: var(--muted);
+      background: none; border: none; width: 100%; text-align: left; cursor: pointer;
+      transition: background 0.15s, color 0.15s; border-left: 3px solid transparent;
+    }
+    .sales-nav-item:hover  { background: rgba(255,255,255,0.04); color: var(--text); }
+    .sales-nav-item.active { background: rgba(56,189,178,0.08); color: #38BDB2; border-left-color: #38BDB2; }
+    .sales-nav-icon { font-size: 1rem; width: 1.2rem; text-align: center; }
+    .sales-nav-bottom { margin-top: auto; padding: 0.5rem 0; border-top: 1px solid rgba(255,255,255,0.07); }
+
+    #sales-content {
+      flex: 1; padding: 1.5rem; overflow-y: auto; background: var(--navy);
+    }
+    .sales-section { display: none; }
+    .sales-section.active { display: block; }
+    .sales-section-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.8rem; margin-bottom: 1.2rem; }
+    .sales-section-header h2 { font-size: 1.2rem; font-weight: 700; color: var(--text); margin: 0; }
+    .sales-filter-row { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    .sales-filter-btn {
+      padding: 0.3rem 0.8rem; font-size: 0.72rem; font-weight: 600;
+      border: 1px solid rgba(255,255,255,0.15); border-radius: 20px;
+      background: none; color: var(--muted); cursor: pointer; transition: all 0.15s;
+    }
+    .sales-filter-btn:hover  { border-color: #38BDB2; color: #38BDB2; }
+    .sales-filter-btn.active { background: #38BDB2; color: #0a1020; border-color: #38BDB2; }
+
+    /* Stat cards */
+    .sales-stats { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1.2rem; }
+    .sales-stat-card {
+      background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 10px; padding: 0.9rem 1.2rem; flex: 1; min-width: 120px;
+    }
+    .sales-stat-card .ssc-num { font-size: 1.5rem; font-weight: 800; color: #38BDB2; line-height: 1; }
+    .sales-stat-card .ssc-lbl { font-size: 0.68rem; color: var(--muted); margin-top: 0.25rem; text-transform: uppercase; letter-spacing: 0.06em; }
+
+    /* Trending table */
+    .sales-rank { font-size: 0.72rem; font-weight: 800; color: var(--gold); width: 2rem; text-align: center; }
+    .sales-book-title { font-size: 0.84rem; font-weight: 600; color: var(--text); }
+    .sales-units { font-size: 0.84rem; color: #38BDB2; font-weight: 700; }
+    .sales-revenue { font-size: 0.8rem; color: var(--muted); }
+
+    /* Stock check */
+    .stock-card {
+      display: flex; gap: 0.9rem; align-items: flex-start;
+      background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 10px; padding: 0.85rem; margin-bottom: 0.6rem;
+    }
+    .stock-card img { width: 48px; height: 68px; object-fit: cover; border-radius: 4px; flex-shrink: 0; background: rgba(255,255,255,0.05); }
+    .stock-card-info { flex: 1; }
+    .stock-card-title { font-size: 0.88rem; font-weight: 700; color: var(--text); margin-bottom: 0.25rem; }
+    .stock-badge {
+      display: inline-block; padding: 0.15rem 0.55rem; border-radius: 12px; font-size: 0.7rem; font-weight: 700;
+    }
+    .stock-badge.in-stock  { background: rgba(74,222,128,0.12); color: #4ade80; border: 1px solid rgba(74,222,128,0.25); }
+    .stock-badge.low-stock { background: rgba(251,191,36,0.12); color: #fbbf24; border: 1px solid rgba(251,191,36,0.25); }
+    .stock-badge.no-stock  { background: rgba(248,113,113,0.12); color: #f87171; border: 1px solid rgba(248,113,113,0.25); }
+
+    /* Direct sales form */
+    .ds-form { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 10px; padding: 1.2rem; margin-bottom: 1.2rem; }
+    .ds-form-row { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
+    .ds-field { flex: 1; min-width: 160px; }
+    .ds-label { font-size: 0.72rem; font-weight: 600; color: var(--muted); margin-bottom: 0.25rem; display: block; }
+    .ds-input, .ds-select {
+      width: 100%; background: #1C2035; border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 7px; color: var(--cream); font-size: 0.82rem; padding: 0.5rem 0.65rem;
+      box-sizing: border-box; transition: border-color 0.15s;
+    }
+    .ds-input:focus, .ds-select:focus { outline: none; border-color: #38BDB2; }
+    .ds-select option { background: #1C2035; color: var(--cream); }
+
+    @media (max-width: 720px) {
+      body.sales-mode #view-sales { flex-direction: column; }
+      #sales-sidebar { width: 100%; height: auto; position: static; flex-direction: row; flex-wrap: wrap; padding: 0.4rem; gap: 0.3rem; }
+      .sales-brand { display: none; }
+      .sales-nav-item { padding: 0.5rem 0.7rem; font-size: 0.72rem; border-left: none; border-bottom: 2px solid transparent; flex-direction: column; gap: 0.1rem; }
+      .sales-nav-item.active { border-bottom-color: #38BDB2; border-left: none; }
+      .sales-nav-icon { font-size: 1.1rem; }
+      .sales-nav-bottom { display: none; }
+    }
+
     /* ── Add Book form ── */
     .ab-form-wrap { max-width: 860px; }
     .ab-section-label {
@@ -3550,9 +3662,22 @@
           <span class="ni-icon">✍️</span>
           <span class="ni-label">Author Space</span>
         </button>
+        <button class="nav-icon-btn" onclick="showSalesLogin()" title="Sales Team">
+          <span class="ni-icon">📊</span>
+          <span class="ni-label">Sales</span>
+        </button>
         <button class="nav-icon-btn" onclick="showAdminLogin()" title="Admin">
           <span class="ni-icon">🔐</span>
           <span class="ni-label">Admin</span>
+        </button>
+      </div>
+
+      <!-- ── SALES actions (shown only in sales mode via CSS) ── -->
+      <div id="nav-sales-actions" style="display:none;">
+        <span id="nav-sales-chip" style="font-size:0.78rem;color:var(--muted);background:rgba(56,189,178,0.1);border:1px solid rgba(56,189,178,0.3);border-radius:20px;padding:0.25rem 0.75rem;white-space:nowrap;"></span>
+        <button class="nav-icon-btn" onclick="salesLogout()" title="Logout" style="color:#38BDB2;">
+          <span class="ni-icon">🚪</span>
+          <span class="ni-label">Logout</span>
         </button>
       </div>
 
@@ -4547,6 +4672,171 @@
   </div>
 
   <!-- ══ ADMIN VIEW ══ -->
+  <!-- ══ SALES LOGIN PANEL ══ -->
+  <div id="sales-login-panel">
+    <div class="alp-card" style="max-width:400px;width:100%;margin:auto;">
+      <div class="alp-logo"><span>📊</span></div>
+      <div class="alp-title">Sales Team Login</div>
+      <div class="alp-sub">Yellow Feather Books — Sales Portal</div>
+      <div class="alp-field">
+        <label>Email Address</label>
+        <input type="email" id="sales-email" class="alp-input" placeholder="sales@yellowfeatherbooks.com"
+          autocomplete="username" onkeydown="if(event.key==='Enter') salesLoginSubmit()">
+      </div>
+      <div class="alp-field">
+        <label>Password</label>
+        <div class="pw-wrap">
+          <input type="password" id="sales-password" class="alp-input" placeholder="••••••••"
+            autocomplete="current-password" onkeydown="if(event.key==='Enter') salesLoginSubmit()">
+          <button type="button" class="pw-eye" onclick="togglePw('sales-password',this)" tabindex="-1" aria-label="Show password">👁</button>
+        </div>
+      </div>
+      <div class="alp-error" id="sales-login-error"></div>
+      <button class="alp-btn" id="sales-login-btn" onclick="salesLoginSubmit()" style="background:#38BDB2;">Sign In</button>
+      <div class="alp-footer-note" style="margin-top:0.8rem;">
+        <a href="#" onclick="hideSalesLogin();return false;">← Cancel</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SALES VIEW ══ -->
+  <div id="view-sales">
+    <nav id="sales-sidebar">
+      <div class="sales-brand">Sales Portal<strong>Yellow Feather Books</strong></div>
+      <button class="sales-nav-item active" data-section="orders" onclick="salesNav('orders',this)">
+        <span class="sales-nav-icon">📦</span> Orders
+      </button>
+      <button class="sales-nav-item" data-section="trending" onclick="salesNav('trending',this)">
+        <span class="sales-nav-icon">🔥</span> Trending
+      </button>
+      <button class="sales-nav-item" data-section="requests" onclick="salesNav('requests',this)">
+        <span class="sales-nav-icon">📬</span> Book Requests
+      </button>
+      <button class="sales-nav-item" data-section="stock" onclick="salesNav('stock',this)">
+        <span class="sales-nav-icon">🔍</span> Stock Check
+      </button>
+      <button class="sales-nav-item" data-section="direct-sales" onclick="salesNav('direct-sales',this)">
+        <span class="sales-nav-icon">🤝</span> Direct Sales
+      </button>
+      <div class="sales-nav-bottom">
+        <button class="sales-nav-item" onclick="salesLogout()" style="color:#f87171;">
+          <span class="sales-nav-icon">🚪</span> Logout
+        </button>
+      </div>
+    </nav>
+
+    <main id="sales-content">
+
+      <!-- ── Orders ── -->
+      <div id="sales-section-orders" class="sales-section active">
+        <div class="sales-section-header">
+          <h2>📦 Orders</h2>
+          <div class="sales-filter-row">
+            <button class="sales-filter-btn active" onclick="salesFilterOrders('any',this)">All</button>
+            <button class="sales-filter-btn" onclick="salesFilterOrders('open',this)">Open</button>
+            <button class="sales-filter-btn" onclick="salesFilterOrders('closed',this)">Closed</button>
+          </div>
+        </div>
+        <div id="sales-orders-stats" class="sales-stats"></div>
+        <div id="sales-orders-body"></div>
+      </div>
+
+      <!-- ── Trending ── -->
+      <div id="sales-section-trending" class="sales-section">
+        <div class="sales-section-header">
+          <h2>🔥 Trending Books</h2>
+          <div class="sales-filter-row">
+            <button class="sales-filter-btn active" onclick="salesFilterTrending(7,this)">Last 7 Days</button>
+            <button class="sales-filter-btn" onclick="salesFilterTrending(30,this)">Last 30 Days</button>
+            <button class="sales-filter-btn" onclick="salesFilterTrending(90,this)">Last 90 Days</button>
+          </div>
+        </div>
+        <div id="sales-trending-stats" class="sales-stats"></div>
+        <div id="sales-trending-body"></div>
+        <div id="sales-slow-movers" style="margin-top:1.5rem;"></div>
+      </div>
+
+      <!-- ── Book Requests ── -->
+      <div id="sales-section-requests" class="sales-section">
+        <div class="sales-section-header">
+          <h2>📬 Book Requests</h2>
+          <p style="font-size:0.8rem;color:var(--muted);margin:0;">What customers are asking for but can't find</p>
+        </div>
+        <div id="sales-requests-body"></div>
+      </div>
+
+      <!-- ── Stock Check ── -->
+      <div id="sales-section-stock" class="sales-section">
+        <div class="sales-section-header">
+          <h2>🔍 Stock Check</h2>
+        </div>
+        <div style="display:flex;gap:0.6rem;margin-bottom:1.2rem;">
+          <input id="sales-stock-query" type="text" class="ds-input" placeholder="Search by title, author or ISBN…" style="max-width:400px;"
+            onkeydown="if(event.key==='Enter') salesStockSearch()" />
+          <button onclick="salesStockSearch()" class="sales-filter-btn active" style="white-space:nowrap;">🔍 Search</button>
+        </div>
+        <div id="sales-stock-body"></div>
+      </div>
+
+      <!-- ── Direct Sales ── -->
+      <div id="sales-section-direct-sales" class="sales-section">
+        <div class="sales-section-header">
+          <h2>🤝 Direct Sales</h2>
+          <p style="font-size:0.8rem;color:var(--muted);margin:0;">Log offline / cash / event sales</p>
+        </div>
+        <div class="ds-form">
+          <div style="font-size:0.8rem;font-weight:700;color:#38BDB2;margin-bottom:0.8rem;text-transform:uppercase;letter-spacing:0.05em;">New Sale Entry</div>
+          <div id="ds-form-error" style="display:none;background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.3);color:#fca5a5;border-radius:7px;padding:0.6rem 0.8rem;font-size:0.8rem;margin-bottom:0.7rem;"></div>
+          <div id="ds-form-success" style="display:none;background:rgba(74,222,128,0.1);border:1px solid rgba(74,222,128,0.3);color:#86efac;border-radius:7px;padding:0.6rem 0.8rem;font-size:0.8rem;margin-bottom:0.7rem;"></div>
+          <div class="ds-form-row">
+            <div class="ds-field" style="flex:2;">
+              <label class="ds-label">Book Title *</label>
+              <input id="ds-book" type="text" class="ds-input" placeholder="Full book title" />
+            </div>
+            <div class="ds-field">
+              <label class="ds-label">Qty *</label>
+              <input id="ds-qty" type="number" class="ds-input" placeholder="1" min="1" value="1" />
+            </div>
+            <div class="ds-field">
+              <label class="ds-label">Amount (₹) *</label>
+              <input id="ds-amount" type="number" class="ds-input" placeholder="299" min="0" />
+            </div>
+          </div>
+          <div class="ds-form-row">
+            <div class="ds-field">
+              <label class="ds-label">Sale Date *</label>
+              <input id="ds-date" type="date" class="ds-input" />
+            </div>
+            <div class="ds-field">
+              <label class="ds-label">Payment</label>
+              <select id="ds-payment" class="ds-select">
+                <option value="paid">Paid</option>
+                <option value="cash">Cash</option>
+                <option value="upi">UPI</option>
+                <option value="pending">Pending</option>
+              </select>
+            </div>
+            <div class="ds-field">
+              <label class="ds-label">Order # (optional)</label>
+              <input id="ds-order" type="text" class="ds-input" placeholder="e.g. INV-001" />
+            </div>
+          </div>
+          <div class="ds-form-row">
+            <div class="ds-field" style="flex:2;">
+              <label class="ds-label">Notes</label>
+              <input id="ds-notes" type="text" class="ds-input" placeholder="Event name, customer name, etc." />
+            </div>
+          </div>
+          <button id="ds-save-btn" onclick="salesSaveDirectSale()" class="sales-filter-btn active" style="padding:0.5rem 1.4rem;font-size:0.84rem;">
+            ➕ Add Entry
+          </button>
+        </div>
+        <div id="sales-ds-body"></div>
+      </div>
+
+    </main>
+  </div>
+
   <div id="view-admin">
     <!-- Desktop sidebar -->
     <nav id="admin-sidebar">
@@ -6118,7 +6408,7 @@
     // At any time the user is in exactly one of: guest | member | author.
     // setView() swaps the body class which drives all CSS show/hide rules.
     function setView(mode) {
-      document.body.classList.remove('guest-mode', 'member-mode', 'author-mode', 'admin-mode');
+      document.body.classList.remove('guest-mode', 'member-mode', 'author-mode', 'admin-mode', 'sales-mode');
       document.body.classList.add(mode + '-mode');
       window.scrollTo({ top: 0, behavior: 'instant' });
     }
@@ -6331,6 +6621,315 @@
     }
 
     // ── Logout ──
+    // ══ SALES PORTAL ════════════════════════════════════════════════════════
+    var _salesSession = null;
+
+    (function() {
+      const s = sessionStorage.getItem('yfb_sales_session');
+      if (s) try { _salesSession = JSON.parse(s); } catch(e) {}
+      if (_salesSession) _applySalesSession();
+    })();
+
+    function _applySalesSession() {
+      const chip = document.getElementById('nav-sales-chip');
+      if (chip) chip.textContent = '📊 ' + (_salesSession.name || 'Sales');
+    }
+
+    function showSalesLogin() {
+      document.getElementById('sales-login-panel').classList.add('open');
+      document.getElementById('sales-email').value    = '';
+      document.getElementById('sales-password').value = '';
+      document.getElementById('sales-login-error').textContent = '';
+      document.getElementById('sales-login-btn').textContent   = 'Sign In';
+      document.getElementById('sales-login-btn').disabled      = false;
+      setTimeout(() => document.getElementById('sales-email').focus(), 100);
+    }
+    function hideSalesLogin() {
+      document.getElementById('sales-login-panel').classList.remove('open');
+    }
+
+    async function salesLoginSubmit() {
+      const email    = document.getElementById('sales-email').value.trim();
+      const password = document.getElementById('sales-password').value;
+      const errEl    = document.getElementById('sales-login-error');
+      const btn      = document.getElementById('sales-login-btn');
+      errEl.textContent = '';
+      if (!email || !password) { errEl.textContent = 'Please enter email and password.'; return; }
+      btn.disabled = true; btn.textContent = 'Signing in…';
+      try {
+        const res  = await fetch('/.netlify/functions/sales-login', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+        if (!data.success) {
+          errEl.textContent = data.error || 'Invalid credentials.';
+          btn.disabled = false; btn.textContent = 'Sign In';
+          return;
+        }
+        _salesSession = { email: data.email, name: data.name, salesKey: data.salesKey };
+        sessionStorage.setItem('yfb_sales_session', JSON.stringify(_salesSession));
+        _applySalesSession();
+        hideSalesLogin();
+        setView('sales');
+        salesNav('orders', document.querySelector('#sales-sidebar [data-section="orders"]'));
+      } catch(e) {
+        errEl.textContent = 'Connection error. Please try again.';
+        btn.disabled = false; btn.textContent = 'Sign In';
+      }
+    }
+
+    function salesLogout() {
+      _salesSession = null;
+      sessionStorage.removeItem('yfb_sales_session');
+      setView('guest');
+    }
+
+    function salesPost(action, extra = {}) {
+      return fetch('/.netlify/functions/sales-data', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ salesEmail: _salesSession.email, salesKey: _salesSession.salesKey, action, ...extra })
+      }).then(r => r.json());
+    }
+
+    function salesNav(section, el) {
+      document.querySelectorAll('.sales-section').forEach(s => s.classList.remove('active'));
+      document.querySelectorAll('.sales-nav-item').forEach(b => b.classList.remove('active'));
+      const sec = document.getElementById('sales-section-' + section);
+      if (sec) sec.classList.add('active');
+      document.querySelectorAll(`[data-section="${section}"]`).forEach(b => b.classList.add('active'));
+      if (section === 'orders')       salesLoadOrders('any');
+      if (section === 'trending')     salesLoadTrending(7);
+      if (section === 'requests')     salesLoadRequests();
+      if (section === 'direct-sales') { salesLoadDirectSales(); document.getElementById('ds-date').value = new Date().toISOString().slice(0,10); }
+    }
+
+    // ── Orders ──────────────────────────────────────────────────────────────
+    var _salesOrdersStatus = 'any';
+    async function salesLoadOrders(status) {
+      _salesOrdersStatus = status || _salesOrdersStatus;
+      const bodyEl = document.getElementById('sales-orders-body');
+      const statsEl = document.getElementById('sales-orders-stats');
+      bodyEl.innerHTML = '<div style="color:var(--muted);font-size:0.84rem;padding:1rem 0;">⏳ Loading orders…</div>';
+      try {
+        const data = await salesPost('orders', { status: _salesOrdersStatus, limit: 100 });
+        if (!data.success) throw new Error(data.error);
+        const orders = data.orders || [];
+        const total  = orders.reduce((s, o) => s + parseFloat(o.total_price || 0), 0);
+        statsEl.innerHTML = `
+          <div class="sales-stat-card"><div class="ssc-num">${orders.length}</div><div class="ssc-lbl">Orders</div></div>
+          <div class="sales-stat-card"><div class="ssc-num">₹${total.toLocaleString('en-IN',{maximumFractionDigits:0})}</div><div class="ssc-lbl">Total Value</div></div>
+          <div class="sales-stat-card"><div class="ssc-num">${orders.filter(o=>o.fulfillment_status==='unfulfilled').length}</div><div class="ssc-lbl">Unfulfilled</div></div>
+          <div class="sales-stat-card"><div class="ssc-num">${orders.filter(o=>o.financial_status==='paid').length}</div><div class="ssc-lbl">Paid</div></div>`;
+        if (!orders.length) { bodyEl.innerHTML = '<div style="color:var(--muted);font-size:0.84rem;padding:1rem 0;">No orders found.</div>'; return; }
+        bodyEl.innerHTML = `
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead><tr><th>Order</th><th>Customer</th><th>City</th><th>Items</th><th>Amount</th><th>Payment</th><th>Fulfillment</th><th>Date</th></tr></thead>
+              <tbody>${orders.map(o => `
+                <tr>
+                  <td style="font-weight:700;color:#38BDB2;">${o.name}</td>
+                  <td>${o.customer}</td>
+                  <td style="color:var(--muted);font-size:0.75rem;">${o.city || '—'}</td>
+                  <td style="font-size:0.75rem;color:var(--muted);">${o.items.map(i=>`${i.title} ×${i.quantity}`).join('<br>')}</td>
+                  <td style="color:var(--gold);font-weight:700;">₹${parseFloat(o.total_price).toLocaleString('en-IN')}</td>
+                  <td><span class="admin-badge badge-${o.financial_status==='paid'?'listed':'review'}">${o.financial_status}</span></td>
+                  <td><span class="admin-badge badge-${o.fulfillment_status==='fulfilled'?'listed':'review'}">${o.fulfillment_status}</span></td>
+                  <td style="color:var(--muted);font-size:0.75rem;white-space:nowrap;">${new Date(o.created_at).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</td>
+                </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>`;
+      } catch(e) {
+        bodyEl.innerHTML = `<div style="color:#f87171;font-size:0.84rem;">Error: ${e.message}</div>`;
+      }
+    }
+    function salesFilterOrders(status, el) {
+      document.querySelectorAll('#sales-section-orders .sales-filter-btn').forEach(b => b.classList.remove('active'));
+      if (el) el.classList.add('active');
+      salesLoadOrders(status);
+    }
+
+    // ── Trending ────────────────────────────────────────────────────────────
+    var _salesTrendingDays = 7;
+    async function salesLoadTrending(days) {
+      _salesTrendingDays = days || _salesTrendingDays;
+      const bodyEl  = document.getElementById('sales-trending-body');
+      const statsEl = document.getElementById('sales-trending-stats');
+      const slowEl  = document.getElementById('sales-slow-movers');
+      bodyEl.innerHTML = '<div style="color:var(--muted);font-size:0.84rem;padding:1rem 0;">⏳ Analysing sales data…</div>';
+      slowEl.innerHTML = '';
+      try {
+        const data = await salesPost('trending', { days: _salesTrendingDays });
+        if (!data.success) throw new Error(data.error);
+        const books = data.topBooks || [];
+        statsEl.innerHTML = `
+          <div class="sales-stat-card"><div class="ssc-num">${data.orderCount}</div><div class="ssc-lbl">Orders in period</div></div>
+          <div class="sales-stat-card"><div class="ssc-num">${books.length}</div><div class="ssc-lbl">Active titles</div></div>
+          <div class="sales-stat-card"><div class="ssc-num">${books[0]?.units || 0}</div><div class="ssc-lbl">Top book units</div></div>`;
+        if (!books.length) { bodyEl.innerHTML = '<div style="color:var(--muted);font-size:0.84rem;">No sales data for this period.</div>'; return; }
+        bodyEl.innerHTML = `
+          <div style="font-size:0.72rem;font-weight:700;color:#38BDB2;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:0.6rem;">🔥 Top Selling Books</div>
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead><tr><th>#</th><th>Title</th><th>Units Sold</th><th>Revenue</th></tr></thead>
+              <tbody>${books.map((b,i) => `
+                <tr>
+                  <td class="sales-rank">${i===0?'🥇':i===1?'🥈':i===2?'🥉':i+1}</td>
+                  <td class="sales-book-title">${b.title}</td>
+                  <td class="sales-units">${b.units}</td>
+                  <td class="sales-revenue">₹${parseFloat(b.revenue).toLocaleString('en-IN')}</td>
+                </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>`;
+        if (data.slowMovers?.length) {
+          slowEl.innerHTML = `
+            <div style="font-size:0.72rem;font-weight:700;color:#f87171;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:0.6rem;">🐌 Slow Movers (0 sales this period)</div>
+            <div style="display:flex;flex-wrap:wrap;gap:0.4rem;">
+              ${data.slowMovers.map(b=>`<span style="background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.2);border-radius:20px;padding:0.25rem 0.7rem;font-size:0.74rem;color:#f87171;">${b.title}</span>`).join('')}
+            </div>`;
+        }
+      } catch(e) {
+        bodyEl.innerHTML = `<div style="color:#f87171;font-size:0.84rem;">Error: ${e.message}</div>`;
+      }
+    }
+    function salesFilterTrending(days, el) {
+      document.querySelectorAll('#sales-section-trending .sales-filter-btn').forEach(b => b.classList.remove('active'));
+      if (el) el.classList.add('active');
+      salesLoadTrending(days);
+    }
+
+    // ── Book Requests ────────────────────────────────────────────────────────
+    async function salesLoadRequests() {
+      const bodyEl = document.getElementById('sales-requests-body');
+      bodyEl.innerHTML = '<div style="color:var(--muted);font-size:0.84rem;padding:1rem 0;">⏳ Loading…</div>';
+      try {
+        const data = await salesPost('book-requests');
+        if (!data.success) throw new Error(data.error);
+        const reqs = data.requests || [];
+        if (!reqs.length) { bodyEl.innerHTML = '<div style="color:var(--muted);font-size:0.84rem;">No book requests yet.</div>'; return; }
+        bodyEl.innerHTML = `
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead><tr><th>Book / Author</th><th>Requested By</th><th>Notes</th><th>Date</th></tr></thead>
+              <tbody>${reqs.map(r => `
+                <tr>
+                  <td><div style="font-weight:700;color:var(--text);">${r.book_title||r.title||'—'}</div><div style="font-size:0.72rem;color:var(--muted);">${r.author_name||r.author||''}</div></td>
+                  <td style="font-size:0.78rem;">${r.requested_by||r.email||'—'}</td>
+                  <td style="font-size:0.75rem;color:var(--muted);">${r.notes||'—'}</td>
+                  <td style="font-size:0.75rem;color:var(--muted);white-space:nowrap;">${r.created_at?new Date(r.created_at).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}):'—'}</td>
+                </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>`;
+      } catch(e) {
+        bodyEl.innerHTML = `<div style="color:#f87171;font-size:0.84rem;">Error: ${e.message}</div>`;
+      }
+    }
+
+    // ── Stock Check ──────────────────────────────────────────────────────────
+    async function salesStockSearch() {
+      const query  = document.getElementById('sales-stock-query').value.trim();
+      const bodyEl = document.getElementById('sales-stock-body');
+      if (!query) return;
+      bodyEl.innerHTML = '<div style="color:var(--muted);font-size:0.84rem;padding:0.5rem 0;">⏳ Searching…</div>';
+      try {
+        const data = await salesPost('stock-check', { query });
+        if (!data.success) throw new Error(data.error);
+        const products = data.products || [];
+        if (!products.length) { bodyEl.innerHTML = '<div style="color:var(--muted);font-size:0.84rem;">No products found.</div>'; return; }
+        bodyEl.innerHTML = products.map(p => {
+          const stockClass = p.stock > 5 ? 'in-stock' : p.stock > 0 ? 'low-stock' : 'no-stock';
+          const stockLabel = p.stock > 5 ? `${p.stock} in stock` : p.stock > 0 ? `Only ${p.stock} left` : 'Out of stock';
+          return `
+            <div class="stock-card">
+              <img src="${p.image||''}" alt="" onerror="this.style.display='none'" />
+              <div class="stock-card-info">
+                <div class="stock-card-title">${p.title}</div>
+                <div style="font-size:0.78rem;color:var(--muted);margin-bottom:0.35rem;">
+                  ${p.barcode ? `ISBN: ${p.barcode} &nbsp;·&nbsp; ` : ''}
+                  MRP: ₹${p.compareAt||p.price||'—'} &nbsp;·&nbsp; Sell: ₹${p.price||'—'}
+                </div>
+                <span class="stock-badge ${stockClass}">${p.tracked ? stockLabel : 'Not tracked'}</span>
+                <span style="margin-left:0.5rem;font-size:0.7rem;color:var(--muted);text-transform:uppercase;">${p.status}</span>
+              </div>
+            </div>`;
+        }).join('');
+      } catch(e) {
+        bodyEl.innerHTML = `<div style="color:#f87171;font-size:0.84rem;">Error: ${e.message}</div>`;
+      }
+    }
+
+    // ── Direct Sales ─────────────────────────────────────────────────────────
+    async function salesLoadDirectSales() {
+      const bodyEl = document.getElementById('sales-ds-body');
+      bodyEl.innerHTML = '<div style="color:var(--muted);font-size:0.84rem;padding:0.5rem 0;">⏳ Loading…</div>';
+      try {
+        const data = await salesPost('direct-sales', { action: 'list' });
+        if (!data.success) throw new Error(data.error);
+        const sales = data.sales || [];
+        if (!sales.length) { bodyEl.innerHTML = '<div style="color:var(--muted);font-size:0.84rem;">No direct sales recorded yet.</div>'; return; }
+        const total = sales.reduce((s, r) => s + parseFloat(r.amount || 0), 0);
+        bodyEl.innerHTML = `
+          <div class="sales-stats" style="margin-bottom:0.8rem;">
+            <div class="sales-stat-card"><div class="ssc-num">${sales.length}</div><div class="ssc-lbl">Total Entries</div></div>
+            <div class="sales-stat-card"><div class="ssc-num">₹${total.toLocaleString('en-IN',{maximumFractionDigits:0})}</div><div class="ssc-lbl">Total Amount</div></div>
+          </div>
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead><tr><th>Book</th><th>Qty</th><th>Amount</th><th>Payment</th><th>Date</th><th>Recorded By</th><th>Notes</th></tr></thead>
+              <tbody>${sales.map(s => `
+                <tr>
+                  <td style="font-weight:600;color:var(--text);">${s.book_title}</td>
+                  <td style="text-align:center;">${s.quantity}</td>
+                  <td style="color:var(--gold);font-weight:700;">₹${parseFloat(s.amount).toLocaleString('en-IN')}</td>
+                  <td><span class="admin-badge badge-listed">${s.payment_status||'paid'}</span></td>
+                  <td style="font-size:0.75rem;color:var(--muted);white-space:nowrap;">${s.sale_date?new Date(s.sale_date).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}):'—'}</td>
+                  <td style="font-size:0.75rem;color:var(--muted);">${s.recorded_by||'—'}</td>
+                  <td style="font-size:0.75rem;color:var(--muted);">${s.notes||'—'}</td>
+                </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>`;
+      } catch(e) {
+        bodyEl.innerHTML = `<div style="color:#f87171;font-size:0.84rem;">Error: ${e.message}</div>`;
+      }
+    }
+
+    async function salesSaveDirectSale() {
+      const errEl  = document.getElementById('ds-form-error');
+      const okEl   = document.getElementById('ds-form-success');
+      const btn    = document.getElementById('ds-save-btn');
+      errEl.style.display = 'none'; okEl.style.display = 'none';
+      const book    = document.getElementById('ds-book').value.trim();
+      const qty     = document.getElementById('ds-qty').value.trim();
+      const amount  = document.getElementById('ds-amount').value.trim();
+      const date    = document.getElementById('ds-date').value;
+      const payment = document.getElementById('ds-payment').value;
+      const order   = document.getElementById('ds-order').value.trim();
+      const notes   = document.getElementById('ds-notes').value.trim();
+      if (!book || !qty || !amount || !date) {
+        errEl.textContent = 'Please fill in Book Title, Qty, Amount and Date.';
+        errEl.style.display = 'block'; return;
+      }
+      btn.disabled = true; btn.textContent = 'Saving…';
+      try {
+        const data = await salesPost('direct-sales', { action: 'add', book_title: book, quantity: qty, amount, sale_date: date, payment_status: payment, order_number: order, notes });
+        if (!data.success) throw new Error(data.error);
+        okEl.textContent = `✅ Sale recorded for "${book}"`;
+        okEl.style.display = 'block';
+        ['ds-book','ds-qty','ds-amount','ds-order','ds-notes'].forEach(id => { const el = document.getElementById(id); if(el) el.value = id==='ds-qty'?'1':''; });
+        salesLoadDirectSales();
+      } catch(e) {
+        errEl.textContent = 'Error: ' + e.message;
+        errEl.style.display = 'block';
+      } finally {
+        btn.disabled = false; btn.textContent = '➕ Add Entry';
+      }
+    }
+    // ════════════════════════════════════════════════════════════════════════
+
     function adminLogout() {
       _adminSession    = null;
       _adminSubsCache  = null;

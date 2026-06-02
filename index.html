@@ -242,6 +242,18 @@
     .nav-stat-sep { width: 1px; height: 22px; background: rgba(255,255,255,0.1); flex-shrink: 0; }
 
     /* My Account button — teal accent */
+    .nav-offers-btn { position: relative; }
+    .nav-offers-dot {
+      position: absolute; top: 4px; right: 4px;
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--gold); border: 1.5px solid var(--navy);
+      animation: offers-pulse 1.8s ease-in-out infinite;
+    }
+    .nav-offers-dot.hidden { display: none; }
+    @keyframes offers-pulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.45); opacity: 0.6; }
+    }
     .nav-icon-btn--account {
       border-color: rgba(56,189,178,0.45);
       background: rgba(56,189,178,0.07);
@@ -2928,6 +2940,56 @@
     .admin-section { display: none; }
     .admin-section.active { display: block; }
 
+    /* ── Add Book form ── */
+    .ab-form-wrap { max-width: 860px; }
+    .ab-section-label {
+      font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em;
+      color: var(--gold); margin: 1.4rem 0 0.7rem; padding-bottom: 0.4rem;
+      border-bottom: 1px solid rgba(201,146,42,0.2);
+    }
+    .ab-row { display: flex; gap: 1rem; flex-wrap: wrap; }
+    .ab-row .ab-field { flex: 1; min-width: 200px; }
+    .ab-field { margin-bottom: 0.9rem; }
+    .ab-label { display: block; font-size: 0.75rem; font-weight: 600; color: var(--muted); margin-bottom: 0.3rem; }
+    .ab-input, .ab-textarea {
+      width: 100%; background: #1C2035; border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 8px; color: var(--cream); font-size: 0.84rem; padding: 0.55rem 0.75rem;
+      box-sizing: border-box; transition: border-color 0.15s;
+    }
+    .ab-input:focus, .ab-textarea:focus { outline: none; border-color: var(--gold); }
+    .ab-input option { background: #1C2035; color: var(--cream); }
+    .ab-textarea { min-height: 90px; resize: vertical; }
+    .ab-hint { font-size: 0.7rem; color: var(--muted); margin-top: 0.25rem; }
+    .ab-cover-drop {
+      border: 2px dashed rgba(201,146,42,0.3); border-radius: 10px;
+      padding: 1.2rem; cursor: pointer; transition: border-color 0.2s;
+      font-size: 0.82rem; color: var(--muted); text-align: center;
+    }
+    .ab-cover-drop:hover { border-color: var(--gold); }
+    .ab-tags-grid { display: flex; flex-direction: column; gap: 1rem; margin-bottom: 1.2rem; }
+    .ab-tag-group-label {
+      font-size: 0.72rem; font-weight: 700; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 0.4rem;
+    }
+    .ab-tag-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+    .ab-tag-chip {
+      padding: 0.28rem 0.7rem; border-radius: 20px; font-size: 0.72rem; font-weight: 600;
+      border: 1px solid rgba(255,255,255,0.15); background: none; color: var(--muted);
+      cursor: pointer; transition: all 0.15s; white-space: nowrap;
+    }
+    .ab-tag-chip:hover   { border-color: var(--gold); color: var(--gold); }
+    .ab-tag-chip.active  { background: var(--gold); color: #1a1a2e; border-color: var(--gold); }
+    .ab-msg { padding: 0.75rem 1rem; border-radius: 8px; font-size: 0.82rem; margin-bottom: 1rem; }
+    .ab-msg-error   { background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.3); color: #fca5a5; }
+    .ab-msg-success { background: rgba(74,222,128,0.1); border: 1px solid rgba(74,222,128,0.3); color: #86efac; }
+    .ab-submit-btn {
+      margin-top: 0.5rem; padding: 0.75rem 2rem; font-size: 0.9rem; font-weight: 700;
+      background: linear-gradient(135deg, var(--gold), #F5B800); color: #1a1a2e;
+      border: none; border-radius: 50px; cursor: pointer; transition: all 0.2s;
+    }
+    .ab-submit-btn:hover    { filter: brightness(1.08); transform: translateY(-1px); }
+    .ab-submit-btn:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+
     /* Admin topbar within section */
     .admin-section-header {
       display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.8rem;
@@ -3457,6 +3519,13 @@
     </button>
 
     <div class="nav-cta" style="margin-left:auto;">
+
+      <!-- ── Always-visible: Today's Offers ── -->
+      <button id="nav-offers-btn" class="nav-icon-btn nav-offers-btn" onclick="openTodaysOffers()" title="Today's Offers">
+        <span class="ni-icon">🏷️</span>
+        <span class="ni-label">Offers</span>
+        <span id="nav-offers-dot" class="nav-offers-dot"></span>
+      </button>
 
       <!-- ── GUEST actions (hidden in member mode via CSS) ── -->
       <div id="nav-guest-actions" style="display:flex;align-items:center;gap:0.6rem;">
@@ -4488,6 +4557,9 @@
       <button class="admin-nav-item" data-section="submissions" onclick="adminNav('submissions',this)">
         <span class="admin-nav-icon">📋</span> Submissions
       </button>
+      <button class="admin-nav-item" data-section="add-book" onclick="adminNav('add-book',this)">
+        <span class="admin-nav-icon">➕</span> Add Book
+      </button>
       <button class="admin-nav-item" data-section="book-requests" onclick="adminNav('book-requests',this)">
         <span class="admin-nav-icon">📬</span> Book Requests
       </button>
@@ -4526,6 +4598,166 @@
         </div>
         <div id="admin-submissions-stats" class="admin-stats"></div>
         <div id="admin-submissions-body"></div>
+      </div>
+
+      <!-- ── Add Book ── -->
+      <div id="admin-section-add-book" class="admin-section">
+        <div class="admin-section-header">
+          <h2>➕ Add Book to Shopify</h2>
+          <p style="font-size:0.8rem;color:var(--muted);margin:0;">Books added here are published to Shopify immediately with no quota limit.</p>
+        </div>
+
+        <div class="ab-form-wrap">
+          <div id="ab-error"   class="ab-msg ab-msg-error"   style="display:none;"></div>
+          <div id="ab-success" class="ab-msg ab-msg-success" style="display:none;"></div>
+
+          <!-- ── Book Info ── -->
+          <div class="ab-section-label">Book Information</div>
+          <div class="ab-row">
+            <div class="ab-field">
+              <label class="ab-label">Book Title *</label>
+              <input id="ab-book" type="text" class="ab-input" placeholder="Full title of the book" />
+            </div>
+            <div class="ab-field">
+              <label class="ab-label">Author Name *</label>
+              <input id="ab-author" type="text" class="ab-input" placeholder="Full name of the author" />
+            </div>
+          </div>
+
+          <div class="ab-row">
+            <div class="ab-field">
+              <label class="ab-label">Publisher *</label>
+              <select id="ab-publisher" class="ab-input" onchange="abToggleOtherPublisher(this.value)">
+                <option value="">Select a publisher</option>
+                <option>Aura Tales</option><option>Bibliophilic Insanities</option><option>Book Carry</option>
+                <option>Chintha Publishers</option><option>Current Books</option><option>DC Books</option>
+                <option>Don Books</option><option>Dream Bookbindery</option><option>EB Books</option>
+                <option>Green Books</option><option>H&amp;C Publishing House</option><option>Insight Publica</option>
+                <option>Islamic Publishing House</option><option>Kairali Books</option>
+                <option>Kerala Books and Publications Society (KBPS)</option><option>Kerala Sahitya Akademi</option>
+                <option>Lipi Publications</option><option>Litmus</option><option>Logos Books</option>
+                <option>Maithri Books</option><option>Mankind Literature</option><option>Manorama Books</option>
+                <option>Mathrubhumi Books</option><option>National Book Stall (NBS)</option>
+                <option>Olive Publications</option><option>Poorna Publications</option><option>Pravada Books</option>
+                <option>Sahitya Pravarthaka Co-operative Society</option><option>Saikatham Books</option>
+                <option>Story Slate</option><option>Vidyarthi Mithram</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div class="ab-field" id="ab-publisher-other-wrap" style="display:none;">
+              <label class="ab-label">Publisher Name *</label>
+              <input id="ab-publisher-other" type="text" class="ab-input" placeholder="Enter publisher name" />
+            </div>
+            <div class="ab-field">
+              <label class="ab-label">Genre *</label>
+              <select id="ab-genre" class="ab-input">
+                <option value="">Select a genre</option>
+                <option>Fiction</option><option>Non-Fiction</option><option>Romance</option><option>Mystery</option>
+                <option>Thriller</option><option>Fantasy</option><option>Science Fiction</option>
+                <option>Historical Fiction</option><option>Horror</option><option>Adventure</option>
+                <option>Biography</option><option>Autobiography</option><option>Memoir</option>
+                <option>Self-Help</option><option>Poetry</option><option>Drama</option>
+                <option>Children's Literature</option><option>Young Adult (YA)</option><option>Crime</option>
+                <option>Suspense</option><option>Spiritual / Religious</option><option>Philosophy</option>
+                <option>Travel</option><option>Humor / Comedy</option><option>Business / Finance</option>
+                <option>Health &amp; Wellness</option><option>Cookbooks</option>
+                <option>Graphic Novels / Comics</option><option>Classic Literature</option>
+                <option>Literary Fiction</option><option>Short Stories</option><option>Novel</option>
+                <option>Tantric</option><option>Translations</option><option>Socio-Political</option>
+                <option>Travelogues</option><option>Thriller &amp; Crime</option><option>Anthologies</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- ── Pricing ── -->
+          <div class="ab-section-label">Pricing</div>
+          <div class="ab-row">
+            <div class="ab-field">
+              <label class="ab-label">MRP (₹) *</label>
+              <input id="ab-mrp" type="number" class="ab-input" placeholder="e.g. 299" min="0" />
+              <div class="ab-hint">Maximum retail price</div>
+            </div>
+            <div class="ab-field">
+              <label class="ab-label">Sale Price (₹)</label>
+              <input id="ab-sale" type="number" class="ab-input" placeholder="Leave blank if no discount" min="0" />
+              <div class="ab-hint">Optional — leave blank to sell at MRP</div>
+            </div>
+          </div>
+
+          <!-- ── Description & Cover ── -->
+          <div class="ab-section-label">Description &amp; Cover</div>
+          <div class="ab-field">
+            <label class="ab-label">Short Description</label>
+            <textarea id="ab-desc" class="ab-textarea" placeholder="Brief description of the book (max 500 characters)…" maxlength="500" oninput="document.getElementById('ab-char-count').textContent=(this.value.length)+' / 500'"></textarea>
+            <div class="ab-hint" id="ab-char-count">0 / 500</div>
+          </div>
+          <div class="ab-field">
+            <label class="ab-label">Cover Image</label>
+            <div class="ab-cover-drop" id="ab-cover-drop" onclick="document.getElementById('ab-cover-file').click()" ondragover="event.preventDefault()" ondrop="abHandleDrop(event)">
+              <input type="file" id="ab-cover-file" accept="image/jpeg,image/png,image/webp" style="display:none;" onchange="abHandleCover(event)" />
+              <div id="ab-cover-placeholder">🖼️ <strong>Click to upload</strong> or drag &amp; drop &nbsp;·&nbsp; JPG / PNG / WEBP · Max 2 MB</div>
+              <div id="ab-cover-preview" style="display:none;align-items:center;gap:0.75rem;">
+                <img id="ab-cover-thumb" src="" alt="" style="width:56px;height:80px;object-fit:cover;border-radius:4px;" />
+                <div>
+                  <div id="ab-cover-name" style="font-size:0.8rem;color:var(--cream);"></div>
+                  <div id="ab-cover-size" style="font-size:0.72rem;color:var(--muted);"></div>
+                  <button onclick="abRemoveCover(event)" style="margin-top:0.35rem;background:none;border:1px solid rgba(255,255,255,0.2);color:var(--muted);border-radius:4px;padding:0.15rem 0.5rem;font-size:0.72rem;cursor:pointer;">✕ Remove</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── Additional Details ── -->
+          <div class="ab-section-label">Additional Details</div>
+          <div class="ab-row">
+            <div class="ab-field">
+              <label class="ab-label">Barcode / ISBN *</label>
+              <input id="ab-barcode" type="text" class="ab-input" placeholder="13-digit barcode" />
+            </div>
+            <div class="ab-field">
+              <label class="ab-label">Phone Number</label>
+              <input id="ab-phone" type="tel" class="ab-input" placeholder="+91 XXXXX XXXXX" />
+            </div>
+          </div>
+
+          <!-- ── Shopify Category Metafields ── -->
+          <div class="ab-section-label">Category Metafields <span style="font-size:0.72rem;color:var(--muted);font-weight:400;">— populated directly on the Shopify product</span></div>
+          <div id="ab-metafields-loading" style="font-size:0.78rem;color:var(--muted);">⏳ Loading options…</div>
+          <div id="ab-metafields-wrap" style="display:none;">
+            <div class="ab-row">
+              <div class="ab-field">
+                <label class="ab-label">Genre</label>
+                <select id="ab-mf-genre" class="ab-input" multiple size="5"></select>
+                <div class="ab-hint">Hold Ctrl / Cmd to select multiple</div>
+              </div>
+              <div class="ab-field">
+                <label class="ab-label">Book Cover Type</label>
+                <select id="ab-mf-cover-type" class="ab-input" multiple size="5"></select>
+                <div class="ab-hint">Hold Ctrl / Cmd to select multiple</div>
+              </div>
+            </div>
+            <div class="ab-row">
+              <div class="ab-field">
+                <label class="ab-label">Language Version</label>
+                <select id="ab-mf-language" class="ab-input" multiple size="5"></select>
+                <div class="ab-hint">Hold Ctrl / Cmd to select multiple</div>
+              </div>
+              <div class="ab-field">
+                <label class="ab-label">Target Audience</label>
+                <select id="ab-mf-audience" class="ab-input" multiple size="5"></select>
+                <div class="ab-hint">Hold Ctrl / Cmd to select multiple</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── Tags ── -->
+          <div class="ab-section-label">Shopify Tags <span style="font-size:0.72rem;color:var(--muted);font-weight:400;">— select all that apply</span></div>
+          <div id="ab-tags-grid" class="ab-tags-grid"></div>
+
+          <button id="ab-submit-btn" class="ab-submit-btn" onclick="adminSubmitBook()">
+            🚀 Publish to Shopify
+          </button>
+        </div>
       </div>
 
       <!-- ── Authors ── -->
@@ -6093,6 +6325,178 @@
     }
 
     // ── Navigation ──
+    // ══ Add Book (Admin) ══════════════════════════════════════════════════════
+    var _abCoverBase64 = null;
+
+    async function abLoadMetafields() {
+      const loadEl = document.getElementById('ab-metafields-loading');
+      const wrapEl = document.getElementById('ab-metafields-wrap');
+      if (wrapEl.dataset.loaded) return;
+      try {
+        const res  = await fetch('/.netlify/functions/admin-metaobject-options', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ adminEmail: _adminSession.email, adminKey: _adminSession.adminKey })
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error || 'Failed to load');
+
+        function populate(selectId, items) {
+          const sel = document.getElementById(selectId);
+          sel.innerHTML = items.map(item =>
+            `<option value="${item.id}">${item.label}</option>`
+          ).join('');
+        }
+        populate('ab-mf-genre',      data.genre);
+        populate('ab-mf-cover-type', data.bookCoverType);
+        populate('ab-mf-language',   data.languageVersion);
+        populate('ab-mf-audience',   data.targetAudience);
+
+        loadEl.style.display  = 'none';
+        wrapEl.style.display  = '';
+        wrapEl.dataset.loaded = '1';
+      } catch(e) {
+        loadEl.textContent = '⚠️ Could not load metafield options: ' + e.message;
+      }
+    }
+
+    function abGetSelectedGids(selectId) {
+      return Array.from(document.getElementById(selectId).selectedOptions).map(o => o.value);
+    }
+
+    function abBuildTagGrid() {
+      const grid = document.getElementById('ab-tags-grid');
+      if (!grid || grid.dataset.built) return;
+      grid.innerHTML = SHOPIFY_TAG_GROUPS.map(group => `
+        <div>
+          <div class="ab-tag-group-label">${group.label}</div>
+          <div class="ab-tag-chips">
+            ${group.tags.map(tag => `<button type="button" class="ab-tag-chip" data-tag="${tag}" onclick="this.classList.toggle('active')">${tag}</button>`).join('')}
+          </div>
+        </div>`).join('');
+      grid.dataset.built = '1';
+    }
+
+    function abToggleOtherPublisher(val) {
+      document.getElementById('ab-publisher-other-wrap').style.display = val === 'Other' ? '' : 'none';
+    }
+
+    function abHandleCover(e) {
+      const file = e.target.files[0];
+      if (file) abLoadCover(file);
+    }
+    function abHandleDrop(e) {
+      e.preventDefault();
+      const file = e.dataTransfer.files[0];
+      if (file) abLoadCover(file);
+    }
+    function abLoadCover(file) {
+      if (file.size > 2 * 1024 * 1024) {
+        alert('Cover image must be under 2 MB.');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = function(ev) {
+        _abCoverBase64 = ev.target.result;
+        document.getElementById('ab-cover-thumb').src = _abCoverBase64;
+        document.getElementById('ab-cover-name').textContent = file.name;
+        document.getElementById('ab-cover-size').textContent = (file.size / 1024).toFixed(0) + ' KB';
+        document.getElementById('ab-cover-placeholder').style.display = 'none';
+        document.getElementById('ab-cover-preview').style.display = 'flex';
+      };
+      reader.readAsDataURL(file);
+    }
+    function abRemoveCover(e) {
+      e.stopPropagation();
+      _abCoverBase64 = null;
+      document.getElementById('ab-cover-file').value = '';
+      document.getElementById('ab-cover-placeholder').style.display = '';
+      document.getElementById('ab-cover-preview').style.display = 'none';
+    }
+
+    async function adminSubmitBook() {
+      const book     = document.getElementById('ab-book').value.trim();
+      const author   = document.getElementById('ab-author').value.trim();
+      const pubSel   = document.getElementById('ab-publisher').value;
+      const pubOther = document.getElementById('ab-publisher-other').value.trim();
+      const publisher = pubSel === 'Other' ? pubOther : pubSel;
+      const genre    = document.getElementById('ab-genre').value;
+      const mrp      = document.getElementById('ab-mrp').value.trim();
+      const sale     = document.getElementById('ab-sale').value.trim();
+      const desc     = document.getElementById('ab-desc').value.trim();
+      const barcode  = document.getElementById('ab-barcode').value.trim();
+      const phone    = document.getElementById('ab-phone').value.trim();
+      const errEl    = document.getElementById('ab-error');
+      const okEl     = document.getElementById('ab-success');
+
+      errEl.style.display = 'none';
+      okEl.style.display  = 'none';
+
+      if (!book || !author || !publisher || !genre || !mrp || !barcode) {
+        errEl.textContent  = 'Please fill in all required fields (marked *).';
+        errEl.style.display = 'block';
+        errEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+
+      const tags = Array.from(document.querySelectorAll('#ab-tags-grid .ab-tag-chip.active'))
+                        .map(c => c.dataset.tag);
+
+      const btn = document.getElementById('ab-submit-btn');
+      btn.textContent = '⏳ Publishing…';
+      btn.disabled    = true;
+
+      try {
+        const res  = await fetch('/.netlify/functions/admin-submit-book', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            adminEmail: _adminSession.email,
+            adminKey:   _adminSession.adminKey,
+            book, author, publisher, genre,
+            shopifyTags: tags,
+            description: desc,
+            mrp:       parseFloat(mrp),
+            salePrice: sale ? parseFloat(sale) : null,
+            barcode, phone,
+            cover: _abCoverBase64 || null,
+            metafields: {
+              genreGids:           abGetSelectedGids('ab-mf-genre'),
+              bookCoverTypeGids:   abGetSelectedGids('ab-mf-cover-type'),
+              languageVersionGids: abGetSelectedGids('ab-mf-language'),
+              targetAudienceGids:  abGetSelectedGids('ab-mf-audience'),
+            }
+          })
+        });
+        const data = await res.json();
+
+        if (data.success || data.status === 'success') {
+          okEl.innerHTML = `✅ <strong>${book}</strong> published to Shopify successfully!`
+            + (data.shopifyId || data.shopify_Id ? ` &nbsp;Shopify ID: <code>${data.shopifyId || data.shopify_Id}</code>` : '');
+          okEl.style.display = 'block';
+          okEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          // Reset form
+          ['ab-book','ab-author','ab-publisher','ab-genre','ab-mrp','ab-sale','ab-desc','ab-barcode','ab-phone'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = '';
+          });
+          abRemoveCover({ stopPropagation: () => {} });
+          document.querySelectorAll('#ab-tags-grid .ab-tag-chip.active').forEach(c => c.classList.remove('active'));
+          document.getElementById('ab-char-count').textContent = '0 / 500';
+          document.getElementById('ab-publisher-other-wrap').style.display = 'none';
+        } else {
+          errEl.textContent  = data.message || data.error || 'Submission failed. Please try again.';
+          errEl.style.display = 'block';
+        }
+      } catch(e) {
+        errEl.textContent  = 'Something went wrong. Please try again.';
+        errEl.style.display = 'block';
+      } finally {
+        btn.textContent = '🚀 Publish to Shopify';
+        btn.disabled    = false;
+      }
+    }
+    // ═════════════════════════════════════════════════════════════════════════
+
     function adminNav(section, el) {
       document.querySelectorAll('.admin-section').forEach(s => s.classList.remove('active'));
       document.querySelectorAll('.admin-nav-item, .admin-mob-tab').forEach(b => b.classList.remove('active'));
@@ -6109,6 +6513,7 @@
       if (section === 'book-requests')   adminLoadBookReqs();
       if (section === 'signed-requests') adminLoadSignedReqs();
       if (section === 'flash')           adminLoadFlashSale();
+      if (section === 'add-book') { abBuildTagGrid(); abLoadMetafields(); }
       // direct-sales and tag sections: user initiates load via button
     }
 
@@ -9917,7 +10322,7 @@
     <div id="flash-card">
       <button id="flash-card-close" onclick="closeFlashCard()" aria-label="Close">✕</button>
       <div class="flash-top-bar"><span class="ftb-dot"></span> Trending This Week</div>
-      <div class="flash-offer-banner">🔥 LIMITED TIME · 25% DISC</div>
+      <div class="flash-offer-banner">🔥 LIMITED TIME OFFER</div>
       <div class="flash-body" id="flash-body">
         <img id="flash-cover" src="" alt="Book cover" />
         <div class="flash-info">
@@ -11173,6 +11578,17 @@
         document.getElementById('flash-card-overlay').classList.remove('active');
         sessionStorage.setItem(FLASH_SESSION_KEY, '1');
         if (_autoTimer) { clearInterval(_autoTimer); _autoTimer = null; }
+        var dot = document.getElementById('nav-offers-dot');
+        if (dot) dot.classList.remove('hidden');
+      };
+
+      window.openTodaysOffers = function() {
+        if (!_flashBooks || !_flashBooks.length) return;
+        _flashIndex = 0;
+        document.getElementById('flash-card-overlay').classList.add('active');
+        if (_flashBooks.length > 1) startAutoRotate();
+        var dot = document.getElementById('nav-offers-dot');
+        if (dot) dot.classList.add('hidden');
       };
 
       window.flashAddToCart = async function(btn) {

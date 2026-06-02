@@ -2,7 +2,7 @@ const crypto         = require('crypto');
 const SUPABASE_URL    = process.env.SUPABASE_URL;
 const SUPABASE_KEY    = process.env.SUPABASE_KEY;
 const SUPABASE_SVC_KEY = process.env.SUPABASE_SERVICE_KEY || SUPABASE_KEY;
-const SHOPIFY_DOMAIN  = process.env.SHOPIFY_DOMAIN;
+const SHOPIFY_DOMAIN  = process.env.SHOPIFY_DOMAIN || 'zgqk4e-1m.myshopify.com';
 const SHOPIFY_TOKEN   = process.env.SHOPIFY_ADMIN_TOKEN;
 const API_VERSION     = '2025-04';
 

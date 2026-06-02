@@ -5,6 +5,8 @@ const SUPABASE_SVC_KEY = process.env.SUPABASE_SERVICE_KEY || SUPABASE_KEY;
 const SHOPIFY_DOMAIN  = process.env.SHOPIFY_DOMAIN || 'zgqk4e-1m.myshopify.com';
 const SHOPIFY_TOKEN   = process.env.SHOPIFY_ADMIN_TOKEN;
 const API_VERSION     = '2025-04';
+const GQL_URL         = `https://${SHOPIFY_DOMAIN}/admin/api/${API_VERSION}/graphql.json`;
+const GQL_HEADERS     = { 'X-Shopify-Access-Token': SHOPIFY_TOKEN, 'Content-Type': 'application/json' };
 
 const cors = {
   'Access-Control-Allow-Origin':  '*',
@@ -28,6 +30,28 @@ async function verifyAdmin(email, adminKey) {
   return expected === adminKey;
 }
 
+async function shopifyGql(query, variables = {}) {
+  const res = await fetch(GQL_URL, {
+    method: 'POST', headers: GQL_HEADERS,
+    body: JSON.stringify({ query, variables })
+  });
+  return res.json();
+}
+
+// Find the "Print Books" taxonomy category GID
+async function getPrintBooksCategoryGid() {
+  const data = await shopifyGql(`{
+    taxonomy { categories(search: "Print Books", first: 5) {
+      edges { node { id name fullName } }
+    }}
+  }`);
+  const edges = data?.data?.taxonomy?.categories?.edges || [];
+  const match = edges.find(e =>
+    e.node.name === 'Print Books' || e.node.fullName?.includes('Print Books')
+  );
+  return match?.node?.id || null;
+}
+
 exports.handler = async function (event) {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: cors, body: '' };
   if (event.httpMethod !== 'POST')    return json({ success: false, error: 'Method Not Allowed' }, 405);
@@ -36,7 +60,7 @@ exports.handler = async function (event) {
     adminEmail, adminKey,
     book, author, publisher, genre, shopifyTags,
     description, mrp, salePrice, barcode, phone, cover,
-    metafields   // { genreGid, bookCoverTypeGid, languageVersionGid, targetAudienceGid }
+    metafields   // { genreGids, bookCoverTypeGids, languageVersionGids, targetAudienceGids }
   } = JSON.parse(event.body || '{}');
 
   if (!await verifyAdmin(adminEmail, adminKey)) {
@@ -53,72 +77,70 @@ exports.handler = async function (event) {
   }
 
   try {
-    // Step 1 — Send to n8n to create Shopify product, activated immediately
+    // Step 1 — Create product via n8n
     const n8nRes = await fetch(webhookUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        email: adminEmail,
-        name: 'Admin',
+        email: adminEmail, name: 'Admin',
         book, author, publisher, genre,
         shopifyTags: shopifyTags || [],
         description, mrp, salePrice: salePrice || null,
         barcode, phone, cover,
-        activate: true   // admin submissions go live immediately
+        activate: true
       })
     });
     const data = await n8nRes.json();
-
-    if (!data.success && data.status !== 'success') {
-      return json(data);
-    }
+    if (!data.success && data.status !== 'success') return json(data);
 
     const shopifyId = data.shopifyId || data.shopify_Id || null;
 
-    // Step 2 — Set category metafields on the Shopify product
-    if (shopifyId && metafields && SHOPIFY_DOMAIN && SHOPIFY_TOKEN) {
+    // Step 2 — Set category + metafields + author on the product
+    if (shopifyId && SHOPIFY_TOKEN) {
       const productGid = `gid://shopify/Product/${shopifyId}`;
+
+      // 2a — Find Print Books category GID
+      const categoryGid = await getPrintBooksCategoryGid();
+
+      // 2b — Build metafields input (no `type` — definitions already exist in Shopify)
       const mfInput = [];
+      const listVal = (gids) => JSON.stringify((gids || []).filter(Boolean));
 
-      // Helper: wrap a GID array as a JSON-encoded list for list.metaobject_reference
-      const listVal = (gids) => JSON.stringify(gids.filter(Boolean));
+      if (metafields?.genreGids?.length)
+        mfInput.push({ namespace: 'shopify', key: 'genre',            value: listVal(metafields.genreGids) });
+      if (metafields?.bookCoverTypeGids?.length)
+        mfInput.push({ namespace: 'shopify', key: 'book-cover-type',  value: listVal(metafields.bookCoverTypeGids) });
+      if (metafields?.languageVersionGids?.length)
+        mfInput.push({ namespace: 'shopify', key: 'language-version', value: listVal(metafields.languageVersionGids) });
+      if (metafields?.targetAudienceGids?.length)
+        mfInput.push({ namespace: 'shopify', key: 'target-audience',  value: listVal(metafields.targetAudienceGids) });
 
-      if (metafields.genreGids?.length)
-        mfInput.push({ namespace: 'shopify', key: 'genre',            type: 'list.metaobject_reference', value: listVal(metafields.genreGids) });
-      if (metafields.bookCoverTypeGids?.length)
-        mfInput.push({ namespace: 'shopify', key: 'book-cover-type',  type: 'list.metaobject_reference', value: listVal(metafields.bookCoverTypeGids) });
-      if (metafields.languageVersionGids?.length)
-        mfInput.push({ namespace: 'shopify', key: 'language-version', type: 'list.metaobject_reference', value: listVal(metafields.languageVersionGids) });
-      if (metafields.targetAudienceGids?.length)
-        mfInput.push({ namespace: 'shopify', key: 'target-audience',  type: 'list.metaobject_reference', value: listVal(metafields.targetAudienceGids) });
+      // Author is a plain text metafield
+      if (author)
+        mfInput.push({ namespace: 'custom', key: 'author', value: author });
 
-      if (mfInput.length) {
-        const mfRes = await fetch(
-          `https://${SHOPIFY_DOMAIN}/admin/api/${API_VERSION}/graphql.json`,
-          {
-            method:  'POST',
-            headers: { 'X-Shopify-Access-Token': SHOPIFY_TOKEN, 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              query: `
-                mutation productUpdate($input: ProductInput!) {
-                  productUpdate(input: $input) {
-                    product { id }
-                    userErrors { field message }
-                  }
-                }`,
-              variables: { input: { id: productGid, metafields: mfInput } }
-            })
-          }
-        );
-        const mfData = await mfRes.json();
-        const mfErrors = mfData?.data?.productUpdate?.userErrors || [];
-        if (mfErrors.length) {
-          console.warn('Metafield set warnings:', JSON.stringify(mfErrors));
+      // 2c — Run productUpdate with category + metafields in one call
+      const updateInput = { id: productGid };
+      if (categoryGid) updateInput.category = categoryGid;
+      if (mfInput.length) updateInput.metafields = mfInput;
+
+      if (categoryGid || mfInput.length) {
+        const updateRes = await shopifyGql(`
+          mutation productUpdate($input: ProductInput!) {
+            productUpdate(input: $input) {
+              product { id category { name } }
+              userErrors { field message }
+            }
+          }`, { input: updateInput });
+
+        const errors = updateRes?.data?.productUpdate?.userErrors || [];
+        if (errors.length) {
+          console.warn('productUpdate warnings:', JSON.stringify(errors));
         }
       }
     }
 
-    // Step 3 — Save to Supabase with status 'listed' directly
+    // Step 3 — Save to Supabase as 'listed'
     let sbDebug = {};
     if (SUPABASE_URL && SUPABASE_KEY) {
       const sbRes = await fetch(`${SUPABASE_URL}/rest/v1/submissions`, {
@@ -130,10 +152,7 @@ exports.handler = async function (event) {
           'Prefer':        'return=minimal'
         },
         body: JSON.stringify({
-          title:          book,
-          author,
-          publisher,
-          genre,
+          title: book, author, publisher, genre,
           mrp:            parseFloat(mrp),
           status:         'listed',
           submitted_date: new Date().toISOString(),
@@ -148,7 +167,7 @@ exports.handler = async function (event) {
     return json({ ...data, _sb: sbDebug });
 
   } catch (e) {
-    console.error('admin-submit-book: unexpected error:', e.message);
+    console.error('admin-submit-book error:', e.message);
     return json({ success: false, error: 'Submission failed. Please try again.' }, 500);
   }
 };

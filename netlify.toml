@@ -2,3 +2,23 @@
   command   = ""
   publish   = "."
   functions = "netlify/functions"
+
+[[redirects]]
+  from = "/admin"
+  to   = "/#admin"
+  status = 302
+
+[[redirects]]
+  from = "/sales"
+  to   = "/#sales"
+  status = 302
+
+[[redirects]]
+  from = "/author"
+  to   = "/#author"
+  status = 302
+
+[[redirects]]
+  from = "/member"
+  to   = "/#member"
+  status = 302

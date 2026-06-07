@@ -209,59 +209,33 @@ async function directSales({ action, salesEmail, ...body }) {
 // ── Metaobject options (for Add Book dropdowns) ──────────────────────────────
 
 async function getMetaobjectOptions() {
-  // Step 1 — Query taxonomy category attributes for Print Books
-  // Use categories(search:) — confirmed working from logs; 'category(id:)' singular does not exist
-  const taxData = await shopifyGql(`{
-    taxonomy {
-      categories(search: "Print Books", first: 1) {
-        edges {
-          node {
-            id name
-            attributes {
-              edges {
-                node {
-                  id name
-                  values(first: 250) {
-                    edges { node { id name } }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  }`);
+  // Metaobject definition GIDs for Print Books category metafields
+  // Confirmed from metafield definitions query (type: list.metaobject_reference)
+  const DEF_GIDS = {
+    genre:           'gid://shopify/MetaobjectDefinition/11374723376',
+    bookCoverType:   'gid://shopify/MetaobjectDefinition/11374985520',
+    languageVersion: 'gid://shopify/MetaobjectDefinition/11374952752',
+    targetAudience:  'gid://shopify/MetaobjectDefinition/11374756144',
+  };
 
-  const catNode  = taxData?.data?.taxonomy?.categories?.edges?.[0]?.node;
-  const attrEdges = catNode?.attributes?.edges || [];
-  console.log('Taxonomy attributes:', JSON.stringify(attrEdges.map(e => ({ name: e.node.name, count: e.node.values?.edges?.length }))));
-  console.log('Full taxonomy errors:', JSON.stringify(taxData?.errors));
-
-  function extractAttr(nameMatch) {
-    const edge = attrEdges.find(e => e.node.name.toLowerCase().includes(nameMatch.toLowerCase()));
-    if (!edge) return [];
-    return (edge.node.values?.edges || [])
-      .map(e => ({ id: e.node.id, label: e.node.name }))
+  async function fetchByDefGid(defGid) {
+    const typeData = await shopifyGql(`query($id: ID!) { metaobjectDefinition(id: $id) { type } }`, { id: defGid });
+    const type = typeData?.data?.metaobjectDefinition?.type;
+    if (!type) { console.warn('No type for defGid:', defGid); return []; }
+    const data = await shopifyGql(`query($type: String!) { metaobjects(type: $type, first: 250) { edges { node { id displayName handle } } } }`, { type });
+    const entries = (data?.data?.metaobjects?.edges || [])
+      .map(e => ({ id: e.node.id, label: e.node.displayName || e.node.handle }))
       .sort((a, b) => a.label.localeCompare(b.label));
+    console.log('Fetched', type, ':', entries.length, 'entries');
+    return entries;
   }
 
-  let genre          = extractAttr('genre');
-  let bookCoverType  = extractAttr('cover');
-  let languageVersion = extractAttr('language');
-  let targetAudience  = extractAttr('audience');
-
-  // Step 2 — If taxonomy attributes returned nothing, fall back to metafield definitions
-  if (!attrEdges.length) {
-    console.log('No taxonomy attributes found — checking metafield definition types for fallback');
-    const defData = await shopifyGql(`{
-      metafieldDefinitions(ownerType: PRODUCT, namespace: "shopify", first: 20) {
-        edges { node { key name type { name } validations { name value } } }
-      }
-    }`);
-    const defs = defData?.data?.metafieldDefinitions?.edges || [];
-    console.log('Metafield defs:', JSON.stringify(defs.map(e => ({ key: e.node.key, type: e.node.type?.name, validations: e.node.validations }))));
-  }
+  const [genre, bookCoverType, languageVersion, targetAudience] = await Promise.all([
+    fetchByDefGid(DEF_GIDS.genre),
+    fetchByDefGid(DEF_GIDS.bookCoverType),
+    fetchByDefGid(DEF_GIDS.languageVersion),
+    fetchByDefGid(DEF_GIDS.targetAudience),
+  ]);
 
   console.log('Options — genre:', genre.length, 'cover:', bookCoverType.length, 'language:', languageVersion.length, 'audience:', targetAudience.length);
   return json({ success: true, genre, bookCoverType, languageVersion, targetAudience });

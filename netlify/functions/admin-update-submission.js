@@ -167,7 +167,7 @@ exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: cors, body: '' };
   if (event.httpMethod !== 'POST')    return json({ success: false, error: 'Method Not Allowed' }, 405);
 
-  const { adminEmail, adminKey, submissionId, action, shopifyProductId } = JSON.parse(event.body || '{}');
+  const { adminEmail, adminKey, submissionId, action, shopifyProductId, discountPercent } = JSON.parse(event.body || '{}');
   if (!await verifyAdmin(adminEmail, adminKey)) return json({ success: false, error: 'Unauthorized' }, 401);
   if (!submissionId || !action)                 return json({ success: false, error: 'Missing submissionId or action' }, 400);
 
@@ -267,9 +267,35 @@ exports.handler = async (event) => {
       try { await setupInventory(shopifyProductId, initialStock); }
       catch (e) { console.warn('Inventory setup error:', e.message); }
 
-      // Step 2d — Uncheck tax on variant (REST)
-      try { await setupVariantDefaults(shopifyProductId); }
-      catch (e) { console.warn('Variant defaults error:', e.message); }
+      // Step 2d — Uncheck tax + optionally set sale price on variant (REST)
+      try {
+        const varRes    = await fetch(
+          `https://${SHOPIFY_DOMAIN}/admin/api/${API_VERSION}/products/${shopifyProductId}/variants.json`,
+          { headers: { 'X-Shopify-Access-Token': SHOPIFY_TOKEN } }
+        );
+        const varData   = await varRes.json();
+        const variant   = varData?.variants?.[0];
+        if (variant) {
+          const variantId  = variant.id;
+          const currentMrp = parseFloat(variant.compare_at_price || variant.price || 0);
+          const variantBody = { id: variantId, taxable: false };
+          if (discountPercent > 0 && currentMrp > 0) {
+            variantBody.price            = parseFloat((currentMrp * (1 - discountPercent / 100)).toFixed(2));
+            variantBody.compare_at_price = currentMrp;
+            console.log(`Discount ${discountPercent}% applied: ₹${currentMrp} → ₹${variantBody.price}`);
+          }
+          const taxRes  = await fetch(
+            `https://${SHOPIFY_DOMAIN}/admin/api/${API_VERSION}/variants/${variantId}.json`,
+            {
+              method:  'PUT',
+              headers: { 'X-Shopify-Access-Token': SHOPIFY_TOKEN, 'Content-Type': 'application/json' },
+              body:    JSON.stringify({ variant: variantBody })
+            }
+          );
+          const taxData = await taxRes.json();
+          console.log('Variant updated — taxable:', taxData?.variant?.taxable, 'price:', taxData?.variant?.price);
+        }
+      } catch (e) { console.warn('Variant update error:', e.message); }
 
       // Step 2c — Get all sales channel publication IDs
       const pubsRes  = await fetch(adminGqlUrl, {

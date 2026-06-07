@@ -55,30 +55,34 @@ exports.handler = async (event) => {
     // Print Books category GID — confirmed from taxonomy search logs
     const PRINT_BOOKS_GID = 'gid://shopify/TaxonomyCategory/me-1-3';
 
-    const data = await shopifyGql(`
-      query($id: ID!) {
-        taxonomy {
-          category(id: $id) {
-            id
-            name
-            attributes {
-              edges {
-                node {
-                  id
-                  name
-                  values(first: 250) {
-                    edges { node { id name } }
+    // Use categories(search:) — 'category(id:)' singular does not exist in Shopify's schema
+    const data = await shopifyGql(`{
+      taxonomy {
+        categories(search: "Print Books", first: 1) {
+          edges {
+            node {
+              id name
+              attributes {
+                edges {
+                  node {
+                    id name
+                    values(first: 250) {
+                      edges { node { id name } }
+                    }
                   }
                 }
               }
             }
           }
         }
-      }`, { id: PRINT_BOOKS_GID });
+      }
+    }`);
 
-    console.log('Taxonomy attributes:', JSON.stringify(data?.data?.taxonomy?.category?.attributes?.edges?.map(e => ({ name: e.node.name, count: e.node.values?.edges?.length }))));
+    const catNode  = data?.data?.taxonomy?.categories?.edges?.[0]?.node;
+    console.log('Taxonomy errors:', JSON.stringify(data?.errors));
+    console.log('Taxonomy attributes:', JSON.stringify(catNode?.attributes?.edges?.map(e => ({ name: e.node.name, count: e.node.values?.edges?.length }))));
 
-    const attrEdges = data?.data?.taxonomy?.category?.attributes?.edges || [];
+    const attrEdges = catNode?.attributes?.edges || [];
 
     function extractAttr(nameMatch) {
       const edge = attrEdges.find(e => e.node.name.toLowerCase().includes(nameMatch.toLowerCase()));
@@ -92,6 +96,17 @@ exports.handler = async (event) => {
     const bookCoverType   = extractAttr('cover');
     const languageVersion = extractAttr('language');
     const targetAudience  = extractAttr('audience');
+
+    // If nothing came back, log metafield definitions for diagnostics
+    if (!attrEdges.length) {
+      const defData = await shopifyGql(`{
+        metafieldDefinitions(ownerType: PRODUCT, namespace: "shopify", first: 20) {
+          edges { node { key name type { name } validations { name value } } }
+        }
+      }`);
+      const defs = defData?.data?.metafieldDefinitions?.edges || [];
+      console.log('Fallback — metafield defs:', JSON.stringify(defs.map(e => ({ key: e.node.key, type: e.node.type?.name, validations: e.node.validations }))));
+    }
 
     console.log('Options — genre:', genre.length, 'cover:', bookCoverType.length, 'language:', languageVersion.length, 'audience:', targetAudience.length);
 

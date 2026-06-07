@@ -38,48 +38,53 @@ async function shopifyGql(query, variables = {}) {
   return res.json();
 }
 
-// Enable inventory tracking + set stock to 1 at the first location
-async function setupInventory(productGid) {
-  // 1 — Get variant inventory item ID
-  const prodData = await shopifyGql(`
-    query($id: ID!) {
-      product(id: $id) {
-        variants(first: 1) {
-          edges { node { inventoryItem { id } } }
-        }
+// Enable inventory tracking + set stock via REST (more reliable than GQL)
+async function setupInventory(shopifyProductId, quantity = 1) {
+  try {
+    // 1 — Get variant (inventory_item_id is numeric in REST response)
+    const varRes = await fetch(
+      `https://${SHOPIFY_DOMAIN}/admin/api/${API_VERSION}/products/${shopifyProductId}/variants.json`,
+      { headers: { 'X-Shopify-Access-Token': SHOPIFY_TOKEN } }
+    );
+    const varData = await varRes.json();
+    const variant = varData?.variants?.[0];
+    if (!variant) { console.warn('setupInventory: no variant found'); return; }
+    const inventoryItemId = variant.inventory_item_id;
+    console.log('inventoryItemId:', inventoryItemId);
+
+    // 2 — Enable tracking via REST
+    await fetch(
+      `https://${SHOPIFY_DOMAIN}/admin/api/${API_VERSION}/inventory_items/${inventoryItemId}.json`,
+      {
+        method: 'PUT',
+        headers: { 'X-Shopify-Access-Token': SHOPIFY_TOKEN, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ inventory_item: { id: inventoryItemId, tracked: true } })
       }
-    }`, { id: productGid });
+    );
 
-  const inventoryItemId = prodData?.data?.product?.variants?.edges?.[0]?.node?.inventoryItem?.id;
-  if (!inventoryItemId) return;
+    // 3 — Get first location ID
+    const locRes = await fetch(
+      `https://${SHOPIFY_DOMAIN}/admin/api/${API_VERSION}/locations.json?limit=1`,
+      { headers: { 'X-Shopify-Access-Token': SHOPIFY_TOKEN } }
+    );
+    const locData = await locRes.json();
+    const locationId = locData?.locations?.[0]?.id;
+    if (!locationId) { console.warn('setupInventory: no location found'); return; }
 
-  // 2 — Enable tracking + get first location (run in parallel)
-  const [, locData] = await Promise.all([
-    shopifyGql(`
-      mutation($id: ID!, $input: InventoryItemInput!) {
-        inventoryItemUpdate(id: $id, input: $input) {
-          userErrors { field message }
-        }
-      }`, { id: inventoryItemId, input: { tracked: true } }),
-    shopifyGql(`{ locations(first: 1) { edges { node { id } } } }`)
-  ]);
-
-  const locationId = locData?.data?.locations?.edges?.[0]?.node?.id;
-  if (!locationId) return;
-
-  // 3 — Set quantity to 1
-  await shopifyGql(`
-    mutation($input: InventorySetQuantitiesInput!) {
-      inventorySetQuantities(input: $input) {
-        userErrors { field message }
+    // 4 — Set quantity
+    const setRes = await fetch(
+      `https://${SHOPIFY_DOMAIN}/admin/api/${API_VERSION}/inventory_levels/set.json`,
+      {
+        method: 'POST',
+        headers: { 'X-Shopify-Access-Token': SHOPIFY_TOKEN, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ location_id: locationId, inventory_item_id: inventoryItemId, available: quantity })
       }
-    }`, {
-    input: {
-      name: 'available',
-      reason: 'correction',
-      quantities: [{ inventoryItemId, locationId, quantity: 1 }]
-    }
-  });
+    );
+    const setData = await setRes.json();
+    console.log('Inventory set result:', JSON.stringify(setData?.inventory_level || setData));
+  } catch (e) {
+    console.warn('setupInventory error:', e.message);
+  }
 }
 
 // Find the "Print Books" taxonomy category GID
@@ -104,8 +109,10 @@ exports.handler = async function (event) {
     adminEmail, adminKey,
     book, author, publisher, genre, shopifyTags,
     description, mrp, salePrice, barcode, phone, cover,
+    initialStock,
     metafields   // { genreGids, bookCoverTypeGids, languageVersionGids, targetAudienceGids }
   } = JSON.parse(event.body || '{}');
+  const stockQty = Math.max(1, parseInt(initialStock) || 1);
 
   if (!await verifyAdmin(adminEmail, adminKey)) {
     return json({ success: false, error: 'Unauthorized' }, 401);
@@ -183,8 +190,8 @@ exports.handler = async function (event) {
         }
       }
 
-      // 2d — Enable inventory tracking and set stock to 1
-      await setupInventory(productGid);
+      // 2d — Enable inventory tracking and set stock (REST, uses numeric shopifyId)
+      await setupInventory(shopifyId, stockQty);
     }
 
     // Step 3 — Save to Supabase as 'listed'

@@ -87,6 +87,31 @@ async function setupInventory(shopifyProductId, quantity = 1) {
   }
 }
 
+// Uncheck tax on the first variant via REST
+async function setupVariantDefaults(shopifyProductId) {
+  try {
+    const varRes  = await fetch(
+      `https://${SHOPIFY_DOMAIN}/admin/api/${API_VERSION}/products/${shopifyProductId}/variants.json`,
+      { headers: { 'X-Shopify-Access-Token': SHOPIFY_TOKEN } }
+    );
+    const varData  = await varRes.json();
+    const variantId = varData?.variants?.[0]?.id;
+    if (!variantId) { console.warn('setupVariantDefaults: no variant found'); return; }
+    const taxRes  = await fetch(
+      `https://${SHOPIFY_DOMAIN}/admin/api/${API_VERSION}/variants/${variantId}.json`,
+      {
+        method:  'PUT',
+        headers: { 'X-Shopify-Access-Token': SHOPIFY_TOKEN, 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ variant: { id: variantId, taxable: false } })
+      }
+    );
+    const taxData = await taxRes.json();
+    console.log('Tax disabled, taxable now:', taxData?.variant?.taxable);
+  } catch (e) {
+    console.warn('setupVariantDefaults error:', e.message);
+  }
+}
+
 // Find the "Print Books" taxonomy category GID
 async function getPrintBooksCategoryGid() {
   const data = await shopifyGql(`{
@@ -192,6 +217,9 @@ exports.handler = async function (event) {
 
       // 2d — Enable inventory tracking and set stock (REST, uses numeric shopifyId)
       await setupInventory(shopifyId, stockQty);
+
+      // 2e — Uncheck tax on variant
+      await setupVariantDefaults(shopifyId);
     }
 
     // Step 3 — Save to Supabase as 'listed'

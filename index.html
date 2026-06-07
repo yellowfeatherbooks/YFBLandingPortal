@@ -10337,8 +10337,9 @@ Questions? We're always here!
         _modalRow('Date',          fmtDate(s.submitted_date)) +
         _modalRow('Shopify ID',    s.shopify_id)           +
         _modalRow('Status',        statusBadge(s.status));
-      const canApprove = s.status !== 'listed';
-      const canReject  = s.status !== 'rejected';
+      const isPending  = s.status === 'under_review' || s.status === 'pending';
+      const canApprove = isPending;
+      const canReject  = isPending;
       const _mrpVal = parseFloat(s.mrp) || 0;
       document.getElementById('admin-modal-actions').innerHTML = `
         ${canApprove ? `

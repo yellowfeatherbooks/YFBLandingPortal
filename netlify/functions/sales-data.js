@@ -302,9 +302,10 @@ async function submitBook(body, salesEmail) {
     console.warn('Cannot set draft — productGid:', productGid, 'token set:', !!SHOPIFY_TOKEN);
   }
 
-  // Step 3 — Set metafields on the draft product
-  console.log('Metafields received:', JSON.stringify(metafields));
-  if (productGid && SHOPIFY_TOKEN && metafields) {
+  // Step 3 — Set Print Books category + metafields on the draft product
+  // Category MUST be set first — shopify.* metafields are constrained to products with Print Books category
+  if (productGid && SHOPIFY_TOKEN) {
+    const PRINT_BOOKS_GID = 'gid://shopify/TaxonomyCategory/me-1-3';
     const listVal = (gids) => JSON.stringify((gids || []).filter(Boolean));
     const mfInput = [];
     if (metafields?.genreGids?.length)           mfInput.push({ namespace: 'shopify', key: 'genre',            value: listVal(metafields.genreGids) });
@@ -312,20 +313,17 @@ async function submitBook(body, salesEmail) {
     if (metafields?.languageVersionGids?.length) mfInput.push({ namespace: 'shopify', key: 'language-version', value: listVal(metafields.languageVersionGids) });
     if (metafields?.targetAudienceGids?.length)  mfInput.push({ namespace: 'shopify', key: 'target-audience',  value: listVal(metafields.targetAudienceGids) });
     if (author) mfInput.push({ namespace: 'custom', key: 'author', value: author });
-    console.log('mfInput to set:', JSON.stringify(mfInput));
-    if (mfInput.length) {
-      const mfRes = await shopifyGql(
-        `mutation productUpdate($input: ProductInput!) { productUpdate(input: $input) { product { id } userErrors { field message } } }`,
-        { input: { id: productGid, metafields: mfInput } }
-      );
-      const mfErrors = mfRes?.data?.productUpdate?.userErrors || [];
-      if (mfErrors.length) console.warn('Metafield set errors:', JSON.stringify(mfErrors));
-      else console.log('Metafields set successfully on', productGid);
-    } else {
-      console.log('No metafields to set (all arrays empty)');
-    }
-  } else {
-    console.log('Skipped metafields — productGid:', !!productGid, 'token:', !!SHOPIFY_TOKEN, 'metafields:', !!metafields);
+
+    const updateInput = { id: productGid, category: PRINT_BOOKS_GID };
+    if (mfInput.length) updateInput.metafields = mfInput;
+
+    const upRes = await shopifyGql(
+      `mutation productUpdate($input: ProductInput!) { productUpdate(input: $input) { product { id category { name } } userErrors { field message } } }`,
+      { input: updateInput }
+    );
+    const upErrors = upRes?.data?.productUpdate?.userErrors || [];
+    if (upErrors.length) console.warn('Category/metafield errors:', JSON.stringify(upErrors));
+    else console.log('Category + metafields set on draft:', upRes?.data?.productUpdate?.product?.category?.name, '— metafields:', mfInput.length);
   }
 
   // Step 5 — Save to Supabase as under_review (initial_stock stored for approval step)

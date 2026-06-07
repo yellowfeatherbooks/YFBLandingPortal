@@ -50,18 +50,23 @@ async function shopifyGql(query, variables = {}) {
 
 // ── Action handlers ─────────────────────────────────────────────────────────
 
-async function getOrders({ status = 'any', limit = 50 }) {
+async function getOrders({ status = 'any', limit = 50, customer_type }) {
+  const fetchLimit = customer_type ? 250 : limit;
   const data = await shopifyGet(
-    `orders.json?status=${status}&limit=${limit}&fields=id,name,email,created_at,financial_status,fulfillment_status,total_price,line_items,customer,shipping_address`
+    `orders.json?status=${status}&limit=${fetchLimit}&fields=id,name,email,created_at,financial_status,fulfillment_status,total_price,line_items,customer,shipping_address`
   );
-  const orders = (data.orders || []).map(o => {
+  let orders = (data.orders || []).map(o => {
     const sa = o.shipping_address || {};
+    const tags = (o.customer?.tags || '').toLowerCase().split(',').map(t => t.trim());
     return {
       id:                 o.id,
       name:               o.name,
       email:              o.email || o.customer?.email || '',
       customer:           [o.customer?.first_name, o.customer?.last_name].filter(Boolean).join(' ') || '—',
       city:               sa.city || '',
+      customer_tags:      o.customer?.tags || '',
+      is_member:          tags.includes('member') || tags.includes('club_member'),
+      is_author:          tags.includes('author'),
       created_at:         o.created_at,
       financial_status:   o.financial_status,
       fulfillment_status: o.fulfillment_status || 'unfulfilled',
@@ -69,6 +74,8 @@ async function getOrders({ status = 'any', limit = 50 }) {
       items:              (o.line_items || []).map(l => ({ title: l.title, quantity: l.quantity, price: l.price }))
     };
   });
+  if (customer_type === 'member') orders = orders.filter(o => o.is_member);
+  if (customer_type === 'author') orders = orders.filter(o => o.is_author);
   return json({ success: true, orders });
 }
 
@@ -202,40 +209,49 @@ async function directSales({ action, salesEmail, ...body }) {
 // ── Metaobject options (for Add Book dropdowns) ──────────────────────────────
 
 async function getMetaobjectOptions() {
-  async function getDefGid(namespace, key) {
-    const data = await shopifyGql(`{
-      metafieldDefinitions(ownerType: PRODUCT, namespace: "${namespace}", key: "${key}", first: 1) {
-        edges { node { validations { name value } } }
-      }
-    }`);
-    const validations = data?.data?.metafieldDefinitions?.edges?.[0]?.node?.validations || [];
-    return validations.find(v => v.name === 'metaobject_definition_id')?.value || null;
-  }
+  // Print Books category is at gid://shopify/TaxonomyCategory/me-1-3
+  // Query its attributes to get valid values for each metafield
+  const PRINT_BOOKS_GID = 'gid://shopify/TaxonomyCategory/me-1-3';
 
-  async function fetchByDefGid(gid) {
-    if (!gid) return [];
-    const typeData = await shopifyGql(`query($id: ID!) { metaobjectDefinition(id: $id) { type } }`, { id: gid });
-    const type = typeData?.data?.metaobjectDefinition?.type;
-    if (!type) return [];
-    const data = await shopifyGql(`query($type: String!) { metaobjects(type: $type, first: 250) { edges { node { id displayName handle } } } }`, { type });
-    return (data?.data?.metaobjects?.edges || [])
-      .map(e => ({ id: e.node.id, label: e.node.displayName || e.node.handle }))
+  const data = await shopifyGql(`
+    query($id: ID!) {
+      taxonomy {
+        category(id: $id) {
+          id
+          name
+          attributes {
+            edges {
+              node {
+                id
+                name
+                values(first: 250) {
+                  edges { node { id name } }
+                }
+              }
+            }
+          }
+        }
+      }
+    }`, { id: PRINT_BOOKS_GID });
+
+  console.log('Taxonomy attributes raw:', JSON.stringify(data?.data?.taxonomy?.category?.attributes?.edges?.map(e => ({ name: e.node.name, count: e.node.values?.edges?.length }))));
+
+  const attrEdges = data?.data?.taxonomy?.category?.attributes?.edges || [];
+
+  function extractAttr(nameMatch) {
+    const edge = attrEdges.find(e => e.node.name.toLowerCase().includes(nameMatch.toLowerCase()));
+    if (!edge) return [];
+    return (edge.node.values?.edges || [])
+      .map(e => ({ id: e.node.id, label: e.node.name }))
       .sort((a, b) => a.label.localeCompare(b.label));
   }
 
-  const [genreGid, coverGid, langGid, audGid] = await Promise.all([
-    getDefGid('shopify', 'genre'),
-    getDefGid('shopify', 'book-cover-type'),
-    getDefGid('shopify', 'language-version'),
-    getDefGid('shopify', 'target-audience'),
-  ]);
+  const genre          = extractAttr('genre');
+  const bookCoverType  = extractAttr('cover');
+  const languageVersion = extractAttr('language');
+  const targetAudience  = extractAttr('audience');
 
-  const [genre, bookCoverType, languageVersion, targetAudience] = await Promise.all([
-    fetchByDefGid(genreGid),
-    fetchByDefGid(coverGid),
-    fetchByDefGid(langGid),
-    fetchByDefGid(audGid),
-  ]);
+  console.log('Options loaded — genre:', genre.length, 'cover:', bookCoverType.length, 'language:', languageVersion.length, 'audience:', targetAudience.length);
 
   return json({ success: true, genre, bookCoverType, languageVersion, targetAudience });
 }
@@ -243,36 +259,66 @@ async function getMetaobjectOptions() {
 // ── Submit Book (creates draft in Shopify, pending admin approval) ────────────
 
 async function submitBook(body, salesEmail) {
-  const { book, author, publisher, genre, shopifyTags, description, mrp, salePrice, barcode, phone, cover, metafields } = body;
+  const { book, author, publisher, genre, shopifyTags, description, mrp, salePrice, barcode, phone, cover, metafields, initialStock } = body;
+  const stockQty = Math.max(1, parseInt(initialStock) || 1);
 
   if (!book || !author || !publisher || !genre || !mrp || !barcode) {
     return json({ success: false, error: 'All required fields must be filled' }, 400);
   }
 
   const webhookUrl = process.env.N8N_SUBMIT_BOOK_URL;
-  if (!webhookUrl) return json({ success: false, error: 'Submission webhook not configured' }, 503);
+  if (!webhookUrl) return json({ success: false, error: 'N8N_SUBMIT_BOOK_URL not configured in Netlify env vars' }, 503);
 
-  // Step 1 — Create draft product via n8n (no activate flag — stays as draft)
-  const n8nRes = await fetch(webhookUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      email: salesEmail, name: 'Sales Team',
-      book, author, publisher, genre,
-      shopifyTags: shopifyTags || [],
-      description, mrp, salePrice: salePrice || null,
-      barcode, phone, cover
-      // No activate:true — product stays draft until admin approves
-    })
-  });
-  const data = await n8nRes.json();
+  // Step 1 — Create draft product via n8n
+  let n8nRes, data;
+  try {
+    n8nRes = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: salesEmail, name: 'Sales Team',
+        book, author, publisher, genre,
+        shopifyTags: shopifyTags || [],
+        description, mrp, salePrice: salePrice || null,
+        barcode, phone, cover
+      })
+    });
+    const text = await n8nRes.text();
+    try { data = JSON.parse(text); } catch(e) {
+      return json({ success: false, error: `n8n returned non-JSON (status ${n8nRes.status}): ${text.slice(0, 200)}` });
+    }
+  } catch(e) {
+    return json({ success: false, error: `n8n webhook call failed: ${e.message}` });
+  }
   if (!data.success && data.status !== 'success') return json(data);
 
-  const shopifyId = data.shopifyId || data.shopify_Id || null;
+  const rawId     = data.shopifyId || data.shopify_Id || null;
+  const shopifyId = rawId;
+  // Normalise to GID — n8n may return numeric ID or full GID
+  const productGid = rawId
+    ? (String(rawId).startsWith('gid://') ? String(rawId) : `gid://shopify/Product/${rawId}`)
+    : null;
 
-  // Step 2 — Set category metafields on the draft product
-  if (shopifyId && SHOPIFY_TOKEN && metafields) {
-    const productGid = `gid://shopify/Product/${shopifyId}`;
+  // Step 2 — Force product to DRAFT so it is NOT visible until admin approves
+  if (productGid && SHOPIFY_TOKEN) {
+    const draftRes = await shopifyGql(
+      `mutation productUpdate($input: ProductInput!) {
+         productUpdate(input: $input) {
+           product { id status }
+           userErrors { field message }
+         }
+       }`,
+      { input: { id: productGid, status: 'DRAFT' } }
+    );
+    const draftErrors = draftRes?.data?.productUpdate?.userErrors || [];
+    if (draftErrors.length) console.warn('setProductDraft errors:', JSON.stringify(draftErrors));
+    else console.log('Product set to DRAFT:', productGid);
+  } else {
+    console.warn('Cannot set draft — productGid:', productGid, 'token set:', !!SHOPIFY_TOKEN);
+  }
+
+  // Step 3 — Set metafields on the draft product
+  if (productGid && SHOPIFY_TOKEN && metafields) {
     const listVal = (gids) => JSON.stringify((gids || []).filter(Boolean));
     const mfInput = [];
     if (metafields?.genreGids?.length)           mfInput.push({ namespace: 'shopify', key: 'genre',            value: listVal(metafields.genreGids) });
@@ -286,7 +332,7 @@ async function submitBook(body, salesEmail) {
     }
   }
 
-  // Step 3 — Save to Supabase as under_review
+  // Step 5 — Save to Supabase as under_review (initial_stock stored for approval step)
   if (SUPABASE_URL && SUPABASE_KEY) {
     await fetch(`${SUPABASE_URL}/rest/v1/submissions`, {
       method: 'POST',
@@ -300,6 +346,7 @@ async function submitBook(body, salesEmail) {
         submitted_date: new Date().toISOString(),
         submitted_by: salesEmail,
         shopify_id: shopifyId,
+        initial_stock: stockQty,
       })
     });
   }

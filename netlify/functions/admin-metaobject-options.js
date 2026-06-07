@@ -52,61 +52,50 @@ exports.handler = async (event) => {
   }
 
   try {
-    // Step 1 — Get all product metafield definitions under "shopify" namespace
-    const defData = await shopifyGql(`{
-      metafieldDefinitions(ownerType: PRODUCT, namespace: "shopify", first: 20) {
-        edges { node { key validations { name value } } }
-      }
-    }`);
-    const defs = (defData?.data?.metafieldDefinitions?.edges || []).map(e => e.node);
+    // Print Books category GID — confirmed from taxonomy search logs
+    const PRINT_BOOKS_GID = 'gid://shopify/TaxonomyCategory/me-1-3';
 
-    // Step 2 — For each field, find the metaobject definition GID from validations
-    const FIELDS = {
-      genre:           'genre',
-      bookCoverType:   'book-cover-type',
-      languageVersion: 'language-version',
-      targetAudience:  'target-audience',
-    };
-
-    const defMap = {};
-    for (const [fieldKey, shopifyKey] of Object.entries(FIELDS)) {
-      const def = defs.find(d => d.key === shopifyKey);
-      const v   = (def?.validations || []).find(v => v.name === 'metaobject_definition_id');
-      defMap[fieldKey] = v?.value || null;
-    }
-
-    // Step 3 — For each found definition GID, get type handle then fetch entries
-    async function fetchByDefGid(gid) {
-      if (!gid) return [];
-      const typeData = await shopifyGql(
-        `query($id: ID!) { metaobjectDefinition(id: $id) { type } }`,
-        { id: gid }
-      );
-      const type = typeData?.data?.metaobjectDefinition?.type;
-      if (!type) return [];
-
-      const entriesData = await shopifyGql(
-        `query($type: String!) {
-          metaobjects(type: $type, first: 250) {
-            edges { node { id displayName handle } }
+    const data = await shopifyGql(`
+      query($id: ID!) {
+        taxonomy {
+          category(id: $id) {
+            id
+            name
+            attributes {
+              edges {
+                node {
+                  id
+                  name
+                  values(first: 250) {
+                    edges { node { id name } }
+                  }
+                }
+              }
+            }
           }
-        }`,
-        { type }
-      );
-      const edges = entriesData?.data?.metaobjects?.edges || [];
-      return edges
-        .map(e => ({ id: e.node.id, label: e.node.displayName || e.node.handle }))
+        }
+      }`, { id: PRINT_BOOKS_GID });
+
+    console.log('Taxonomy attributes:', JSON.stringify(data?.data?.taxonomy?.category?.attributes?.edges?.map(e => ({ name: e.node.name, count: e.node.values?.edges?.length }))));
+
+    const attrEdges = data?.data?.taxonomy?.category?.attributes?.edges || [];
+
+    function extractAttr(nameMatch) {
+      const edge = attrEdges.find(e => e.node.name.toLowerCase().includes(nameMatch.toLowerCase()));
+      if (!edge) return [];
+      return (edge.node.values?.edges || [])
+        .map(e => ({ id: e.node.id, label: e.node.name }))
         .sort((a, b) => a.label.localeCompare(b.label));
     }
 
-    const [genre, bookCoverType, languageVersion, targetAudience] = await Promise.all([
-      fetchByDefGid(defMap.genre),
-      fetchByDefGid(defMap.bookCoverType),
-      fetchByDefGid(defMap.languageVersion),
-      fetchByDefGid(defMap.targetAudience),
-    ]);
+    const genre           = extractAttr('genre');
+    const bookCoverType   = extractAttr('cover');
+    const languageVersion = extractAttr('language');
+    const targetAudience  = extractAttr('audience');
 
-    return json({ success: true, genre, bookCoverType, languageVersion, targetAudience, _defMap: defMap });
+    console.log('Options — genre:', genre.length, 'cover:', bookCoverType.length, 'language:', languageVersion.length, 'audience:', targetAudience.length);
+
+    return json({ success: true, genre, bookCoverType, languageVersion, targetAudience });
 
   } catch (e) {
     console.error('admin-metaobject-options error:', e.message);

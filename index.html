@@ -15750,5 +15750,242 @@ Questions? We're always here!
   }
   // ══════════════════════════════════════════════════════════════════════════
   </script>
+
+  <!-- ── Customer Support Chat Widget ─────────────────────────────────────── -->
+  <style>
+    #yfb-chat-btn {
+      position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 900;
+      width: 56px; height: 56px; border-radius: 50%;
+      background: linear-gradient(135deg, #c9922a, #e8b84b);
+      border: none; cursor: pointer; box-shadow: 0 4px 20px rgba(201,146,42,0.5);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.5rem; transition: transform 0.2s, box-shadow 0.2s;
+    }
+    #yfb-chat-btn:hover { transform: scale(1.08); box-shadow: 0 6px 28px rgba(201,146,42,0.65); }
+    #yfb-chat-btn .yfb-chat-badge {
+      position: absolute; top: -2px; right: -2px; width: 14px; height: 14px;
+      background: #e74c3c; border-radius: 50%; border: 2px solid #0e0c0a; display: none;
+    }
+    #yfb-chat-panel {
+      position: fixed; bottom: 5rem; right: 1.5rem; z-index: 900;
+      width: min(380px, calc(100vw - 2rem));
+      height: min(520px, calc(100vh - 8rem));
+      background: #1a1714; border: 1px solid rgba(201,146,42,0.3);
+      border-radius: 16px; box-shadow: 0 16px 60px rgba(0,0,0,0.7);
+      display: flex; flex-direction: column; overflow: hidden;
+      transform: scale(0.92) translateY(16px); opacity: 0;
+      pointer-events: none; transition: transform 0.22s ease, opacity 0.22s ease;
+    }
+    #yfb-chat-panel.open { transform: scale(1) translateY(0); opacity: 1; pointer-events: all; }
+    .yfb-chat-header {
+      background: linear-gradient(135deg, #c9922a22, #1a1714);
+      border-bottom: 1px solid rgba(201,146,42,0.2);
+      padding: 0.9rem 1rem; display: flex; align-items: center; gap: 0.6rem;
+    }
+    .yfb-chat-avatar {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: linear-gradient(135deg,#c9922a,#e8b84b);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem; flex-shrink: 0;
+    }
+    .yfb-chat-header-info { flex: 1; }
+    .yfb-chat-header-name { font-weight: 600; font-size: 0.9rem; color: #f5f0e8; }
+    .yfb-chat-header-status { font-size: 0.72rem; color: #c9922a; }
+    .yfb-chat-close {
+      background: none; border: none; color: rgba(255,255,255,0.4);
+      cursor: pointer; font-size: 1.1rem; padding: 0.2rem;
+      line-height: 1; transition: color 0.15s;
+    }
+    .yfb-chat-close:hover { color: #fff; }
+    #yfb-chat-messages {
+      flex: 1; overflow-y: auto; padding: 1rem; display: flex;
+      flex-direction: column; gap: 0.75rem;
+      scrollbar-width: thin; scrollbar-color: rgba(201,146,42,0.3) transparent;
+    }
+    .yfb-msg { max-width: 80%; display: flex; flex-direction: column; gap: 0.2rem; }
+    .yfb-msg.user { align-self: flex-end; align-items: flex-end; }
+    .yfb-msg.bot  { align-self: flex-start; align-items: flex-start; }
+    .yfb-msg-bubble {
+      padding: 0.55rem 0.85rem; border-radius: 14px;
+      font-size: 0.84rem; line-height: 1.45; word-break: break-word;
+    }
+    .yfb-msg.user .yfb-msg-bubble {
+      background: linear-gradient(135deg,#c9922a,#e8b84b); color: #1a1108;
+      border-bottom-right-radius: 4px;
+    }
+    .yfb-msg.bot .yfb-msg-bubble {
+      background: rgba(255,255,255,0.07); color: #f5f0e8;
+      border-bottom-left-radius: 4px; border: 1px solid rgba(255,255,255,0.08);
+    }
+    .yfb-typing { display: flex; gap: 4px; align-items: center; padding: 0.55rem 0.85rem; }
+    .yfb-typing span {
+      width: 7px; height: 7px; border-radius: 50%; background: rgba(201,146,42,0.7);
+      animation: yfbDot 1.2s infinite;
+    }
+    .yfb-typing span:nth-child(2) { animation-delay: 0.2s; }
+    .yfb-typing span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes yfbDot { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-6px)} }
+    .yfb-chat-footer {
+      border-top: 1px solid rgba(255,255,255,0.07);
+      padding: 0.75rem; display: flex; gap: 0.5rem; align-items: flex-end;
+    }
+    #yfb-chat-input {
+      flex: 1; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 10px; padding: 0.55rem 0.75rem; color: #f5f0e8;
+      font-size: 0.84rem; resize: none; max-height: 100px; line-height: 1.4;
+      font-family: inherit; outline: none; transition: border-color 0.15s;
+    }
+    #yfb-chat-input:focus { border-color: rgba(201,146,42,0.5); }
+    #yfb-chat-input::placeholder { color: rgba(255,255,255,0.3); }
+    #yfb-chat-send {
+      width: 36px; height: 36px; border-radius: 10px; border: none;
+      background: linear-gradient(135deg,#c9922a,#e8b84b);
+      color: #1a1108; cursor: pointer; font-size: 1rem;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; transition: opacity 0.15s;
+    }
+    #yfb-chat-send:disabled { opacity: 0.45; cursor: not-allowed; }
+    .yfb-quick-replies { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.4rem; }
+    .yfb-quick-btn {
+      background: rgba(201,146,42,0.1); border: 1px solid rgba(201,146,42,0.35);
+      color: #c9922a; border-radius: 20px; padding: 0.28rem 0.7rem;
+      font-size: 0.75rem; cursor: pointer; transition: background 0.15s;
+      font-family: inherit;
+    }
+    .yfb-quick-btn:hover { background: rgba(201,146,42,0.2); }
+  </style>
+
+  <!-- Chat button -->
+  <button id="yfb-chat-btn" onclick="yfbChatToggle()" title="Chat with us">
+    💬
+    <div class="yfb-chat-badge" id="yfb-chat-badge"></div>
+  </button>
+
+  <!-- Chat panel -->
+  <div id="yfb-chat-panel">
+    <div class="yfb-chat-header">
+      <div class="yfb-chat-avatar">📚</div>
+      <div class="yfb-chat-header-info">
+        <div class="yfb-chat-header-name">Yellow Feather Support</div>
+        <div class="yfb-chat-header-status">● Online — ask me anything</div>
+      </div>
+      <button class="yfb-chat-close" onclick="yfbChatToggle()">✕</button>
+    </div>
+    <div id="yfb-chat-messages"></div>
+    <div class="yfb-chat-footer">
+      <textarea id="yfb-chat-input" rows="1" placeholder="Type your message…"
+        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();yfbChatSend();}"
+        oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,100)+'px'"></textarea>
+      <button id="yfb-chat-send" onclick="yfbChatSend()">➤</button>
+    </div>
+  </div>
+
+  <script>
+  (function() {
+    const QUICK_REPLIES = ['Track my order', 'Book Club info', 'Browse books', 'Return policy'];
+    let _yfbOpen    = false;
+    let _yfbWaiting = false;
+    let _yfbSession = localStorage.getItem('yfb_chat_session') || (() => {
+      const id = 'sess_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+      localStorage.setItem('yfb_chat_session', id);
+      return id;
+    })();
+
+    window.yfbChatToggle = function() {
+      _yfbOpen = !_yfbOpen;
+      document.getElementById('yfb-chat-panel').classList.toggle('open', _yfbOpen);
+      document.getElementById('yfb-chat-badge').style.display = 'none';
+      if (_yfbOpen) {
+        const msgs = document.getElementById('yfb-chat-messages');
+        if (!msgs.children.length) _yfbShowWelcome();
+        setTimeout(() => document.getElementById('yfb-chat-input').focus(), 200);
+      }
+    };
+
+    function _yfbShowWelcome() {
+      _yfbAddMsg('bot',
+        'Hi! 👋 Welcome to Yellow Feather Books. I can help you with orders, book recommendations, Book Club membership, and more. What can I help you with today?',
+        QUICK_REPLIES
+      );
+    }
+
+    function _yfbAddMsg(role, text, quickReplies) {
+      const msgs  = document.getElementById('yfb-chat-messages');
+      const wrap  = document.createElement('div');
+      wrap.className = `yfb-msg ${role}`;
+      const bubble = document.createElement('div');
+      bubble.className = 'yfb-msg-bubble';
+      bubble.textContent = text;
+      wrap.appendChild(bubble);
+      if (quickReplies?.length) {
+        const qr = document.createElement('div');
+        qr.className = 'yfb-quick-replies';
+        quickReplies.forEach(q => {
+          const btn = document.createElement('button');
+          btn.className = 'yfb-quick-btn';
+          btn.textContent = q;
+          btn.onclick = () => { qr.remove(); _yfbSendMessage(q); };
+          qr.appendChild(btn);
+        });
+        wrap.appendChild(qr);
+      }
+      msgs.appendChild(wrap);
+      msgs.scrollTop = msgs.scrollHeight;
+      return wrap;
+    }
+
+    function _yfbShowTyping() {
+      const msgs  = document.getElementById('yfb-chat-messages');
+      const wrap  = document.createElement('div');
+      wrap.className = 'yfb-msg bot'; wrap.id = 'yfb-typing';
+      const bubble = document.createElement('div');
+      bubble.className = 'yfb-msg-bubble yfb-typing';
+      bubble.innerHTML = '<span></span><span></span><span></span>';
+      wrap.appendChild(bubble);
+      msgs.appendChild(wrap);
+      msgs.scrollTop = msgs.scrollHeight;
+    }
+
+    function _yfbRemoveTyping() {
+      document.getElementById('yfb-typing')?.remove();
+    }
+
+    async function _yfbSendMessage(text) {
+      if (!text.trim() || _yfbWaiting) return;
+      _yfbWaiting = true;
+      document.getElementById('yfb-chat-send').disabled = true;
+      _yfbAddMsg('user', text);
+      _yfbShowTyping();
+      try {
+        const res  = await fetch('/.netlify/functions/chat-support', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: text, sessionId: _yfbSession })
+        });
+        const data = await res.json();
+        _yfbRemoveTyping();
+        _yfbAddMsg('bot', data.reply || 'Sorry, something went wrong. Please try again.');
+      } catch(e) {
+        _yfbRemoveTyping();
+        _yfbAddMsg('bot', 'Connection error. Please check your internet and try again.');
+      }
+      _yfbWaiting = false;
+      document.getElementById('yfb-chat-send').disabled = false;
+    }
+
+    window.yfbChatSend = function() {
+      const inp = document.getElementById('yfb-chat-input');
+      const txt = inp.value.trim();
+      if (!txt) return;
+      inp.value = ''; inp.style.height = 'auto';
+      _yfbSendMessage(txt);
+    };
+
+    // Show badge after 8 seconds if chat not opened yet
+    setTimeout(() => {
+      if (!_yfbOpen) document.getElementById('yfb-chat-badge').style.display = 'block';
+    }, 8000);
+  })();
+  </script>
 </body>
 </html>

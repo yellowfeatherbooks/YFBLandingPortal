@@ -10320,30 +10320,37 @@ Questions? We're always here!
       const s = _allSubmissions[idx];
       if (!s) return;
       document.getElementById('admin-modal-title').textContent = '📋 Book Submission';
+      const mrp       = parseFloat(s.mrp) || 0;
+      const priceHtml = mrp ? `₹${mrp.toFixed(2)}` : null;
       document.getElementById('admin-modal-details').innerHTML =
         `<p style="font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin:0 0 0.4rem">Book Details</p>` +
-        _modalRow('Title',       s.title)                  +
-        _modalRow('Author',      s.author)                 +
-        _modalRow('Genre',       s.genre)                  +
-        _modalRow('Language',    s.language)               +
-        _modalRow('ISBN',        s.isbn)                   +
-        _modalRow('Price',       s.price ? `₹${s.price}` : null) +
+        _modalRow('Title',         s.title)                +
+        _modalRow('Author',        s.author)               +
+        _modalRow('Publisher',     s.publisher)            +
+        _modalRow('Genre',         s.genre)                +
+        _modalRow('ISBN / Barcode',s.barcode || s.isbn)    +
+        _modalRow('MRP',           priceHtml)              +
+        _modalRow('Initial Stock', s.initial_stock != null ? `${s.initial_stock} copies` : null) +
         (s.description ? _modalRow('Description', `<span style="white-space:normal;line-height:1.5">${s.description}</span>`) : '') +
         `<p style="font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin:1rem 0 0.4rem">Submission</p>` +
-        _modalRow('Submitted By',  s.submitted_by)         +
+        _modalRow('Submitted By',  s.submitted_by)        +
         _modalRow('Date',          fmtDate(s.submitted_date)) +
         _modalRow('Shopify ID',    s.shopify_id)           +
         _modalRow('Status',        statusBadge(s.status));
       const canApprove = s.status !== 'listed';
       const canReject  = s.status !== 'rejected';
+      const _mrpVal = parseFloat(s.mrp) || 0;
       document.getElementById('admin-modal-actions').innerHTML = `
         ${canApprove ? `
-          <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.75rem;">
-            <label style="font-size:0.78rem;color:var(--muted);white-space:nowrap;">Discount %</label>
-            <input id="approval-discount" type="number" min="0" max="100" placeholder="e.g. 15 (leave blank for none)"
-              style="flex:1;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:0.4rem 0.6rem;color:var(--text);font-size:0.82rem;"
-              oninput="const mrp=${parseFloat(s.mrp)||0};const d=parseFloat(this.value)||0;document.getElementById('approval-price-preview').textContent=d>0?'→ Sale price: ₹'+(mrp*(1-d/100)).toFixed(2):'';" />
-            <span id="approval-price-preview" style="font-size:0.78rem;color:var(--gold);white-space:nowrap;"></span>
+          <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:0.75rem 1rem;margin-bottom:0.75rem;">
+            <div style="font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.5rem;">Pricing on Approval</div>
+            <div style="display:flex;align-items:center;gap:0.6rem;">
+              <label style="font-size:0.82rem;color:var(--text);white-space:nowrap;">Discount %</label>
+              <input id="approval-discount" type="number" min="0" max="100" placeholder="0 = sell at MRP (₹${_mrpVal.toFixed(2)})"
+                style="flex:1;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:0.4rem 0.7rem;color:var(--text);font-size:0.82rem;"
+                oninput="const d=parseFloat(this.value)||0;document.getElementById('approval-price-preview').textContent=d>0&&${_mrpVal}>0?'Sale price: ₹'+(${_mrpVal}*(1-d/100)).toFixed(2):'Selling at MRP: ₹${_mrpVal.toFixed(2)}';" />
+            </div>
+            <div id="approval-price-preview" style="font-size:0.78rem;color:var(--gold);margin-top:0.35rem;">Selling at MRP: ₹${_mrpVal.toFixed(2)}</div>
           </div>
           <button class="admin-btn admin-btn-approve" onclick="adminApproveModal('${s.id}','${s.shopify_id||''}',this)">✅ Approve &amp; Publish</button>
         ` : ''}

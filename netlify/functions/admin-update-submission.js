@@ -63,38 +63,56 @@ async function getVariantInfo(productGid) {
   };
 }
 
-async function setupInventory(productGid, quantity = 1) {
-  const { inventoryItemGid } = await getVariantInfo(productGid);
-  if (!inventoryItemGid) { console.warn('setupInventory: no inventoryItem found'); return; }
+// Use REST API for inventory — simpler and more reliable than GQL for new products
+async function setupInventory(shopifyProductId, quantity = 1) {
+  try {
+    // 1 — Get variant (has inventory_item_id as numeric)
+    const varRes = await fetch(
+      `https://${SHOPIFY_DOMAIN}/admin/api/${API_VERSION}/products/${shopifyProductId}/variants.json`,
+      { headers: { 'X-Shopify-Access-Token': SHOPIFY_TOKEN } }
+    );
+    const varData = await varRes.json();
+    const variant = varData?.variants?.[0];
+    if (!variant) { console.warn('setupInventory: no variant found'); return; }
+    const inventoryItemId = variant.inventory_item_id;
+    console.log('inventoryItemId:', inventoryItemId);
 
-  // Enable tracking + get location in parallel
-  const [trackRes, locData] = await Promise.all([
-    shopifyGql(`
-      mutation($id: ID!, $input: InventoryItemInput!) {
-        inventoryItemUpdate(id: $id, input: $input) { userErrors { field message } }
-      }`, { id: inventoryItemGid, input: { tracked: true } }),
-    shopifyGql(`{ locations(first: 1) { edges { node { id name } } } }`)
-  ]);
+    // 2 — Enable tracking via REST
+    const trackRes = await fetch(
+      `https://${SHOPIFY_DOMAIN}/admin/api/${API_VERSION}/inventory_items/${inventoryItemId}.json`,
+      {
+        method: 'PUT',
+        headers: { 'X-Shopify-Access-Token': SHOPIFY_TOKEN, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ inventory_item: { id: inventoryItemId, tracked: true } })
+      }
+    );
+    const trackData = await trackRes.json();
+    console.log('Tracking enabled:', trackData?.inventory_item?.tracked);
 
-  const trackErrors = trackRes?.data?.inventoryItemUpdate?.userErrors || [];
-  if (trackErrors.length) console.warn('inventoryItemUpdate errors:', JSON.stringify(trackErrors));
+    // 3 — Get first location ID via REST
+    const locRes = await fetch(
+      `https://${SHOPIFY_DOMAIN}/admin/api/${API_VERSION}/locations.json?limit=1`,
+      { headers: { 'X-Shopify-Access-Token': SHOPIFY_TOKEN } }
+    );
+    const locData = await locRes.json();
+    const locationId = locData?.locations?.[0]?.id;
+    if (!locationId) { console.warn('setupInventory: no location found'); return; }
+    console.log('locationId:', locationId);
 
-  const locationId = locData?.data?.locations?.edges?.[0]?.node?.id;
-  if (!locationId) { console.warn('setupInventory: no location found'); return; }
-
-  const qtyRes = await shopifyGql(`
-    mutation($input: InventorySetQuantitiesInput!) {
-      inventorySetQuantities(input: $input) { userErrors { field message } }
-    }`, {
-    input: {
-      name: 'available', reason: 'correction',
-      ignoreCompareQuantity: true,
-      quantities: [{ inventoryItemId: inventoryItemGid, locationId, quantity }]
-    }
-  });
-  const qtyErrors = qtyRes?.data?.inventorySetQuantities?.userErrors || [];
-  if (qtyErrors.length) console.warn('inventorySetQuantities errors:', JSON.stringify(qtyErrors));
-  else console.log(`Stock set to ${quantity} at`, locationId);
+    // 4 — Set quantity via REST inventory_levels/set.json
+    const setRes = await fetch(
+      `https://${SHOPIFY_DOMAIN}/admin/api/${API_VERSION}/inventory_levels/set.json`,
+      {
+        method: 'POST',
+        headers: { 'X-Shopify-Access-Token': SHOPIFY_TOKEN, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ location_id: locationId, inventory_item_id: inventoryItemId, available: quantity })
+      }
+    );
+    const setData = await setRes.json();
+    console.log('Inventory set result:', JSON.stringify(setData?.inventory_level || setData));
+  } catch (e) {
+    console.warn('setupInventory error:', e.message);
+  }
 }
 
 async function setupVariantDefaults(shopifyProductId) {
@@ -196,54 +214,7 @@ exports.handler = async (event) => {
         console.log('Submission record:', { initialStock, submissionAuthor });
       } catch (e) { console.warn('Could not read submission record:', e.message); }
 
-      // Step 2a — Set Print Books category
-      try {
-        const categoryGid = await getPrintBooksCategoryGid();
-        console.log('categoryGid resolved:', categoryGid);
-        if (categoryGid) {
-          const catRes = await shopifyGql(`
-            mutation productUpdate($input: ProductInput!) {
-              productUpdate(input: $input) {
-                product { id category { name } }
-                userErrors { field message }
-              }
-            }`, { input: { id: productGid, category: categoryGid } });
-          const catErrors = catRes?.data?.productUpdate?.userErrors || [];
-          if (catErrors.length) console.warn('Category update errors:', JSON.stringify(catErrors));
-          else console.log('Category set:', catRes?.data?.productUpdate?.product?.category?.name);
-        }
-      } catch (e) { console.warn('Category setup error:', e.message); }
-
-      // Step 2b — Enable inventory tracking + set stock to initialStock
-      try { await setupInventory(productGid, initialStock); }
-      catch (e) { console.warn('Inventory setup error:', e.message); }
-
-      // Step 2b2 — Set author metafield from submission record
-      if (submissionAuthor) {
-        try {
-          const mfRes = await shopifyGql(`
-            mutation productUpdate($input: ProductInput!) {
-              productUpdate(input: $input) {
-                product { id }
-                userErrors { field message }
-              }
-            }`, {
-            input: {
-              id: productGid,
-              metafields: [{ namespace: 'custom', key: 'author', value: submissionAuthor }]
-            }
-          });
-          const mfErrors = mfRes?.data?.productUpdate?.userErrors || [];
-          if (mfErrors.length) console.warn('Author metafield errors:', JSON.stringify(mfErrors));
-          else console.log('Author metafield set:', submissionAuthor);
-        } catch (e) { console.warn('Author metafield error:', e.message); }
-      }
-
-      // Step 2c — Uncheck tax on variant (uses REST with numeric shopifyProductId)
-      try { await setupVariantDefaults(shopifyProductId); }
-      catch (e) { console.warn('Variant defaults error:', e.message); }
-
-      // Step 2d — Set product status to active via REST (fastest way to un-draft)
+      // Step 2a — Activate product FIRST (inventory/metafields work better on active products)
       const restRes = await fetch(
         `https://${SHOPIFY_DOMAIN}/admin/api/${API_VERSION}/products/${shopifyProductId}.json`,
         {
@@ -256,6 +227,40 @@ exports.handler = async (event) => {
         const err = await restRes.text();
         return json({ success: true, warning: `Status updated but Shopify activation failed: ${err}` });
       }
+      console.log('Product activated');
+
+      // Step 2b — Set Print Books category + author metafield in one productUpdate call
+      try {
+        const categoryGid = await getPrintBooksCategoryGid();
+        console.log('categoryGid resolved:', categoryGid);
+        const updateInput = { id: productGid };
+        if (categoryGid) updateInput.category = categoryGid;
+        // Author: try shopify namespace (Print Books category metafield), fallback custom
+        if (submissionAuthor) {
+          updateInput.metafields = [
+            { namespace: 'shopify', key: 'author',        value: submissionAuthor },
+            { namespace: 'custom',  key: 'author',        value: submissionAuthor },
+          ];
+        }
+        const upRes = await shopifyGql(`
+          mutation productUpdate($input: ProductInput!) {
+            productUpdate(input: $input) {
+              product { id category { name } }
+              userErrors { field message }
+            }
+          }`, { input: updateInput });
+        const upErrors = upRes?.data?.productUpdate?.userErrors || [];
+        if (upErrors.length) console.warn('productUpdate warnings:', JSON.stringify(upErrors));
+        else console.log('Category/metafields set:', upRes?.data?.productUpdate?.product?.category?.name);
+      } catch (e) { console.warn('Category/metafield setup error:', e.message); }
+
+      // Step 2c — Enable inventory tracking + set stock (REST, more reliable than GQL)
+      try { await setupInventory(shopifyProductId, initialStock); }
+      catch (e) { console.warn('Inventory setup error:', e.message); }
+
+      // Step 2d — Uncheck tax on variant (REST)
+      try { await setupVariantDefaults(shopifyProductId); }
+      catch (e) { console.warn('Variant defaults error:', e.message); }
 
       // Step 2c — Get all sales channel publication IDs
       const pubsRes  = await fetch(adminGqlUrl, {

@@ -229,30 +229,39 @@ exports.handler = async (event) => {
       }
       console.log('Product activated');
 
-      // Step 2b — Set Print Books category + author metafield in one productUpdate call
+      // Step 2b — Set Print Books category
       try {
         const categoryGid = await getPrintBooksCategoryGid();
         console.log('categoryGid resolved:', categoryGid);
-        const updateInput = { id: productGid };
-        if (categoryGid) updateInput.category = categoryGid;
-        // Author: try shopify namespace (Print Books category metafield), fallback custom
-        if (submissionAuthor) {
-          updateInput.metafields = [
-            { namespace: 'shopify', key: 'author',        value: submissionAuthor },
-            { namespace: 'custom',  key: 'author',        value: submissionAuthor },
-          ];
+        if (categoryGid) {
+          const catRes = await shopifyGql(`
+            mutation productUpdate($input: ProductInput!) {
+              productUpdate(input: $input) {
+                product { id category { name } }
+                userErrors { field message }
+              }
+            }`, { input: { id: productGid, category: categoryGid } });
+          const catErrors = catRes?.data?.productUpdate?.userErrors || [];
+          if (catErrors.length) console.warn('Category update errors:', JSON.stringify(catErrors));
+          else console.log('Category set:', catRes?.data?.productUpdate?.product?.category?.name);
         }
-        const upRes = await shopifyGql(`
-          mutation productUpdate($input: ProductInput!) {
-            productUpdate(input: $input) {
-              product { id category { name } }
-              userErrors { field message }
-            }
-          }`, { input: updateInput });
-        const upErrors = upRes?.data?.productUpdate?.userErrors || [];
-        if (upErrors.length) console.warn('productUpdate warnings:', JSON.stringify(upErrors));
-        else console.log('Category/metafields set:', upRes?.data?.productUpdate?.product?.category?.name);
-      } catch (e) { console.warn('Category/metafield setup error:', e.message); }
+      } catch (e) { console.warn('Category setup error:', e.message); }
+
+      // Step 2b2 — Set author metafield (custom namespace — plain text)
+      if (submissionAuthor) {
+        try {
+          const mfRes = await shopifyGql(`
+            mutation productUpdate($input: ProductInput!) {
+              productUpdate(input: $input) {
+                product { id }
+                userErrors { field message }
+              }
+            }`, { input: { id: productGid, metafields: [{ namespace: 'custom', key: 'author', value: submissionAuthor }] } });
+          const mfErrors = mfRes?.data?.productUpdate?.userErrors || [];
+          if (mfErrors.length) console.warn('Author metafield errors:', JSON.stringify(mfErrors));
+          else console.log('Author metafield set:', submissionAuthor);
+        } catch (e) { console.warn('Author metafield error:', e.message); }
+      }
 
       // Step 2c — Enable inventory tracking + set stock (REST, more reliable than GQL)
       try { await setupInventory(shopifyProductId, initialStock); }

@@ -10064,10 +10064,25 @@ Questions? We're always here!
           not_found: _ssPreview.filter(r => r.status === 'not_found').length,
         };
 
+        // Preview not-found report download
+        let previewReportBtn = '';
+        if ((s.not_found || 0) > 0) {
+          const nfRows  = _ssPreview.filter(r => r.status === 'not_found');
+          const csvLines = ['BillBook Name,Selling Price,MRP,Stock Qty'];
+          nfRows.forEach(r => csvLines.push([`"${(r.name||'').replace(/"/g,'""')}"`, r.sellingPrice, r.mrp, r.stockQty].join(',')));
+          const csvBlob  = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csvLines.join('\n'));
+          const date     = new Date().toISOString().slice(0,10);
+          previewReportBtn = `&nbsp;<a href="${csvBlob}" download="not-found-${date}.csv"
+            style="display:inline-block;background:rgba(248,113,113,0.1);border:1px solid #f87171;color:#f87171;border-radius:6px;padding:0.2rem 0.7rem;font-size:0.78rem;text-decoration:none;">
+            ⬇ Download Not Found (${nfRows.length})
+          </a>`;
+        }
+
         document.getElementById('ss-summary-bar').innerHTML = `
           <span style="color:#4ade80;">✅ Matched: ${s.matched || 0}</span>
           <span style="color:#f87171;">❌ Not Found: ${s.not_found || 0}</span>
-          <span style="color:#9ca3af;">Total: ${s.total || 0}</span>`;
+          <span style="color:#9ca3af;">Total: ${s.total || 0}</span>
+          ${previewReportBtn}`;
 
         ssRenderTable(_ssPreview);
 
@@ -10113,12 +10128,34 @@ Questions? We're always here!
         _ssPreview = data.results.concat(_ssPreview.filter(r => r.status === 'not_found'));
         ssRenderTable(_ssPreview);
 
+        // Build downloadable CSV report for not_found + failed books
+        const reportRows = _ssPreview.filter(r => ['not_found','failed','stock_failed','price_failed'].includes(r.status));
+        let downloadBtn = '';
+        if (reportRows.length) {
+          const csvLines = ['BillBook Name,Selling Price,MRP,Stock Qty,Status,Note'];
+          reportRows.forEach(r => {
+            csvLines.push([
+              `"${(r.name||'').replace(/"/g,'""')}"`,
+              r.sellingPrice, r.mrp, r.stockQty,
+              r.status,
+              `"${(r.error||'').replace(/"/g,'""')}"`
+            ].join(','));
+          });
+          const csvBlob = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csvLines.join('\n'));
+          const date    = new Date().toISOString().slice(0,10);
+          downloadBtn   = `<a href="${csvBlob}" download="sync-issues-${date}.csv"
+            style="display:inline-block;margin-top:0.6rem;background:rgba(250,204,21,0.1);border:1px solid #facc15;color:#facc15;border-radius:6px;padding:0.3rem 0.9rem;font-size:0.82rem;text-decoration:none;">
+            ⬇ Download Issue Report (${reportRows.length} books)
+          </a>`;
+        }
+
         document.getElementById('ss-sync-result').innerHTML = `
           <div style="padding:0.75rem;border-radius:8px;background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.25);font-size:0.85rem;">
             <strong style="color:#4ade80;">Sync complete!</strong><br>
             🚀 Synced: ${s.synced || 0} &nbsp;|&nbsp;
             💥 Failed: ${s.failed || 0} &nbsp;|&nbsp;
             ❌ Not found: ${s.not_found || 0}
+            ${downloadBtn}
           </div>`;
       } catch (e) {
         alert('Network error: ' + e.message);

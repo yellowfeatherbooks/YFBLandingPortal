@@ -129,41 +129,13 @@ async function loadAllInventory() {
   return _inventoryCache;
 }
 
-// Word-overlap score: fraction of CSV words found in Shopify title words
-function wordOverlap(a, b) {
-  const wa = a.split(' ').filter(Boolean);
-  const wb = new Set(b.split(' ').filter(Boolean));
-  if (!wa.length) return 0;
-  return wa.filter(w => wb.has(w)).length / wa.length;
-}
-
-// Find best-matching Shopify product for a CSV title
+// Find Shopify product by exact normalized title match only.
+// No fuzzy matching — Malayalam titles share too many common words (kalam, manjukalam, etc.)
+// Unmatched books should be fixed by correcting the title in Shopify.
 async function findShopifyProduct(title) {
   const cache = await loadAllProducts();
   const normTarget = normalize(title);
-
-  // 1. Exact normalized match
-  if (cache[normTarget]) return toResult(cache[normTarget]);
-
-  // 2. One side contains the other (handles extra subtitle words)
-  // Guard: both strings must be at least 5 chars to avoid "ak" matching "aakashavismayam"
-  if (normTarget.length >= 5) {
-    for (const [normKey, p] of Object.entries(cache)) {
-      if (normKey.length >= 5 && (normKey.includes(normTarget) || normTarget.includes(normKey))) {
-        return toResult(p);
-      }
-    }
-  }
-
-  // 3. High word-overlap (≥ 0.80) — handles minor spelling diffs / extra articles
-  let best = null, bestScore = 0;
-  for (const [normKey, p] of Object.entries(cache)) {
-    const score = wordOverlap(normTarget, normKey);
-    if (score > bestScore) { bestScore = score; best = p; }
-  }
-  if (bestScore >= 0.80) return toResult(best);
-
-  return null;
+  return cache[normTarget] ? toResult(cache[normTarget]) : null;
 }
 
 function toResult(p) {

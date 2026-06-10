@@ -235,6 +235,11 @@ exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: cors, body: '' };
   if (event.httpMethod !== 'POST')    return json({ error: 'Method Not Allowed' }, 405);
 
+  // Reset caches on every request so preview always reflects current Shopify state.
+  // Netlify may reuse warm function instances, causing stale cached data after a sync.
+  _productCache   = null;
+  _inventoryCache = null;
+
   try {
     const { adminEmail, adminKey, action, rows } = JSON.parse(event.body || '{}');
 

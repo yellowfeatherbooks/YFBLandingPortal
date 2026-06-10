@@ -86,17 +86,24 @@ let _inventoryCache = null; // { inventoryItemId → available qty }
 async function loadAllProducts() {
   if (_productCache) return _productCache;
   _productCache = {};
-  let url = `https://${SHOPIFY_DOMAIN}/admin/api/${API_VERSION}/products.json?fields=id,title,variants,status&limit=250`;
+  // status=any ensures draft/archived products are included
+  let url = `https://${SHOPIFY_DOMAIN}/admin/api/${API_VERSION}/products.json?status=any&fields=id,title,variants,status&limit=250`;
+  let pages = 0;
   while (url) {
+    pages++;
     const res  = await fetch(url, { headers: REST_HEADERS });
     const data = await res.json();
     const products = data?.products || [];
     for (const p of products) {
+      // Store under both normalized title AND original lowercase (belt-and-suspenders)
       _productCache[normalize(p.title)] = p;
+      _productCache[p.title.toLowerCase().trim()] = p;
     }
-    const link = res.headers.get('Link') || '';
+    // Shopify cursor pagination via Link header
+    const link = res.headers.get('link') || res.headers.get('Link') || '';
     const next = link.match(/<([^>]+)>;\s*rel="next"/);
     url = next ? next[1] : null;
+    if (pages > 20) break; // safety cap: 20 × 250 = 5000 products max
   }
   return _productCache;
 }
@@ -129,13 +136,18 @@ async function loadAllInventory() {
   return _inventoryCache;
 }
 
-// Find Shopify product by exact normalized title match only.
-// No fuzzy matching — Malayalam titles share too many common words (kalam, manjukalam, etc.)
+// Find Shopify product by exact title match only (normalized or plain lowercase).
+// No fuzzy matching — Malayalam titles share too many common words.
 // Unmatched books should be fixed by correcting the title in Shopify.
 async function findShopifyProduct(title) {
   const cache = await loadAllProducts();
+  // Try normalized first (handles punctuation/dash differences)
   const normTarget = normalize(title);
-  return cache[normTarget] ? toResult(cache[normTarget]) : null;
+  if (cache[normTarget]) return toResult(cache[normTarget]);
+  // Fallback: plain lowercase trim (catches cases where normalize changes something unexpectedly)
+  const plainTarget = title.toLowerCase().trim();
+  if (cache[plainTarget]) return toResult(cache[plainTarget]);
+  return null;
 }
 
 function toResult(p) {
@@ -294,7 +306,8 @@ exports.handler = async (event) => {
       failed:    results.filter(r => ['failed','stock_failed','price_failed'].includes(r.status)).length,
     };
 
-    return json({ success: true, summary, results });
+    const cacheSize = _productCache ? Math.floor(Object.keys(_productCache).length / 2) : 0; // ÷2 because we store each product twice
+    return json({ success: true, summary, results, cacheSize });
 
   } catch (e) {
     console.error('sync-billbook-stock error:', e.message);

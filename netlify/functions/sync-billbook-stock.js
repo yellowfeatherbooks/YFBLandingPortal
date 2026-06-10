@@ -80,7 +80,8 @@ function normalize(str) {
 // Fetch ALL Shopify products once and build a normalized-title lookup map.
 // This avoids 1233 individual REST calls and enables better fuzzy matching.
 
-let _productCache = null; // { normTitle → shopifyProduct }
+let _productCache   = null; // { normTitle → shopifyProduct }
+let _inventoryCache = null; // { inventoryItemId → available qty }
 
 async function loadAllProducts() {
   if (_productCache) return _productCache;
@@ -93,12 +94,39 @@ async function loadAllProducts() {
     for (const p of products) {
       _productCache[normalize(p.title)] = p;
     }
-    // Follow Link header for pagination
     const link = res.headers.get('Link') || '';
     const next = link.match(/<([^>]+)>;\s*rel="next"/);
     url = next ? next[1] : null;
   }
   return _productCache;
+}
+
+// Bulk-fetch inventory levels for all known inventory item IDs (50 per request)
+async function loadAllInventory() {
+  if (_inventoryCache) return _inventoryCache;
+  _inventoryCache = {};
+  const locationId = await getLocationId();
+  if (!locationId) return _inventoryCache;
+
+  // Collect all inventory item IDs from product cache
+  const allItems = Object.values(_productCache || {})
+    .map(p => p.variants?.[0]?.inventory_item_id)
+    .filter(Boolean);
+
+  // Fetch in chunks of 50 (Shopify limit for inventory_levels)
+  for (let i = 0; i < allItems.length; i += 50) {
+    const chunk = allItems.slice(i, i + 50);
+    const res   = await fetch(
+      `https://${SHOPIFY_DOMAIN}/admin/api/${API_VERSION}/inventory_levels.json` +
+      `?inventory_item_ids=${chunk.join(',')}&location_ids=${locationId}&limit=50`,
+      { headers: REST_HEADERS }
+    );
+    const data = await res.json();
+    for (const lvl of (data?.inventory_levels || [])) {
+      _inventoryCache[lvl.inventory_item_id] = lvl.available ?? 0;
+    }
+  }
+  return _inventoryCache;
 }
 
 // Word-overlap score: fraction of CSV words found in Shopify title words
@@ -137,13 +165,18 @@ async function findShopifyProduct(title) {
 
 function toResult(p) {
   const variant = p.variants?.[0];
+  const invId   = variant?.inventory_item_id;
+  const currentStock = (_inventoryCache && invId != null && _inventoryCache[invId] !== undefined)
+    ? _inventoryCache[invId]
+    : null; // null = not yet loaded
   return {
     productId:       p.id,
     productTitle:    p.title,
     variantId:       variant?.id,
-    inventoryItemId: variant?.inventory_item_id,
+    inventoryItemId: invId,
     currentPrice:    variant?.price,
     currentCompare:  variant?.compare_at_price,
+    currentStock,
     status:          p.status
   };
 }
@@ -213,6 +246,12 @@ exports.handler = async (event) => {
 
     if (!['preview', 'sync'].includes(action))
       return json({ error: 'action must be "preview" or "sync"' }, 400);
+
+    // For preview: pre-load all products + inventory so toResult() has currentStock
+    if (action === 'preview') {
+      await loadAllProducts();
+      await loadAllInventory();
+    }
 
     const results = [];
 

@@ -6103,9 +6103,10 @@
               <input id="ss-search" type="text" placeholder="🔍 Search book…"
                 oninput="ssRenderTable(_ssPreview)"
                 style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:0.3rem 0.7rem;color:#e5e7eb;font-size:0.8rem;width:180px;outline:none;" />
-              <button class="admin-filter-btn active" id="ss-filter-all"    onclick="ssFilter('all',this)">All</button>
-              <button class="admin-filter-btn"         id="ss-filter-match" onclick="ssFilter('matched',this)">Matched</button>
-              <button class="admin-filter-btn"         id="ss-filter-miss"  onclick="ssFilter('not_found',this)">Not Found</button>
+              <button class="admin-filter-btn active" id="ss-filter-all"      onclick="ssFilter('all',this)">All</button>
+              <button class="admin-filter-btn"         id="ss-filter-outsync" onclick="ssFilter('out_of_sync',this)">⚠️ Out of Sync</button>
+              <button class="admin-filter-btn"         id="ss-filter-insync"  onclick="ssFilter('in_sync',this)">✅ In Sync</button>
+              <button class="admin-filter-btn"         id="ss-filter-miss"    onclick="ssFilter('not_found',this)">❌ Not Found</button>
             </div>
           </div>
           <div id="ss-summary-bar" style="display:flex;gap:1rem;flex-wrap:wrap;font-size:0.8rem;margin-bottom:0.75rem;"></div>
@@ -10036,10 +10037,25 @@ Questions? We're always here!
     function ssRenderTable(results) {
       const searchVal = (document.getElementById('ss-search')?.value || '').toLowerCase().trim();
 
-      let filtered = results.filter(r =>
-        (_ssFilter === 'all' ? true : r.status === _ssFilter) &&
-        (!searchVal || (r.name||'').toLowerCase().includes(searchVal) || (r.shopifyTitle||'').toLowerCase().includes(searchVal))
-      );
+      // Helper: compute sync state for filtering
+      function getSyncState(r) {
+        if (r.status !== 'matched' && r.status !== 'synced') return r.status;
+        if (r.currentPrice == null) return 'matched';
+        const priceMatch = Math.abs(parseFloat(r.currentPrice||0)  - parseFloat(r.sellingPrice||0)) < 0.01;
+        const mrpMatch   = Math.abs(parseFloat(r.currentCompare||0)- parseFloat(r.mrp||0))          < 0.01;
+        const stockMatch = r.currentStock != null ? Math.round(r.currentStock) === Math.round(r.stockQty||0) : true;
+        return (priceMatch && mrpMatch && stockMatch) ? 'in_sync' : 'out_of_sync';
+      }
+
+      let filtered = results.filter(r => {
+        const state = getSyncState(r);
+        const filterOk = _ssFilter === 'all'          ? true
+                       : _ssFilter === 'out_of_sync'  ? state === 'out_of_sync'
+                       : _ssFilter === 'in_sync'      ? state === 'in_sync'
+                       : r.status === _ssFilter;
+        const searchOk = !searchVal || (r.name||'').toLowerCase().includes(searchVal) || (r.shopifyTitle||'').toLowerCase().includes(searchVal);
+        return filterOk && searchOk;
+      });
 
       // Sort
       if (_ssSort.col) {
@@ -10075,20 +10091,57 @@ Questions? We're always here!
         .every(r => _ssSelected.has(r.name));
 
       const rows = filtered.map(r => {
-        const canSync    = r.status === 'matched' || r.status === 'synced';
-        const isChecked  = _ssSelected.has(r.name);
-        const statusColor = r.status === 'matched' ? '#4ade80'
-                          : r.status === 'synced'  ? '#4ade80'
-                          : r.status === 'failed'  ? '#f87171'
-                          : '#f87171';
-        const statusLabel = r.status === 'matched'   ? '✅ Matched'
-                          : r.status === 'synced'    ? '🚀 Synced'
-                          : r.status === 'not_found' ? '❌ Not Found'
-                          : r.status === 'failed'    ? '💥 Failed'
-                          : r.status;
-        const priceChange = r.currentPrice && parseFloat(r.currentPrice) !== parseFloat(r.sellingPrice)
+        const isMatched  = r.status === 'matched' || r.status === 'synced';
+        const isNotFound = r.status === 'not_found';
+
+        // Compute in-sync status (only for matched rows where we have Shopify current values)
+        let syncState = 'na'; // 'na' | 'in_sync' | 'out_of_sync'
+        let diffBits  = [];   // which fields differ
+        if (isMatched && r.currentPrice != null) {
+          const priceMatch   = Math.abs(parseFloat(r.currentPrice||0)  - parseFloat(r.sellingPrice||0)) < 0.01;
+          const mrpMatch     = Math.abs(parseFloat(r.currentCompare||0)- parseFloat(r.mrp||0))          < 0.01;
+          const stockMatch   = r.currentStock != null
+            ? Math.round(r.currentStock) === Math.round(r.stockQty||0)
+            : true; // if no stock data, don't flag it
+          if (!priceMatch) diffBits.push('Price');
+          if (!mrpMatch)   diffBits.push('MRP');
+          if (!stockMatch) diffBits.push('Stock');
+          syncState = diffBits.length === 0 ? 'in_sync' : 'out_of_sync';
+        }
+
+        const canSync   = isMatched && syncState !== 'in_sync';
+        const isChecked = _ssSelected.has(r.name);
+
+        // Status label + color
+        let statusColor, statusLabel;
+        if (r.status === 'synced') {
+          statusColor = '#4ade80'; statusLabel = '🚀 Synced';
+        } else if (r.status === 'failed' || r.status === 'stock_failed' || r.status === 'price_failed') {
+          statusColor = '#f87171'; statusLabel = '💥 Failed';
+        } else if (isNotFound) {
+          statusColor = '#f87171'; statusLabel = '❌ Not Found';
+        } else if (syncState === 'in_sync') {
+          statusColor = '#4ade80'; statusLabel = '✅ In Sync';
+        } else if (syncState === 'out_of_sync') {
+          statusColor = '#facc15'; statusLabel = `⚠️ Out of Sync`;
+        } else {
+          statusColor = '#4ade80'; statusLabel = '✅ Matched';
+        }
+
+        // Price cell — show diff hint if out of sync
+        const priceColor  = diffBits.includes('Price') ? '#facc15' : 'var(--muted)';
+        const priceChange = (r.currentPrice != null && diffBits.includes('Price'))
           ? `<span style="color:#facc15;font-size:0.72rem;">₹${r.currentPrice}→₹${r.sellingPrice}</span>`
           : `<span style="color:var(--muted);font-size:0.72rem;">₹${r.sellingPrice}</span>`;
+
+        const mrpColor  = diffBits.includes('MRP') ? '#facc15' : '#ccc';
+        const mrpCell   = `<span style="color:${mrpColor};font-size:0.78rem;">₹${r.mrp || '—'}</span>`;
+
+        const stockColor = diffBits.includes('Stock') ? '#facc15' : '#ccc';
+        const stockCell  = r.currentStock != null && diffBits.includes('Stock')
+          ? `<span style="color:#facc15;font-size:0.72rem;">${r.currentStock}→${r.stockQty}</span>`
+          : `<span style="color:${stockColor};font-size:0.78rem;">${r.stockQty}</span>`;
+
         const cbCell = canSync
           ? `<td style="padding:0.4rem 0.5rem;text-align:center;width:32px;">
                <input type="checkbox" class="ss-row-cb" data-name="${r.name.replace(/"/g,'&quot;')}"
@@ -10097,14 +10150,20 @@ Questions? We're always here!
                  style="width:15px;height:15px;cursor:pointer;accent-color:var(--gold);" />
              </td>`
           : `<td style="padding:0.4rem 0.5rem;text-align:center;width:32px;"></td>`;
+
+        // Row background
+        const rowBg = isChecked && canSync  ? 'background:rgba(212,175,55,0.07);'
+                    : syncState === 'in_sync' ? 'background:rgba(74,222,128,0.03);opacity:0.65;'
+                    : '';
+
         const escapedName = r.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-        return `<tr style="${isChecked && canSync ? 'background:rgba(212,175,55,0.06);' : ''}">
+        return `<tr style="${rowBg}">
           ${cbCell}
           <td style="padding:0.4rem 0.5rem;color:#e5e7eb;">${r.name}</td>
           <td style="padding:0.4rem 0.5rem;color:#9ca3af;font-size:0.78rem;">${r.shopifyTitle || '—'}</td>
           <td style="padding:0.4rem 0.5rem;">${priceChange}</td>
-          <td style="padding:0.4rem 0.5rem;color:#ccc;font-size:0.78rem;">₹${r.mrp || '—'}</td>
-          <td style="padding:0.4rem 0.5rem;color:#ccc;font-size:0.78rem;">${r.stockQty}</td>
+          <td style="padding:0.4rem 0.5rem;">${mrpCell}</td>
+          <td style="padding:0.4rem 0.5rem;">${stockCell}</td>
           <td style="padding:0.4rem 0.5rem;color:${statusColor};font-size:0.78rem;font-weight:600;">${statusLabel}</td>
           ${r.error ? `<td style="color:#f87171;font-size:0.72rem;">${r.error}</td>` : '<td></td>'}
           <td style="padding:0.4rem 0.3rem;text-align:center;">
@@ -10189,8 +10248,17 @@ Questions? We're always here!
           </a>`;
         }
 
+        const inSyncCount    = _ssPreview.filter(r => {
+          if (r.status !== 'matched') return false;
+          const pm = Math.abs(parseFloat(r.currentPrice||0)  - parseFloat(r.sellingPrice||0)) < 0.01;
+          const mm = Math.abs(parseFloat(r.currentCompare||0)- parseFloat(r.mrp||0))          < 0.01;
+          const sm = r.currentStock != null ? Math.round(r.currentStock) === Math.round(r.stockQty||0) : true;
+          return pm && mm && sm;
+        }).length;
+        const outSyncCount = (s.matched || 0) - inSyncCount;
         document.getElementById('ss-summary-bar').innerHTML = `
-          <span style="color:#4ade80;">✅ Matched: ${s.matched || 0}</span>
+          <span style="color:#facc15;">⚠️ Out of Sync: ${outSyncCount}</span>
+          <span style="color:#4ade80;">✅ In Sync: ${inSyncCount}</span>
           <span style="color:#f87171;">❌ Not Found: ${s.not_found || 0}</span>
           <span style="color:#9ca3af;">Total: ${s.total || 0}</span>
           ${previewReportBtn}`;

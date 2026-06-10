@@ -6121,12 +6121,16 @@
         <div id="ss-sync-wrap" style="display:none;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:1.25rem;">
           <div style="font-weight:700;color:var(--gold);margin-bottom:0.75rem;">Step 3 — Sync to Shopify</div>
           <div style="font-size:0.82rem;color:var(--muted);margin-bottom:0.75rem;">
-            This will update <strong style="color:#fff;">selling price</strong>, <strong style="color:#fff;">MRP (compare-at)</strong> and <strong style="color:#fff;">stock quantity</strong> for all matched books.
+            This will update <strong style="color:#fff;">selling price</strong>, <strong style="color:#fff;">MRP (compare-at)</strong> and <strong style="color:#fff;">stock quantity</strong>.
+            Use checkboxes above to sync selected books, or leave all unchecked to sync all matched books.
           </div>
-          <button class="admin-filter-btn" onclick="ssRunSync()" id="ss-sync-btn"
-            style="background:rgba(74,222,128,0.1);border-color:#4ade80;color:#4ade80;font-size:0.9rem;padding:0.5rem 1.25rem;">
-            🚀 Sync to Shopify
-          </button>
+          <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
+            <button class="admin-filter-btn" onclick="ssRunSync()" id="ss-sync-btn"
+              style="background:rgba(74,222,128,0.1);border-color:#4ade80;color:#4ade80;font-size:0.9rem;padding:0.5rem 1.25rem;">
+              🚀 Sync to Shopify
+            </button>
+            <span id="ss-sync-note" style="font-size:0.78rem;color:var(--muted);">Select rows above, or sync all matched books</span>
+          </div>
           <div id="ss-sync-result" style="margin-top:1rem;"></div>
         </div>
       </div><!-- /admin-section-stock-sync -->
@@ -9921,9 +9925,10 @@ Questions? We're always here!
     }
 
     function ssClearFile() {
-      _ssRows    = [];
-      _ssPreview = [];
-      _ssSort    = { col: null, dir: 1 };
+      _ssRows     = [];
+      _ssPreview  = [];
+      _ssSort     = { col: null, dir: 1 };
+      _ssSelected = new Set();
       const fileInput = document.getElementById('ss-csv-input');
       if (fileInput) fileInput.value = '';
       const searchEl = document.getElementById('ss-search');
@@ -9985,12 +9990,40 @@ Questions? We're always here!
       ssRenderTable(_ssPreview);
     }
 
-    var _ssSort = { col: null, dir: 1 }; // col: 'name'|'price'|'mrp'|'stock'|'status', dir: 1=asc -1=desc
+    var _ssSort     = { col: null, dir: 1 }; // col: 'name'|'price'|'mrp'|'stock'|'status', dir: 1=asc -1=desc
+    var _ssSelected = new Set();             // Set of row names that are selected for sync
 
     function ssSortBy(col) {
       if (_ssSort.col === col) _ssSort.dir *= -1;
       else { _ssSort.col = col; _ssSort.dir = 1; }
       ssRenderTable(_ssPreview);
+    }
+
+    function ssToggleRow(name, checked) {
+      if (checked) _ssSelected.add(name); else _ssSelected.delete(name);
+      ssUpdateSyncBtn();
+    }
+
+    function ssToggleAll(checked) {
+      // Select/deselect all currently visible matched rows
+      document.querySelectorAll('.ss-row-cb').forEach(cb => {
+        cb.checked = checked;
+        if (checked) _ssSelected.add(cb.dataset.name); else _ssSelected.delete(cb.dataset.name);
+      });
+      ssUpdateSyncBtn();
+    }
+
+    function ssUpdateSyncBtn() {
+      const count = _ssSelected.size;
+      const btn   = document.getElementById('ss-sync-btn');
+      if (btn) {
+        btn.textContent = count > 0 ? `🚀 Sync ${count} Selected to Shopify` : '🚀 Sync to Shopify';
+        btn.disabled    = false;
+      }
+      const note = document.getElementById('ss-sync-note');
+      if (note) note.textContent = count > 0
+        ? `${count} book${count > 1 ? 's' : ''} selected`
+        : 'Select rows above, or sync all matched books';
     }
 
     function ssRenderTable(results) {
@@ -10028,9 +10061,15 @@ Questions? We're always here!
           ? '<span style="color:var(--gold);margin-left:4px;">↑</span>'
           : '<span style="color:var(--gold);margin-left:4px;">↓</span>';
       };
-      const thStyle = 'padding:0.4rem 0.5rem;text-align:left;cursor:pointer;user-select:none;white-space:nowrap;';
+      const thStyle   = 'padding:0.4rem 0.5rem;text-align:left;cursor:pointer;user-select:none;white-space:nowrap;';
+      const visibleMatchedCount = filtered.filter(r => r.status === 'matched' || r.status === 'synced').length;
+      const allChecked = visibleMatchedCount > 0 && filtered
+        .filter(r => r.status === 'matched' || r.status === 'synced')
+        .every(r => _ssSelected.has(r.name));
 
       const rows = filtered.map(r => {
+        const canSync    = r.status === 'matched' || r.status === 'synced';
+        const isChecked  = _ssSelected.has(r.name);
         const statusColor = r.status === 'matched' ? '#4ade80'
                           : r.status === 'synced'  ? '#4ade80'
                           : r.status === 'failed'  ? '#f87171'
@@ -10043,7 +10082,16 @@ Questions? We're always here!
         const priceChange = r.currentPrice && parseFloat(r.currentPrice) !== parseFloat(r.sellingPrice)
           ? `<span style="color:#facc15;font-size:0.72rem;">₹${r.currentPrice}→₹${r.sellingPrice}</span>`
           : `<span style="color:var(--muted);font-size:0.72rem;">₹${r.sellingPrice}</span>`;
-        return `<tr>
+        const cbCell = canSync
+          ? `<td style="padding:0.4rem 0.5rem;text-align:center;width:32px;">
+               <input type="checkbox" class="ss-row-cb" data-name="${r.name.replace(/"/g,'&quot;')}"
+                 ${isChecked ? 'checked' : ''}
+                 onchange="ssToggleRow(this.dataset.name, this.checked)"
+                 style="width:15px;height:15px;cursor:pointer;accent-color:var(--gold);" />
+             </td>`
+          : `<td style="padding:0.4rem 0.5rem;text-align:center;width:32px;"></td>`;
+        return `<tr style="${isChecked && canSync ? 'background:rgba(212,175,55,0.06);' : ''}">
+          ${cbCell}
           <td style="padding:0.4rem 0.5rem;color:#e5e7eb;">${r.name}</td>
           <td style="padding:0.4rem 0.5rem;color:#9ca3af;font-size:0.78rem;">${r.shopifyTitle || '—'}</td>
           <td style="padding:0.4rem 0.5rem;">${priceChange}</td>
@@ -10059,6 +10107,11 @@ Questions? We're always here!
         <div class="admin-table-wrap">
           <table class="admin-table">
             <thead><tr>
+              <th style="padding:0.4rem 0.5rem;text-align:center;width:32px;">
+                <input type="checkbox" ${allChecked ? 'checked' : ''} onchange="ssToggleAll(this.checked)"
+                  title="Select all visible matched books"
+                  style="width:15px;height:15px;cursor:pointer;accent-color:var(--gold);" />
+              </th>
               <th style="${thStyle}" onclick="ssSortBy('name')">BillBook Name${sortArrow('name')}</th>
               <th style="padding:0.4rem 0.5rem;text-align:left;">Shopify Match</th>
               <th style="${thStyle}" onclick="ssSortBy('price')">Price${sortArrow('price')}</th>
@@ -10070,6 +10123,7 @@ Questions? We're always here!
             <tbody>${rows}</tbody>
           </table>
         </div>`;
+      ssUpdateSyncBtn();
     }
 
     async function ssRunPreview() {
@@ -10140,9 +10194,14 @@ Questions? We're always here!
     }
 
     async function ssRunSync() {
-      const matched = _ssPreview.filter(r => r.status === 'matched');
-      if (!matched.length) { alert('No matched books to sync.'); return; }
-      if (!confirm(`Sync ${matched.length} books to Shopify? This will update prices and stock.`)) return;
+      const allMatched = _ssPreview.filter(r => r.status === 'matched');
+      const toSync     = _ssSelected.size > 0
+        ? allMatched.filter(r => _ssSelected.has(r.name))
+        : allMatched;
+      if (!toSync.length) { alert('No matched books to sync. Please run preview first.'); return; }
+      const label = _ssSelected.size > 0 ? `${toSync.length} selected` : `all ${toSync.length} matched`;
+      if (!confirm(`Sync ${label} books to Shopify? This will update prices and stock.`)) return;
+      const matched = toSync;
 
       const btn = document.getElementById('ss-sync-btn');
       btn.disabled = true; btn.textContent = `⏳ Syncing ${matched.length} books…`;

@@ -155,52 +155,78 @@ exports.handler = async function(event) {
     const rows = await res.json();
     const user = Array.isArray(rows) && rows.length > 0 ? rows[0] : null;
 
-    // ── Path A: Supabase user with a password (registered author) ──────────
+    // Helper: check book_club_members table
+    async function checkClubMember(email) {
+      try {
+        const r = await fetch(
+          `${SUPABASE_URL}/rest/v1/book_club_members?email=eq.${encodeURIComponent(email)}&select=email&limit=1`,
+          { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
+        );
+        const rows = await r.json();
+        return Array.isArray(rows) && rows.length > 0;
+      } catch { return false; }
+    }
+
+    // ── Path A: Supabase user with a password (old author pre-Shopify SSO) ─────
     if (user && user.password_hash && user.salt) {
-      const hash = hashPassword(password, user.salt);
-      if (hash !== user.password_hash) {
+      const hash          = hashPassword(password, user.salt);
+      const supabaseValid = (hash === user.password_hash);
+
+      // Always try Shopify auth — it may have a different (reset) password
+      const shopResult = await tryShopifyAuth(email, password);
+
+      if (!supabaseValid && !shopResult) {
+        // Neither Supabase nor Shopify accepted the password
         return err('Invalid email or password');
       }
 
-      // Role check — must have 'author' role to access Author's Space
-      const roles = user.roles || [];
-      if (!roles.includes('author')) {
-        return err(
-          "Your account is registered as a Book Club member only. " +
-          "Please register as an author to access Author's Space."
-        );
-      }
-
-      // Auth OK + has author role — get Shopify token for cart/checkout
+      const roles    = (user.roles || []).slice();
+      let shopName   = user.name || email;
       let shopifyToken = null;
-      const shopResult = await tryShopifyAuth(email, password);
+
       if (shopResult) {
         shopifyToken = shopResult.shopifyToken;
+        shopName     = shopResult.name || shopName;
       } else {
-        // No Shopify account yet (Supabase-only author) — create one silently
+        // Supabase password valid but no Shopify account yet — create one
         await ensureShopifyAccount(email, user.name || email, password);
-        const retryResult = await tryShopifyAuth(email, password);
-        if (retryResult) shopifyToken = retryResult.shopifyToken;
+        const retry = await tryShopifyAuth(email, password);
+        if (retry) { shopifyToken = retry.shopifyToken; shopName = retry.name || shopName; }
       }
 
-      return ok({ success: true, name: user.name || email, email, roles, shopifyToken });
+      // ── Auto-migrate: Shopify password differs from Supabase (e.g. after reset) ──
+      // Clear Supabase password so future logins go through Path B (Shopify-only)
+      if (!supabaseValid && shopResult) {
+        console.log('Auto-migrating', email, 'to Shopify SSO — clearing Supabase password');
+        fetch(
+          `${SUPABASE_URL}/rest/v1/users?email=eq.${encodeURIComponent(email)}`,
+          {
+            method:  'PATCH',
+            headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ password_hash: '', salt: '' })
+          }
+        ).catch(() => {});
+      }
+
+      // Merge club_member role from book_club_members if not already present
+      if (!roles.includes('club_member') && await checkClubMember(email)) {
+        roles.push('club_member');
+      }
+
+      return ok({ success: true, name: user.name || shopName, email, roles, shopifyToken });
     }
 
-    // ── Path B: Supabase record exists but no password (club_member role only) ──
+    // ── Path B: Supabase record, no password (Shopify-primary user with Supabase record) ──
     if (user && (!user.password_hash || !user.salt)) {
-      // Verify via Shopify (their real credential)
       const shopResult = await tryShopifyAuth(email, password);
       if (!shopResult) return err('Invalid email or password');
 
-      const roles = user.roles || [];
-      if (!roles.includes('author')) {
-        return err(
-          "Your account is registered as a Book Club member only. " +
-          "Please register as an author to access Author's Space."
-        );
+      const roles = (user.roles || []).slice();
+
+      if (!roles.includes('club_member') && await checkClubMember(email)) {
+        roles.push('club_member');
       }
 
-      // Has both roles — club member who also registered as author
       return ok({
         success: true,
         name: user.name || shopResult.name,
@@ -210,15 +236,32 @@ exports.handler = async function(event) {
       });
     }
 
-    // ── Path C: No Supabase record — try Shopify ────────────────────────────
+    // ── Path C: No Supabase users record — authenticate via Shopify ─────────
     const shopResult = await tryShopifyAuth(email, password);
     if (!shopResult) return err('Invalid email or password');
 
-    // Valid Shopify account but zero Supabase record → not an author
-    return err(
-      "No Author's Space account found for this email. " +
-      "Please register as an author or check your login details."
-    );
+    // Determine roles from Shopify customer tags
+    const shopRoles = [];
+    try {
+      const tagRes  = await fetch(
+        `https://${SHOPIFY_DOMAIN}/admin/api/${API_VERSION}/customers/search.json?query=email:${encodeURIComponent(email)}&fields=id,tags&limit=1`,
+        { headers: { 'X-Shopify-Access-Token': SHOPIFY_ADMIN_TOKEN, 'Content-Type': 'application/json' } }
+      );
+      const tagData = await tagRes.json();
+      const tags    = (tagData?.customers?.[0]?.tags || '').toLowerCase().split(',').map(t => t.trim());
+      if (tags.includes('author'))                                shopRoles.push('author');
+      if (tags.includes('club_member') || tags.includes('member')) shopRoles.push('club_member');
+    } catch { /* non-fatal */ }
+
+    if (!shopRoles.includes('club_member') && await checkClubMember(email)) shopRoles.push('club_member');
+
+    return ok({
+      success: true,
+      name: shopResult.name,
+      email,
+      roles: shopRoles,
+      shopifyToken: shopResult.shopifyToken
+    });
 
   } catch(e) {
     return { statusCode: 500, headers: cors, body: JSON.stringify({ success: false, error: 'Login failed. Please try again.' }) };

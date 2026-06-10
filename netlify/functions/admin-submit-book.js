@@ -102,13 +102,82 @@ async function setupVariantDefaults(shopifyProductId) {
       {
         method:  'PUT',
         headers: { 'X-Shopify-Access-Token': SHOPIFY_TOKEN, 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ variant: { id: variantId, taxable: false } })
+        body:    JSON.stringify({ variant: { id: variantId, taxable: false, requires_shipping: true } })
       }
     );
     const taxData = await taxRes.json();
     console.log('Tax disabled, taxable now:', taxData?.variant?.taxable);
   } catch (e) {
     console.warn('setupVariantDefaults error:', e.message);
+  }
+}
+
+// Map genre label → Shopify collection handle (matches landing page genre grid)
+const GENRE_HANDLE_MAP = {
+  'romance':              'romance',
+  'malayalam fiction':    'malayalam-fiction',
+  'novels':               'novels',
+  'novel':                'novels',
+  'crime & thrillers':    'crime-thrillers',
+  'crime and thrillers':  'crime-thrillers',
+  'crime':                'crime-thrillers',
+  'thriller':             'crime-thrillers',
+  'thrillers':            'crime-thrillers',
+  'young adult':          'young-adult',
+  'period drama':         'period-drama',
+  'classics':             'classics',
+  'award winners':        'award-winners',
+  'award winning':        'award-winners',
+  'world literature':     'world-literature',
+  "children's books":     'childrens-books',
+  'childrens books':      'childrens-books',
+  'children':             'childrens-books',
+  'memories':             'memories',
+  'memories & nostalgia': 'memories',
+  'travel':               'travel',
+  'self help':            'self-help',
+  'self-help':            'self-help',
+  'poetry':               'poetry',
+  'stories':              'stories',
+  'best sellers':         'best-sellers',
+  'trending':             'trending',
+};
+
+// Find a Shopify collection GID by its handle
+async function getCollectionGidByHandle(handle) {
+  try {
+    const data = await shopifyGql(`{
+      collectionByHandle(handle: ${JSON.stringify(handle)}) { id }
+    }`);
+    return data?.data?.collectionByHandle?.id || null;
+  } catch { return null; }
+}
+
+// Add a product to the collection matching its genre label
+async function addProductToGenreCollection(productGid, genre) {
+  try {
+    const handle = GENRE_HANDLE_MAP[genre.toLowerCase().trim()];
+    if (!handle) {
+      console.log(`addProductToGenreCollection: no handle mapping for genre "${genre}" — skipping`);
+      return;
+    }
+    const collectionGid = await getCollectionGidByHandle(handle);
+    if (!collectionGid) {
+      console.warn(`addProductToGenreCollection: collection "${handle}" not found in Shopify`);
+      return;
+    }
+    const res = await shopifyGql(`
+      mutation collectionAddProducts($id: ID!, $productIds: [ID!]!) {
+        collectionAddProducts(id: $id, productIds: $productIds) {
+          collection { id title }
+          userErrors { field message }
+        }
+      }`, { id: collectionGid, productIds: [productGid] });
+    const errors = res?.data?.collectionAddProducts?.userErrors || [];
+    if (errors.length) console.warn('collectionAddProducts errors:', JSON.stringify(errors));
+    else console.log(`Product added to collection "${handle}" successfully`);
+  } catch (e) {
+    console.warn('addProductToGenreCollection failed (non-fatal):', e.message);
   }
 }
 
@@ -218,8 +287,11 @@ exports.handler = async function (event) {
       // 2d — Enable inventory tracking and set stock (REST, uses numeric shopifyId)
       await setupInventory(shopifyId, stockQty);
 
-      // 2e — Uncheck tax on variant
+      // 2e — Uncheck tax + requires_shipping on variant
       await setupVariantDefaults(shopifyId);
+
+      // 2f — Add product to matching Shopify collection based on genre
+      if (genre) await addProductToGenreCollection(productGid, genre);
     }
 
     // Step 3 — Save to Supabase as 'listed'

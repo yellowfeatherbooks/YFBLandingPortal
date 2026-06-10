@@ -1,0 +1,88 @@
+{
+  "name": "YFB — Order Lookup",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "exec-trigger",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://zgqk4e-1m.myshopify.com/admin/api/2025-04/orders.json",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "name",
+              "value": "={{ $json.orderNumber || '' }}"
+            },
+            {
+              "name": "email",
+              "value": "={{ $json.email || '' }}"
+            },
+            {
+              "name": "status",
+              "value": "any"
+            },
+            {
+              "name": "fields",
+              "value": "name,email,financial_status,fulfillment_status,created_at,line_items,fulfillments"
+            },
+            {
+              "name": "limit",
+              "value": "1"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Shopify-Access-Token",
+              "value": "YOUR_SHOPIFY_ADMIN_TOKEN_HERE"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "shopify-orders",
+      "name": "Get Order from Shopify",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const orders = $input.first().json.orders || [];\n\nif (!orders.length) {\n  return [{ json: { result: 'No order found with that order number or email. Please double-check the order number (it should look like #YFBS1234) or the email address used at checkout.' } }];\n}\n\nconst o = orders[0];\n\n// Format line items\nconst items = (o.line_items || [])\n  .map(i => `• ${i.name} x${i.quantity} — ₹${i.price}`)\n  .join('\\n');\n\n// Format fulfillment / tracking\nconst fulfillment = o.fulfillments?.[0];\nconst tracking = fulfillment?.tracking_number\n  ? `Tracking No: ${fulfillment.tracking_number}${fulfillment.tracking_url ? ' (' + fulfillment.tracking_url + ')' : ''}`\n  : null;\n\n// Financial & fulfillment status labels\nconst payStatus = {\n  paid: '✅ Paid',\n  pending: '⏳ Payment Pending',\n  refunded: '↩️ Refunded',\n  partially_refunded: '↩️ Partially Refunded',\n  voided: '❌ Voided'\n}[o.financial_status] || o.financial_status;\n\nconst shipStatus = {\n  fulfilled: '📦 Shipped',\n  partial: '📦 Partially Shipped',\n  unfulfilled: '🕐 Not Yet Shipped',\n  restocked: '↩️ Restocked'\n}[o.fulfillment_status] || o.fulfillment_status || '🕐 Not Yet Shipped';\n\nconst placedDate = new Date(o.created_at).toLocaleDateString('en-IN', {\n  day: 'numeric', month: 'long', year: 'numeric'\n});\n\nconst lines = [\n  `Order ${o.name}`,\n  `Placed on: ${placedDate}`,\n  `Payment: ${payStatus}`,\n  `Delivery: ${shipStatus}`,\n  ``,\n  `Items:`,\n  items,\n  tracking ? `\\n${tracking}` : ''\n].filter(l => l !== undefined).join('\\n');\n\nreturn [{ json: { result: lines } }];"
+      },
+      "id": "format-order",
+      "name": "Format Order Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [[{ "node": "Get Order from Shopify", "type": "main", "index": 0 }]]
+    },
+    "Get Order from Shopify": {
+      "main": [[{ "node": "Format Order Result", "type": "main", "index": 0 }]]
+    }
+  },
+  "_instructions": {
+    "setup": [
+      "1. Import this JSON into n8n (Workflows → Import from file)",
+      "2. Make sure SHOPIFY_ADMIN_TOKEN is set in n8n environment variables (Settings → Environment Variables)",
+      "3. Activate the workflow",
+      "4. Copy the workflow ID from the URL (e.g. https://your-n8n.com/workflow/ABC123 → ID is ABC123)",
+      "5. In the main YFB Chat workflow, add a 'Call n8n Workflow' tool node connected to AI Agent → Tool",
+      "6. Set workflowId to the ID from step 4",
+      "7. Name: check_order_status | Description: Look up a customer order by order number (e.g. #YFBS1216) or email address"
+    ]
+  }
+}

@@ -1825,6 +1825,42 @@
     .alp-plans-col { flex: 1; min-width: 260px; max-width: 440px; }
     .alp-plans-heading { font-size: 1.05rem; font-weight: 700; margin-bottom: 0.25rem; }
     .alp-plans-sub { font-size: 0.78rem; color: var(--muted); margin-bottom: 1.1rem; }
+
+    /* Free membership bonus banner */
+    .alp-free-membership-banner {
+      background: linear-gradient(135deg, rgba(56,189,178,0.12) 0%, rgba(201,146,42,0.12) 100%);
+      border: 1.5px solid rgba(56,189,178,0.45);
+      border-radius: 12px; padding: 0.9rem 1rem; margin-bottom: 1rem;
+      position: relative; overflow: hidden;
+    }
+    .alp-free-membership-banner::before {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(90deg, rgba(56,189,178,0.06), transparent);
+      pointer-events: none;
+    }
+    .alp-fmb-badge {
+      display: inline-block; background: linear-gradient(90deg,#38BDB2,#C9922A);
+      color: #fff; font-size: 0.6rem; font-weight: 800; letter-spacing: 0.08em;
+      padding: 0.15rem 0.55rem; border-radius: 20px; margin-bottom: 0.4rem;
+    }
+    .alp-fmb-title {
+      font-size: 0.95rem; font-weight: 700; color: var(--cream); margin-bottom: 0.3rem;
+    }
+    .alp-fmb-desc {
+      font-size: 0.75rem; color: var(--muted); line-height: 1.5; margin-bottom: 0.55rem;
+    }
+    .alp-fmb-tags { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+    .alp-fmb-tags span {
+      font-size: 0.68rem; background: rgba(56,189,178,0.1);
+      border: 1px solid rgba(56,189,178,0.25); color: #38BDB2;
+      padding: 0.15rem 0.5rem; border-radius: 20px;
+    }
+
+    /* Highlighted perk on homepage author card */
+    .mhp-perk-highlight {
+      color: #38BDB2 !important; font-weight: 600;
+    }
+
     .alp-plan-tile {
       background: var(--card-bg); border: 1px solid var(--border);
       border-radius: 12px; padding: 1rem 1.1rem; margin-bottom: 0.75rem;
@@ -4256,6 +4292,18 @@
         <div class="alp-plans-heading">List Your Book. Reach Readers.</div>
         <div class="alp-plans-sub">Choose a plan and start showcasing your books across our website, app &amp; social channels.</div>
 
+        <!-- Free Club Membership Bonus -->
+        <div class="alp-free-membership-banner">
+          <div class="alp-fmb-badge">🎁 FREE BONUS</div>
+          <div class="alp-fmb-title">1-Year Book Club Membership</div>
+          <div class="alp-fmb-desc">Every author gets a complimentary Yellow Feather Book Club membership — browse exclusive deals, track orders &amp; enjoy member-only discounts worth <strong>₹99</strong>, absolutely free.</div>
+          <div class="alp-fmb-tags">
+            <span>🏷️ Member discounts</span>
+            <span>📦 Order tracking</span>
+            <span>🎖️ Club access</span>
+          </div>
+        </div>
+
         <div class="alp-plan-tile">
           <div class="alp-plan-header">
             <span class="alp-plan-name">Starter</span>
@@ -4559,6 +4607,7 @@
         </div>
         <div class="mhp-card-title">List Your Book &amp; Reach Readers</div>
         <ul class="mhp-card-perks">
+          <li class="mhp-perk-highlight">🎁 Free 1-year Book Club membership</li>
           <li>3 flexible listing plans</li>
           <li>Reach thousands of readers</li>
           <li>Instagram &amp; digital promotion</li>
@@ -5592,6 +5641,9 @@
       <button class="admin-nav-item" data-section="flash" onclick="adminNav('flash',this)">
         <span class="admin-nav-icon">⚡</span> Flash Sale
       </button>
+      <button class="admin-nav-item" data-section="stock-sync" onclick="adminNav('stock-sync',this)">
+        <span class="admin-nav-icon">🔄</span> Stock Sync
+      </button>
       <button class="admin-nav-item" data-section="wa-campaign" onclick="adminNav('wa-campaign',this)">
         <span class="admin-nav-icon">📣</span> WA Campaign
       </button>
@@ -5816,8 +5868,22 @@
       <div id="admin-section-members" class="admin-section">
         <div class="admin-section-header">
           <h2>🎖️ Book Club Members</h2>
+          <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
+            <input id="backfill-email-input" type="email" placeholder="member@email.com"
+              style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:0.35rem 0.7rem;color:#fff;font-size:0.82rem;width:220px;outline:none;"
+              onkeydown="if(event.key==='Enter') backfillShopifyMembers(document.getElementById('backfill-email-input').value.trim())" />
+            <button class="admin-filter-btn" onclick="backfillShopifyMembers(document.getElementById('backfill-email-input').value.trim())" id="backfill-single-btn">
+              🔄 Backfill
+            </button>
+            <button class="admin-filter-btn" onclick="backfillShopifyMembers()" id="backfill-all-btn"
+              style="opacity:0.7;" title="Backfill all members without a Shopify account">
+              🔄 Backfill All
+            </button>
+          </div>
         </div>
         <div id="admin-members-stats" class="admin-stats"></div>
+        <!-- Backfill result panel -->
+        <div id="backfill-result" style="display:none;margin-bottom:1rem;padding:1rem;border-radius:8px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);font-size:0.82rem;line-height:1.6;"></div>
         <div id="admin-members-body"></div>
       </div>
 
@@ -6006,6 +6072,58 @@
           <div id="flash-search-results"></div>
         </div>
       </div><!-- /admin-section-flash -->
+
+      <!-- ── Stock Sync ── -->
+      <div id="admin-section-stock-sync" class="admin-section">
+        <div class="admin-section-header">
+          <h2>🔄 Stock Sync — BillBook → Shopify</h2>
+        </div>
+
+        <!-- Step 1: Upload CSV -->
+        <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:1.25rem;margin-bottom:1rem;">
+          <div style="font-weight:700;color:var(--gold);margin-bottom:0.75rem;">Step 1 — Upload BillBook Stock CSV</div>
+          <div style="font-size:0.82rem;color:var(--muted);margin-bottom:0.75rem;">
+            Export from MyBillBook → Reports → Stock Summary → Download CSV
+          </div>
+          <div style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap;">
+            <input type="file" id="ss-csv-input" accept=".csv" onchange="ssLoadCsv(this)"
+              style="font-size:0.82rem;color:#ccc;" />
+            <span id="ss-csv-status" style="font-size:0.8rem;color:var(--muted);"></span>
+          </div>
+        </div>
+
+        <!-- Step 2: Preview -->
+        <div id="ss-preview-wrap" style="display:none;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:1.25rem;margin-bottom:1rem;">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.75rem;">
+            <div style="font-weight:700;color:var(--gold);">Step 2 — Preview Matches</div>
+            <div style="display:flex;gap:0.5rem;">
+              <button class="admin-filter-btn active" id="ss-filter-all"    onclick="ssFilter('all',this)">All</button>
+              <button class="admin-filter-btn"         id="ss-filter-match" onclick="ssFilter('matched',this)">Matched</button>
+              <button class="admin-filter-btn"         id="ss-filter-miss"  onclick="ssFilter('not_found',this)">Not Found</button>
+            </div>
+          </div>
+          <div id="ss-summary-bar" style="display:flex;gap:1rem;flex-wrap:wrap;font-size:0.8rem;margin-bottom:0.75rem;"></div>
+          <div id="ss-preview-btn-row" style="margin-bottom:0.75rem;">
+            <button class="admin-filter-btn" onclick="ssRunPreview()" id="ss-preview-btn" style="background:rgba(212,175,55,0.1);border-color:var(--gold);color:var(--gold);">
+              🔍 Match with Shopify
+            </button>
+          </div>
+          <div id="ss-preview-table"></div>
+        </div>
+
+        <!-- Step 3: Sync -->
+        <div id="ss-sync-wrap" style="display:none;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:1.25rem;">
+          <div style="font-weight:700;color:var(--gold);margin-bottom:0.75rem;">Step 3 — Sync to Shopify</div>
+          <div style="font-size:0.82rem;color:var(--muted);margin-bottom:0.75rem;">
+            This will update <strong style="color:#fff;">selling price</strong>, <strong style="color:#fff;">MRP (compare-at)</strong> and <strong style="color:#fff;">stock quantity</strong> for all matched books.
+          </div>
+          <button class="admin-filter-btn" onclick="ssRunSync()" id="ss-sync-btn"
+            style="background:rgba(74,222,128,0.1);border-color:#4ade80;color:#4ade80;font-size:0.9rem;padding:0.5rem 1.25rem;">
+            🚀 Sync to Shopify
+          </button>
+          <div id="ss-sync-result" style="margin-top:1rem;"></div>
+        </div>
+      </div><!-- /admin-section-stock-sync -->
 
       <!-- ── WhatsApp Campaign ── -->
       <div id="admin-section-wa-campaign" class="admin-section">
@@ -9700,6 +9818,280 @@ Questions? We're always here!
       setView('guest');
     }
 
+    // ── Backfill Shopify accounts for existing club members ──────────────────
+    async function backfillShopifyMembers(singleEmail) {
+      singleEmail = (singleEmail || '').trim().toLowerCase() || null;
+
+      const allBtn    = document.getElementById('backfill-all-btn');
+      const singleBtn = document.getElementById('backfill-single-btn');
+      const input     = document.getElementById('backfill-email-input');
+      const panel     = document.getElementById('backfill-result');
+      const adminKey  = _adminSession?.adminKey || '';
+
+      if (!adminKey) { alert('Not authenticated as admin.'); return; }
+
+      if (singleEmail && !singleEmail.includes('@')) {
+        alert('Please enter a valid email address.'); return;
+      }
+
+      const label = singleEmail ? `Backfilling ${singleEmail}…` : 'Backfilling all members…';
+      if (singleBtn) { singleBtn.disabled = true; singleBtn.textContent = '⏳'; }
+      if (allBtn)    { allBtn.disabled = true;    allBtn.textContent = singleEmail ? '🔄 Backfill All' : '⏳ Working…'; }
+      if (panel) { panel.style.display = 'none'; panel.innerHTML = ''; }
+
+      try {
+        const body = {
+          adminEmail: _adminSession.email,
+          adminKey,
+          ...(singleEmail ? { email: singleEmail } : {})
+        };
+        const res  = await fetch('/.netlify/functions/backfill-shopify-members', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify(body)
+        });
+        const data = await res.json();
+
+        if (data.error) {
+          if (panel) {
+            panel.style.display = 'block';
+            panel.style.borderColor = '#f87171';
+            panel.innerHTML = `<strong style="color:#f87171">Error:</strong> ${data.error}`;
+          }
+          return;
+        }
+
+        const s = data.summary || {};
+        const rows = (data.results || []).map(r => {
+          const colour = r.status === 'created'   ? '#4ade80'
+                       : r.status === 'tag_added' ? '#facc15'
+                       : r.status === 'failed'    ? '#f87171'
+                       : '#9ca3af';
+          return `<div style="display:flex;gap:0.6rem;align-items:flex-start;">
+            <span style="color:${colour};min-width:80px;font-weight:600;">${r.status}</span>
+            <span style="color:#ccc;">${r.email}</span>
+            <span style="color:#6b7280;font-size:0.78rem;">— ${r.note}</span>
+          </div>`;
+        }).join('');
+
+        if (panel) {
+          panel.style.display = 'block';
+          panel.style.borderColor = 'rgba(255,255,255,0.1)';
+          panel.innerHTML = `
+            <div style="margin-bottom:0.75rem;font-weight:700;color:var(--gold);">
+              Backfill complete — ${s.total || 0} member(s) processed
+            </div>
+            <div style="display:flex;gap:1.2rem;flex-wrap:wrap;margin-bottom:0.75rem;font-size:0.8rem;">
+              <span style="color:#4ade80;">✅ Created: ${s.created || 0}</span>
+              <span style="color:#facc15;">🏷️ Tag added: ${s.tag_added || 0}</span>
+              <span style="color:#9ca3af;">⏭️ Skipped: ${s.skipped || 0}</span>
+              <span style="color:#f87171;">❌ Failed: ${s.failed || 0}</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:0.3rem;">${rows}</div>`;
+        }
+      } catch (e) {
+        if (panel) {
+          panel.style.display = 'block';
+          panel.style.borderColor = '#f87171';
+          panel.innerHTML = `<strong style="color:#f87171">Network error:</strong> ${e.message}`;
+        }
+      } finally {
+        if (singleBtn) { singleBtn.disabled = false; singleBtn.textContent = '🔄 Backfill'; }
+        if (allBtn)    { allBtn.disabled = false;    allBtn.textContent = '🔄 Backfill All'; }
+        if (input && singleEmail) input.value = '';
+      }
+    }
+
+    // ── Stock Sync (BillBook → Shopify) ─────────────────────────────────────
+    var _ssRows       = [];   // parsed CSV rows
+    var _ssPreview    = [];   // preview results from backend
+    var _ssFilter     = 'all';
+
+    // Parse BillBook CSV export
+    function ssLoadCsv(input) {
+      const file = input.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const text  = e.target.result;
+        const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+
+        // Find header row (contains "Name,Batch")
+        const headerIdx = lines.findIndex(l => l.startsWith('Name,'));
+        if (headerIdx === -1) {
+          document.getElementById('ss-csv-status').textContent = '❌ Could not find data rows. Is this a BillBook Stock Summary CSV?';
+          return;
+        }
+
+        _ssRows = [];
+        for (let i = headerIdx + 1; i < lines.length; i++) {
+          const cols = lines[i].split(',');
+          if (cols.length < 6) continue;
+          const name       = cols[0].trim();
+          const purPrice   = parseFloat(cols[3]) || 0;
+          const sellPrice  = parseFloat(cols[4]) || 0;
+          const stockRaw   = cols[5].trim().replace(' PCS','').trim();
+          const stockQty   = parseFloat(stockRaw) || 0;
+          const mrp        = parseFloat(cols[8]) || 0;
+          if (!name || name === 'Name') continue;
+          _ssRows.push({ name, purchasePrice: purPrice, sellingPrice: sellPrice, stockQty, mrp });
+        }
+
+        document.getElementById('ss-csv-status').textContent =
+          `✅ ${_ssRows.length} books loaded`;
+        document.getElementById('ss-preview-wrap').style.display = 'block';
+        document.getElementById('ss-sync-wrap').style.display    = 'none';
+        document.getElementById('ss-preview-table').innerHTML     = '';
+        document.getElementById('ss-summary-bar').innerHTML       = '';
+        _ssPreview = [];
+      };
+      reader.readAsText(file);
+    }
+
+    function ssFilter(f, btn) {
+      _ssFilter = f;
+      document.querySelectorAll('#ss-preview-wrap .admin-filter-btn').forEach(b => b.classList.remove('active'));
+      if (btn) btn.classList.add('active');
+      ssRenderTable(_ssPreview);
+    }
+
+    function ssRenderTable(results) {
+      const filtered = results.filter(r =>
+        _ssFilter === 'all' ? true : r.status === _ssFilter
+      );
+      if (!filtered.length) {
+        document.getElementById('ss-preview-table').innerHTML =
+          '<div style="color:var(--muted);font-size:0.82rem;padding:0.5rem 0;">No results in this filter.</div>';
+        return;
+      }
+      const rows = filtered.map(r => {
+        const statusColor = r.status === 'matched' ? '#4ade80'
+                          : r.status === 'synced'  ? '#4ade80'
+                          : r.status === 'failed'  ? '#f87171'
+                          : '#f87171';
+        const statusLabel = r.status === 'matched'   ? '✅ Matched'
+                          : r.status === 'synced'    ? '🚀 Synced'
+                          : r.status === 'not_found' ? '❌ Not Found'
+                          : r.status === 'failed'    ? '💥 Failed'
+                          : r.status;
+        const priceChange = r.currentPrice && parseFloat(r.currentPrice) !== parseFloat(r.sellingPrice)
+          ? `<span style="color:#facc15;font-size:0.72rem;">₹${r.currentPrice}→₹${r.sellingPrice}</span>`
+          : `<span style="color:var(--muted);font-size:0.72rem;">₹${r.sellingPrice}</span>`;
+        return `<tr>
+          <td style="padding:0.4rem 0.5rem;color:#e5e7eb;">${r.name}</td>
+          <td style="padding:0.4rem 0.5rem;color:#9ca3af;font-size:0.78rem;">${r.shopifyTitle || '—'}</td>
+          <td style="padding:0.4rem 0.5rem;">${priceChange}</td>
+          <td style="padding:0.4rem 0.5rem;color:#ccc;font-size:0.78rem;">₹${r.mrp || '—'}</td>
+          <td style="padding:0.4rem 0.5rem;color:#ccc;font-size:0.78rem;">${r.stockQty}</td>
+          <td style="padding:0.4rem 0.5rem;color:${statusColor};font-size:0.78rem;font-weight:600;">${statusLabel}</td>
+          ${r.error ? `<td style="color:#f87171;font-size:0.72rem;">${r.error}</td>` : '<td></td>'}
+        </tr>`;
+      }).join('');
+
+      document.getElementById('ss-preview-table').innerHTML = `
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead><tr>
+              <th style="padding:0.4rem 0.5rem;text-align:left;">BillBook Name</th>
+              <th style="padding:0.4rem 0.5rem;text-align:left;">Shopify Match</th>
+              <th style="padding:0.4rem 0.5rem;text-align:left;">Price</th>
+              <th style="padding:0.4rem 0.5rem;text-align:left;">MRP</th>
+              <th style="padding:0.4rem 0.5rem;text-align:left;">Stock</th>
+              <th style="padding:0.4rem 0.5rem;text-align:left;">Status</th>
+              <th style="padding:0.4rem 0.5rem;text-align:left;">Note</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>`;
+    }
+
+    async function ssRunPreview() {
+      if (!_ssRows.length) { alert('Please upload a CSV first.'); return; }
+      const btn = document.getElementById('ss-preview-btn');
+      btn.disabled = true; btn.textContent = '⏳ Matching…';
+      document.getElementById('ss-summary-bar').innerHTML = '';
+      document.getElementById('ss-sync-wrap').style.display = 'none';
+
+      try {
+        const res  = await fetch('/.netlify/functions/sync-billbook-stock', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({
+            adminEmail: _adminSession.email,
+            adminKey:   _adminSession.adminKey,
+            action:     'preview',
+            rows:       _ssRows
+          })
+        });
+        const data = await res.json();
+        if (!data.success) { alert('Error: ' + data.error); return; }
+
+        _ssPreview = data.results || [];
+        const s    = data.summary || {};
+
+        document.getElementById('ss-summary-bar').innerHTML = `
+          <span style="color:#4ade80;">✅ Matched: ${s.matched || 0}</span>
+          <span style="color:#f87171;">❌ Not Found: ${s.not_found || 0}</span>
+          <span style="color:#9ca3af;">Total: ${s.total || 0}</span>`;
+
+        ssRenderTable(_ssPreview);
+
+        if ((s.matched || 0) > 0) {
+          document.getElementById('ss-sync-wrap').style.display = 'block';
+        }
+      } catch (e) {
+        alert('Network error: ' + e.message);
+      } finally {
+        btn.disabled = false; btn.textContent = '🔍 Match with Shopify';
+      }
+    }
+
+    async function ssRunSync() {
+      const matched = _ssPreview.filter(r => r.status === 'matched');
+      if (!matched.length) { alert('No matched books to sync.'); return; }
+      if (!confirm(`Sync ${matched.length} books to Shopify? This will update prices and stock.`)) return;
+
+      const btn = document.getElementById('ss-sync-btn');
+      btn.disabled = true; btn.textContent = `⏳ Syncing ${matched.length} books…`;
+      document.getElementById('ss-sync-result').innerHTML = '';
+
+      try {
+        const res  = await fetch('/.netlify/functions/sync-billbook-stock', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({
+            adminEmail: _adminSession.email,
+            adminKey:   _adminSession.adminKey,
+            action:     'sync',
+            rows:       matched.map(r => ({
+              name:         r.name,
+              sellingPrice: r.sellingPrice,
+              stockQty:     r.stockQty,
+              mrp:          r.mrp
+            }))
+          })
+        });
+        const data = await res.json();
+        if (!data.success) { alert('Error: ' + data.error); return; }
+
+        const s = data.summary || {};
+        _ssPreview = data.results.concat(_ssPreview.filter(r => r.status === 'not_found'));
+        ssRenderTable(_ssPreview);
+
+        document.getElementById('ss-sync-result').innerHTML = `
+          <div style="padding:0.75rem;border-radius:8px;background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.25);font-size:0.85rem;">
+            <strong style="color:#4ade80;">Sync complete!</strong><br>
+            🚀 Synced: ${s.synced || 0} &nbsp;|&nbsp;
+            💥 Failed: ${s.failed || 0} &nbsp;|&nbsp;
+            ❌ Not found: ${s.not_found || 0}
+          </div>`;
+      } catch (e) {
+        alert('Network error: ' + e.message);
+      } finally {
+        btn.disabled = false; btn.textContent = '🚀 Sync to Shopify';
+      }
+    }
+
     // ── Navigation ──
     // ══ Add Book (Admin) ══════════════════════════════════════════════════════
     var _abCoverBase64 = null;
@@ -10010,9 +10402,9 @@ Questions? We're always here!
         resultsEl.innerHTML = `<div class="flash-admin-grid" style="margin-top:0.75rem;">` +
           _flashSearchCache.map((b, i) => {
             const isAdded  = _adminFlashBooks.some(x => x.handle === b.handle);
-            const maxed    = _adminFlashBooks.length >= 5;
+            const maxed    = _adminFlashBooks.length >= 10;
             const action   = isAdded  ? '<span style="color:#34d399;font-size:0.72rem;font-weight:700;">✓ Added</span>'
-                           : maxed    ? '<span style="color:var(--muted);font-size:0.72rem;">Max 5 reached</span>'
+                           : maxed    ? '<span style="color:var(--muted);font-size:0.72rem;">Max 10 reached</span>'
                            : `<button class="flash-add-btn" onclick="adminAddFlashBook(${i})">+ Add</button>`;
             return `
               <div class="flash-admin-card">
@@ -10033,7 +10425,7 @@ Questions? We're always here!
     function adminAddFlashBook(idx) {
       const book = _flashSearchCache[idx];
       if (!book) return;
-      if (_adminFlashBooks.length >= 5) { alert('Maximum 5 books allowed in the flash sale.'); return; }
+      if (_adminFlashBooks.length >= 10) { alert('Maximum 10 books allowed in the flash sale.'); return; }
       if (_adminFlashBooks.some(b => b.handle === book.handle)) return;
       _adminFlashBooks.push(book);
       renderAdminFlashBooks();
@@ -12473,6 +12865,42 @@ Questions? We're always here!
 
     // Alias used in book-detail modal
     function openCartPanel() { openCart(); }
+
+    // Called by chat widget book cards — adds a book by numeric Shopify variant ID
+    window.yfbAddToCartById = async function(numericVariantId, btn) {
+      const variantGid = `gid://shopify/ProductVariant/${numericVariantId}`;
+      if (btn) { btn.textContent = '…'; btn.disabled = true; }
+      try {
+        if (!_cartId) {
+          _cartId = await _createCart(variantGid);
+          _saveCartId(_cartId);
+        } else {
+          const addJson = await sfFetch(`
+            mutation CartLinesAdd($cartId: ID!, $lines: [CartLineInput!]!) {
+              cartLinesAdd(cartId: $cartId, lines: $lines) {
+                cart { id }
+                userErrors { message }
+              }
+            }`, { cartId: _cartId, lines: [{ merchandiseId: variantGid, quantity: 1 }] });
+          const addErrs   = addJson?.data?.cartLinesAdd?.userErrors || [];
+          const cartMissing = !addJson?.data?.cartLinesAdd?.cart;
+          if (cartMissing || addErrs.length) {
+            _saveCartId(null);
+            _cartId = await _createCart(variantGid);
+            _saveCartId(_cartId);
+          }
+        }
+        if (btn) { btn.textContent = '✓ Added'; btn.style.background = '#4caf86'; }
+        fetchAndRenderCart();
+        refreshCartCount();
+        setTimeout(() => {
+          if (btn) { btn.textContent = '🛒 Add'; btn.style.background = ''; btn.disabled = false; }
+        }, 2500);
+      } catch(e) {
+        console.error('yfbAddToCartById error:', e.message);
+        if (btn) { btn.textContent = '🛒 Add'; btn.disabled = false; }
+      }
+    };
 
     // For logged-in club members: associate their Shopify account with the cart
     // so email, phone and address are pre-filled at checkout.
@@ -15754,11 +16182,16 @@ Questions? We're always here!
   <style>
     #yfb-chat-btn {
       position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 900;
-      width: 56px; height: 56px; border-radius: 50%;
+      width: auto; height: 48px; border-radius: 24px;
       background: linear-gradient(135deg, #c9922a, #e8b84b);
       border: none; cursor: pointer; box-shadow: 0 4px 20px rgba(201,146,42,0.5);
       display: flex; align-items: center; justify-content: center;
-      font-size: 1.5rem; transition: transform 0.2s, box-shadow 0.2s;
+      gap: 0.35rem; padding: 0 1.1rem;
+      font-size: 1.1rem; transition: transform 0.2s, box-shadow 0.2s;
+    }
+    #yfb-chat-btn .yfb-chat-label {
+      font-size: 0.82rem; font-weight: 700; color: #1a1108;
+      letter-spacing: 0.03em; font-family: inherit;
     }
     #yfb-chat-btn:hover { transform: scale(1.08); box-shadow: 0 6px 28px rgba(201,146,42,0.65); }
     #yfb-chat-btn .yfb-chat-badge {
@@ -15844,6 +16277,43 @@ Questions? We're always here!
       flex-shrink: 0; transition: opacity 0.15s;
     }
     #yfb-chat-send:disabled { opacity: 0.45; cursor: not-allowed; }
+    /* Book cards */
+    .yfb-book-cards { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem; width: 100%; }
+    .yfb-book-card {
+      display: flex; align-items: center; gap: 0.6rem;
+      background: rgba(255,255,255,0.05); border: 1px solid rgba(201,146,42,0.2);
+      border-radius: 10px; padding: 0.5rem 0.6rem; transition: border-color 0.15s;
+    }
+    .yfb-book-card:hover { border-color: rgba(201,146,42,0.5); }
+    .yfb-book-thumb {
+      width: 48px; height: 68px; object-fit: cover; border-radius: 5px;
+      flex-shrink: 0; background: rgba(255,255,255,0.08);
+    }
+    .yfb-book-thumb-placeholder {
+      width: 48px; height: 68px; border-radius: 5px; flex-shrink: 0;
+      background: rgba(201,146,42,0.15); display: flex; align-items: center;
+      justify-content: center; font-size: 1.4rem;
+    }
+    .yfb-book-info { flex: 1; min-width: 0; }
+    .yfb-book-title {
+      font-size: 0.78rem; font-weight: 600; color: #f5f0e8;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .yfb-book-price { font-size: 0.75rem; color: #c9922a; margin-top: 0.15rem; }
+    .yfb-book-mrp { text-decoration: line-through; color: rgba(255,255,255,0.35); font-size: 0.68rem; margin-left: 0.25rem; }
+    .yfb-book-stock { font-size: 0.68rem; margin-top: 0.1rem; }
+    .yfb-book-stock.in  { color: #4caf86; }
+    .yfb-book-stock.out { color: #e74c3c; }
+    .yfb-book-stock.low { color: #e8b84b; }
+    .yfb-book-atc {
+      flex-shrink: 0; font-size: 0.7rem; font-weight: 600;
+      background: linear-gradient(135deg,#c9922a,#e8b84b);
+      color: #1a1108; border: none; border-radius: 7px;
+      padding: 0.35rem 0.55rem; cursor: pointer; white-space: nowrap;
+      transition: opacity 0.15s;
+    }
+    .yfb-book-atc:hover { opacity: 0.85; }
+    .yfb-book-atc:disabled { opacity: 0.4; cursor: not-allowed; }
     .yfb-quick-replies { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.4rem; }
     .yfb-quick-btn {
       background: rgba(201,146,42,0.1); border: 1px solid rgba(201,146,42,0.35);
@@ -15856,7 +16326,7 @@ Questions? We're always here!
 
   <!-- Chat button -->
   <button id="yfb-chat-btn" onclick="yfbChatToggle()" title="Chat with us">
-    💬
+    💬 <span class="yfb-chat-label">Chat</span>
     <div class="yfb-chat-badge" id="yfb-chat-badge"></div>
   </button>
 
@@ -15881,7 +16351,7 @@ Questions? We're always here!
 
   <script>
   (function() {
-    const QUICK_REPLIES = ['Track my order', 'Book Club info', 'Browse books', 'Return policy'];
+    const QUICK_REPLIES = ['Track my order', 'Book Club info', 'Browse books', 'Refund policy'];
     let _yfbOpen    = false;
     let _yfbWaiting = false;
     let _yfbSession = localStorage.getItem('yfb_chat_session') || (() => {
@@ -15914,7 +16384,11 @@ Questions? We're always here!
       wrap.className = `yfb-msg ${role}`;
       const bubble = document.createElement('div');
       bubble.className = 'yfb-msg-bubble';
-      bubble.textContent = text;
+      // Render basic markdown: **bold**, newlines
+      bubble.innerHTML = text
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+        .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+        .replace(/\n/g,'<br>');
       wrap.appendChild(bubble);
       if (quickReplies?.length) {
         const qr = document.createElement('div');
@@ -15949,6 +16423,103 @@ Questions? We're always here!
       document.getElementById('yfb-typing')?.remove();
     }
 
+    // Detect if AI reply contains book listings (has 📖 or multiple ₹ prices)
+    function _yfbIsBookReply(text) {
+      const bookEmojis = (text.match(/📖/g) || []).length;
+      const prices     = (text.match(/₹\d/g) || []).length;
+      return bookEmojis >= 2 || prices >= 3;
+    }
+
+    // Extract search query from user message for book card fetching
+    function _yfbExtractQuery(text) {
+      return text
+        .replace(/do you have|books by|search for|find|show me|any|available|in stock/gi, '')
+        .replace(/books?|author/gi, '')
+        .trim();
+    }
+
+    // Render book cards below the bot message bubble
+    async function _yfbShowBookCards(query, msgWrap) {
+      try {
+        const res  = await fetch(`/.netlify/functions/search-books?q=${encodeURIComponent(query)}`);
+        const data = await res.json();
+        if (!data.books?.length) return;
+
+        const container = document.createElement('div');
+        container.className = 'yfb-book-cards';
+
+        data.books.forEach(book => {
+          const card = document.createElement('div');
+          card.className = 'yfb-book-card';
+
+          // Thumbnail
+          let thumb;
+          if (book.image) {
+            thumb = document.createElement('img');
+            thumb.className = 'yfb-book-thumb';
+            thumb.src = book.image;
+            thumb.alt = book.imageAlt;
+            thumb.loading = 'lazy';
+          } else {
+            thumb = document.createElement('div');
+            thumb.className = 'yfb-book-thumb-placeholder';
+            thumb.textContent = '📖';
+          }
+
+          // Info
+          const info = document.createElement('div');
+          info.className = 'yfb-book-info';
+
+          const title = document.createElement('div');
+          title.className = 'yfb-book-title';
+          title.title = book.title;
+          title.textContent = book.title;
+
+          const priceRow = document.createElement('div');
+          priceRow.className = 'yfb-book-price';
+          priceRow.innerHTML = `₹${parseFloat(book.price).toFixed(0)}${book.mrp && book.mrp !== book.price ? `<span class="yfb-book-mrp">₹${parseFloat(book.mrp).toFixed(0)}</span>` : ''}`;
+
+          const stock = document.createElement('div');
+          if (!book.inStock) {
+            stock.className = 'yfb-book-stock out'; stock.textContent = '❌ Out of Stock';
+          } else if (book.qty !== null && book.qty <= 5) {
+            stock.className = 'yfb-book-stock low'; stock.textContent = `⚠️ Only ${book.qty} left`;
+          } else {
+            stock.className = 'yfb-book-stock in'; stock.textContent = '✅ In Stock';
+          }
+
+          info.append(title, priceRow, stock);
+
+          // Add to Cart button
+          const atc = document.createElement('button');
+          atc.className = 'yfb-book-atc';
+          atc.textContent = book.inStock ? '🛒 Add' : 'View';
+          atc.disabled = false;
+          atc.onclick = () => {
+            if (!book.inStock) {
+              window.open(`https://yellowfeatherbookstore.in/products/${book.handle}`, '_blank');
+              return;
+            }
+            // Add to the landing page's own cart (uses Storefront API, same as book cards)
+            if (typeof window.yfbAddToCartById === 'function') {
+              window.yfbAddToCartById(book.variantId, atc);
+            } else {
+              // Fallback: open cart page if main cart not loaded
+              window.open(`https://yellowfeatherbookstore.in/cart/add?id=${book.variantId}&quantity=1&return_to=/cart`, '_blank');
+            }
+          };
+
+          card.append(thumb, info, atc);
+          container.appendChild(card);
+        });
+
+        msgWrap.appendChild(container);
+        msgWrap.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      } catch(e) {
+        console.warn('Book cards fetch failed:', e.message);
+      }
+    }
+
     async function _yfbSendMessage(text) {
       if (!text.trim() || _yfbWaiting) return;
       _yfbWaiting = true;
@@ -15963,7 +16534,14 @@ Questions? We're always here!
         });
         const data = await res.json();
         _yfbRemoveTyping();
-        _yfbAddMsg('bot', data.reply || 'Sorry, something went wrong. Please try again.');
+        const reply = data.reply || 'Sorry, something went wrong. Please try again.';
+        const msgWrap = _yfbAddMsg('bot', reply);
+
+        // Auto-show book cards if reply contains book listings
+        if (_yfbIsBookReply(reply)) {
+          const q = _yfbExtractQuery(text);
+          if (q.length > 2) _yfbShowBookCards(q, msgWrap);
+        }
       } catch(e) {
         _yfbRemoveTyping();
         _yfbAddMsg('bot', 'Connection error. Please check your internet and try again.');

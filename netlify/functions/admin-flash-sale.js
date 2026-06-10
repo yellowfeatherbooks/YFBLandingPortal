@@ -52,7 +52,7 @@ exports.handler = async (event) => {
     const { adminEmail, adminKey, books } = JSON.parse(event.body || '{}');
     if (!await verifyAdmin(adminEmail, adminKey)) return json({ error: 'Unauthorized' }, 401);
     if (!Array.isArray(books))      return json({ error: 'books must be an array' }, 400);
-    if (books.length > 5)          return json({ error: 'Maximum 5 books allowed' }, 400);
+    if (books.length > 10)         return json({ error: 'Maximum 10 books allowed' }, 400);
 
     await fetch(`${SUPABASE_URL}/rest/v1/site_config`, {
       method: 'POST',

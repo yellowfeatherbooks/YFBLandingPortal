@@ -329,7 +329,7 @@
       position: fixed;
       inset: 0;
       z-index: 300;
-      display: flex;
+      display: none;
       align-items: flex-start;
       justify-content: center;
       padding: 1.5rem;
@@ -339,7 +339,8 @@
       backdrop-filter: blur(8px);
     }
 
-    #auth-screen.hidden { display: none; }
+    #auth-screen.visible { display: flex; }
+    #auth-screen.hidden  { display: none; }
 
     .auth-card {
       background: var(--navy2);
@@ -1607,7 +1608,7 @@
   </div>
 
   <!-- ══ AUTH SCREEN ══ -->
-  <div id="auth-screen">
+  <div id="auth-screen" style="display:none;">
     <div class="auth-card">
       <div class="logo-badge" style="width:80px;height:80px;margin:0 auto 1.25rem;">
         <img src="logo-portrait.png" alt="Yellow Feather Books" />
@@ -1969,7 +1970,7 @@
       <!-- Shown to returning subscribers (hidden by default) -->
       <div id="hero-returning" style="display:none;">
         <div id="subscriber-badge" style="display:inline-flex;align-items:center;gap:0.5rem;background:rgba(245,184,0,0.12);border:1px solid rgba(245,184,0,0.3);color:var(--gold2);font-size:0.82rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:0.4rem 1rem;border-radius:99px;margin-bottom:1.25rem;">
-          ★ <span id="hero-plan-name"></span> — Active
+          ★ <span id="hero-plan-name"></span> — <span id="hero-plan-status">Active</span>
         </div>
         <br/>
         <button id="hero-submit-btn" onclick="handleSubmitClick(this)" class="cta-btn" style="border:none;cursor:pointer;font-family:Inter,sans-serif;">
@@ -1979,6 +1980,11 @@
           <span id="hero-quota"></span> · <a id="hero-quota-action" href="#pricing" style="color:var(--gold);text-decoration:underline;">Upgrade plan</a>
         </p>
         <p id="hero-quota-error" style="display:none;margin-top:0.6rem;font-size:0.82rem;color:#e63946;line-height:1.5;"></p>
+        <div id="hero-cancelling-notice" style="display:none;margin-top:0.75rem;padding:0.65rem 1rem;background:rgba(245,184,0,0.1);border:1px solid rgba(245,184,0,0.35);border-radius:10px;font-size:0.82rem;color:#F5B800;line-height:1.6;text-align:left;">
+          ⚠️ <strong>Subscription Cancelled</strong><br>
+          You have access until <strong id="hero-access-until" style="color:var(--cream);"></strong>.<br>
+          <span style="font-size:0.78rem;color:var(--muted);">After that, you won't be able to submit books.</span>
+        </div>
         <button onclick="showMyBooks()"
           style="margin-top:0.85rem;display:inline-flex;align-items:center;gap:0.45rem;background:transparent;border:1.5px solid var(--gold);color:var(--gold);font-family:Inter,sans-serif;font-size:0.88rem;font-weight:600;padding:0.65rem 1.5rem;border-radius:50px;cursor:pointer;transition:background 0.2s,color 0.2s;"
           onmouseover="this.style.background='rgba(201,146,42,0.15)'"
@@ -2644,7 +2650,7 @@
           hideAuthScreen();
           showUserNav(currentUserName); // no-op in iframe (showUserNav checks window.top)
           if (data.found) {
-            applyReturningUser({ name: data.plan_name, quota: data.quota, subscriptionId: data.subscription_id });
+            applyReturningUser({ name: data.plan_name, quota: data.quota, subscriptionId: data.subscription_id, subStatus: data.sub_status, accessUntil: data.access_until });
           }
         })
         .catch(function() { hideAuthScreen(); });
@@ -2669,7 +2675,10 @@
     });
 
     function hideAuthScreen() {
-      document.getElementById('auth-screen').classList.add('hidden');
+      var el = document.getElementById('auth-screen');
+      el.style.display = 'none';
+      el.classList.add('hidden');
+      el.classList.remove('visible');
     }
 
     function togglePassword(inputId, btn) {
@@ -2729,7 +2738,7 @@
         hideAuthScreen();
         showUserNav(currentUserName);
         if (subData.found) {
-          applyReturningUser({ name: subData.plan_name, quota: subData.quota, subscriptionId: subData.subscription_id });
+          applyReturningUser({ name: subData.plan_name, quota: subData.quota, subscriptionId: subData.subscription_id, subStatus: subData.sub_status, accessUntil: subData.access_until });
         }
       } catch(e) {
         err.textContent = 'Something went wrong. Please try again.';
@@ -2916,7 +2925,10 @@
       pendingResetToken = null;
       history.replaceState(null, '', window.location.pathname);
       switchAuthTab('login');
-      document.getElementById('auth-screen').classList.remove('hidden');
+      var _as = document.getElementById('auth-screen');
+      _as.style.display = 'flex';
+      _as.classList.remove('hidden');
+      _as.classList.add('visible');
     }
 
     function toggleSubscribeButtons() {
@@ -3060,6 +3072,23 @@
       document.getElementById('hero-quota').textContent =
         sub.quota + (sub.quota === 1 ? ' book' : ' books') + ' per month';
 
+      // Show cancelling notice & hide cancel button if subscription is already cancelling
+      var cancellingNotice = document.getElementById('hero-cancelling-notice');
+      var planStatusEl     = document.getElementById('hero-plan-status');
+      var cancelBtns       = document.querySelectorAll('.cancel-sub-btn');
+      if (sub.subStatus === 'cancelling' && sub.accessUntil) {
+        var accessDate = new Date(sub.accessUntil).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+        document.getElementById('hero-access-until').textContent = accessDate;
+        cancellingNotice.style.display = 'block';
+        if (planStatusEl) { planStatusEl.textContent = 'Cancelling'; planStatusEl.style.color = '#F5B800'; }
+        // Hide cancel button — already cancelled
+        cancelBtns.forEach(function(btn) { btn.style.display = 'none'; });
+      } else {
+        cancellingNotice.style.display = 'none';
+        if (planStatusEl) { planStatusEl.textContent = 'Active'; planStatusEl.style.color = ''; }
+        cancelBtns.forEach(function(btn) { btn.style.display = ''; });
+      }
+
       // Bottom CTA: swap buttons
       document.getElementById('bottom-cta-new').style.display = 'none';
       document.getElementById('bottom-cta-sub').style.display = 'inline-flex';
@@ -3068,7 +3097,7 @@
       if (window !== window.top) {
         try {
           window.parent.postMessage(
-            { type: 'yfb_plan', planName: sub.name, quota: currentQuota },
+            { type: 'yfb_plan', planName: sub.name, quota: currentQuota, subStatus: sub.subStatus || null, accessUntil: sub.accessUntil || null },
             window.location.origin
           );
         } catch(e) {}
@@ -3155,6 +3184,15 @@
 
         if (data.success) {
           closeCancelModal();
+          // Notify parent index.html to update sidebar immediately
+          if (window !== window.top) {
+            try {
+              window.parent.postMessage(
+                { type: 'yfb_cancelled', accessUntil: data.access_until || null },
+                window.location.origin
+              );
+            } catch(e) {}
+          }
           resetToNonSubscriber();
         } else {
           var msg = (data.error && data.error.description) || data.error || 'Cancellation failed. Please try again.';
@@ -3213,7 +3251,10 @@
       document.getElementById('signup-password').value = '';
       document.getElementById('signup-confirm').value  = '';
       switchAuthTab('login');
-      document.getElementById('auth-screen').classList.remove('hidden');
+      var _as = document.getElementById('auth-screen');
+      _as.style.display = 'flex';
+      _as.classList.remove('hidden');
+      _as.classList.add('visible');
       window.scrollTo(0, 0);
     }
 
@@ -3725,6 +3766,8 @@
       // ── Auto-login from localStorage ──
       var savedEmail = localStorage.getItem('yfb_email');
       var savedName  = localStorage.getItem('yfb_name');
+      // Always hide auth screen immediately — show only if truly needed after checks
+      hideAuthScreen();
       if (savedEmail) {
         currentEmail    = savedEmail;
         currentUserName = savedName || null;
@@ -3738,7 +3781,7 @@
           hideAuthScreen();
           showUserNav(currentUserName);
           if (data.found) {
-            applyReturningUser({ name: data.plan_name, quota: data.quota, subscriptionId: data.subscription_id });
+            applyReturningUser({ name: data.plan_name, quota: data.quota, subscriptionId: data.subscription_id, subStatus: data.sub_status, accessUntil: data.access_until });
           }
         })
         .catch(function() { hideAuthScreen(); });
@@ -3749,6 +3792,12 @@
         // Mark body so CSS can hide redundant "Back to Home" bars —
         // navigation is handled by the landing portal's sidebar tiles.
         document.body.classList.add('embedded');
+      } else {
+        // Standalone direct access (not iframe, no saved session) — show login
+        var _as = document.getElementById('auth-screen');
+        _as.style.display = 'flex';
+        _as.classList.remove('hidden');
+        _as.classList.add('visible');
       }
 
     });

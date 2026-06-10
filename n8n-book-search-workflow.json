@@ -1,0 +1,88 @@
+{
+  "name": "YFB — Book Search",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "exec-trigger",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://zgqk4e-1m.myshopify.com/admin/api/2025-04/products.json",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "title",
+              "value": "={{ $json.query }}"
+            },
+            {
+              "name": "published_status",
+              "value": "published"
+            },
+            {
+              "name": "status",
+              "value": "active"
+            },
+            {
+              "name": "limit",
+              "value": "5"
+            },
+            {
+              "name": "fields",
+              "value": "id,title,tags,variants"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Shopify-Access-Token",
+              "value": "YOUR_SHOPIFY_ADMIN_TOKEN_HERE"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "shopify-products",
+      "name": "Search Books in Shopify",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const products = $input.first().json.products || [];\n\nif (!products.length) {\n  return [{ json: { result: 'No books found matching that search. Try searching by a different title or author name. You can also browse all books at yellowfeatherbookstore.in' } }];\n}\n\nconst lines = products.map(p => {\n  const v = p.variants?.[0];\n  const mrp = v?.compare_at_price ? `₹${v.compare_at_price}` : null;\n  const price = v?.price ? `₹${v.price}` : 'N/A';\n  const priceStr = mrp && mrp !== price ? `${price} (MRP: ${mrp})` : price;\n\n  const qty = v?.inventory_quantity ?? -1;\n  let stockStr;\n  if (!v?.inventory_management) {\n    stockStr = '✅ Available';\n  } else if (qty > 5) {\n    stockStr = `✅ In Stock (${qty} copies)`;\n  } else if (qty > 0) {\n    stockStr = `⚠️ Only ${qty} left`;\n  } else {\n    stockStr = '❌ Out of Stock';\n  }\n\n  // Extract author from tags (tagged as \"author:Name\" or just plain tags)\n  const authorTag = (p.tags || '').split(',').map(t => t.trim()).find(t => t.toLowerCase().startsWith('author:'));\n  const author = authorTag ? authorTag.replace(/^author:/i, '').trim() : null;\n\n  return [\n    `📖 ${p.title}`,\n    author ? `   Author: ${author}` : '',\n    `   Price: ${priceStr}`,\n    `   Stock: ${stockStr}`\n  ].filter(Boolean).join('\\n');\n});\n\nconst result = lines.join('\\n\\n');\nreturn [{ json: { result } }];"
+      },
+      "id": "format-books",
+      "name": "Format Book Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [[{ "node": "Search Books in Shopify", "type": "main", "index": 0 }]]
+    },
+    "Search Books in Shopify": {
+      "main": [[{ "node": "Format Book Results", "type": "main", "index": 0 }]]
+    }
+  },
+  "_instructions": {
+    "setup": [
+      "1. Import this JSON into n8n (Workflows → Import from file)",
+      "2. Make sure SHOPIFY_ADMIN_TOKEN is set in n8n environment variables (Settings → Environment Variables)",
+      "3. Activate the workflow",
+      "4. Copy the workflow ID from the URL",
+      "5. In the main YFB Chat workflow, add a 'Call n8n Workflow' tool node connected to AI Agent → Tool",
+      "6. Set workflowId to the ID from step 4",
+      "7. Name: search_books | Description: Search the Yellow Feather Books catalogue by book title or author name. Returns title, price, and stock availability."
+    ]
+  }
+}

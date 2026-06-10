@@ -178,7 +178,7 @@
         "operation": "update",
         "productId": "={{ $('Search Shopify Product').item.json.id }}",
         "updateFields": {
-          "tags": "={{ [$('Webhook').item.json.body.author, $('Webhook').item.json.body.publisher, $('Webhook').item.json.body.genre, ...($('Webhook').item.json.body.shopifyTags || [])].filter(t => t).join(', ') }}",
+          "tags": "={{ [$('Webhook').item.json.body.author, $('Webhook').item.json.body.publisher, $('Webhook').item.json.body.genre, 'submittedby:' + $('Webhook').item.json.body.email, ...($('Webhook').item.json.body.shopifyTags || [])].filter(t => t).join(', ') }}",
           "title": "={{ $('Webhook').item.json.body.book }}",
           "vendor": "={{ $('Webhook').item.json.body.publisher }}"
         }
@@ -284,7 +284,7 @@
         "additionalFields": {
           "body_html": "={{ $(\"Webhook\").item.json.body.description }}",
           "product_type": "Print Books",
-          "tags": "={{ [$('Webhook').item.json.body.author, $('Webhook').item.json.body.publisher, $('Webhook').item.json.body.genre, ...($('Webhook').item.json.body.shopifyTags || [])].filter(t => t).join(', ') }}",
+          "tags": "={{ [$('Webhook').item.json.body.author, $('Webhook').item.json.body.publisher, $('Webhook').item.json.body.genre, 'submittedby:' + $('Webhook').item.json.body.email, ...($('Webhook').item.json.body.shopifyTags || [])].filter(t => t).join(', ') }}",
           "vendor": "={{ $(\"Webhook\").item.json.body.publisher }}"
         }
       },

@@ -34,24 +34,29 @@ exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: cors, body: '' };
   if (event.httpMethod !== 'POST')    return json({ success: false, error: 'Method Not Allowed' }, 405);
 
-  const { adminEmail, adminKey, limit = 50, status = 'any' } = JSON.parse(event.body || '{}');
+  const { adminEmail, adminKey, limit = 50, status = 'any', customer_type } = JSON.parse(event.body || '{}');
   if (!await verifyAdmin(adminEmail, adminKey)) return json({ success: false, error: 'Unauthorized' }, 401);
 
   try {
+    const fetchLimit = customer_type ? 250 : limit;
     const res = await fetch(
-      `https://${SHOPIFY_DOMAIN}/admin/api/${API_VERSION}/orders.json?status=${status}&limit=${limit}&fields=id,name,email,created_at,financial_status,fulfillment_status,total_price,subtotal_price,total_tax,line_items,customer,shipping_address,note`,
+      `https://${SHOPIFY_DOMAIN}/admin/api/${API_VERSION}/orders.json?status=${status}&limit=${fetchLimit}&fields=id,name,email,created_at,financial_status,fulfillment_status,total_price,subtotal_price,total_tax,line_items,customer,shipping_address,note`,
       { headers: { 'X-Shopify-Access-Token': SHOPIFY_TOKEN } }
     );
     const data = await res.json();
 
-    const orders = (data.orders || []).map(o => {
+    let orders = (data.orders || []).map(o => {
       const sa = o.shipping_address || {};
+      const tags = (o.customer?.tags || '').toLowerCase().split(',').map(t => t.trim());
       return {
         id:                 o.id,
         name:               o.name,
         email:              o.email || o.customer?.email || '',
         customer:           [o.customer?.first_name, o.customer?.last_name].filter(Boolean).join(' ') || o.email || '—',
         phone:              o.customer?.phone || sa.phone || '',
+        customer_tags:      o.customer?.tags || '',
+        is_member:          tags.includes('member') || tags.includes('club_member'),
+        is_author:          tags.includes('author'),
         shipping_address:   sa.address1 ? [sa.address1, sa.address2, sa.city, sa.province, sa.zip, sa.country].filter(Boolean).join(', ') : '',
         created_at:         o.created_at,
         financial_status:   o.financial_status,
@@ -63,6 +68,9 @@ exports.handler = async (event) => {
         items:              (o.line_items || []).map(l => ({ title: l.title, quantity: l.quantity, price: l.price, sku: l.sku || '' }))
       };
     });
+
+    if (customer_type === 'member') orders = orders.filter(o => o.is_member);
+    if (customer_type === 'author') orders = orders.filter(o => o.is_author);
 
     return json({ success: true, orders });
   } catch (err) {

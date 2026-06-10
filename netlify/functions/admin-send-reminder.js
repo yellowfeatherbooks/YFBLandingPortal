@@ -36,7 +36,7 @@ exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: cors, body: '' };
   if (event.httpMethod !== 'POST')    return json({ success: false, error: 'Method Not Allowed' }, 405);
 
-  const { adminEmail, adminKey, to, toName, phone, subject, bodyText, type } = JSON.parse(event.body || '{}');
+  const { adminEmail, adminKey, to, toName, phone, subject, bodyText, waText, type, planName } = JSON.parse(event.body || '{}');
 
   if (!await verifyAdmin(adminEmail, adminKey)) return json({ success: false, error: 'Unauthorized' }, 401);
   if (!to || !subject || !bodyText) return json({ success: false, error: 'to, subject and bodyText are required' }, 400);
@@ -48,7 +48,15 @@ exports.handler = async (event) => {
     const n8nRes = await fetch(webhookUrl, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ to, toName, phone: phone || null, subject, bodyText, type: type || 'general' })
+      body: JSON.stringify({
+        to, toName,
+        phone:     phone    || null,
+        subject,
+        bodyText,
+        waText:    waText   || bodyText,
+        planName:  planName || '',
+        type:      type     || 'general'
+      })
     });
 
     if (!n8nRes.ok) {

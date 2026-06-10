@@ -144,3 +144,16 @@ CREATE TABLE IF NOT EXISTS site_config (
 INSERT INTO site_config (key, value)
 VALUES ('flash_sale', 'false'::jsonb)
 ON CONFLICT (key) DO NOTHING;
+
+-- ── wa_campaign_blacklist ──────────────────────────────────
+
+-- ── wa_campaign_blacklist ─────────────────────────────────────
+CREATE TABLE IF NOT EXISTS wa_campaign_blacklist (
+  id              serial PRIMARY KEY,
+  phone           text UNIQUE NOT NULL,
+  email           text,
+  name            text,
+  reason          text,
+  blacklisted_at  timestamptz DEFAULT now(),
+  blacklisted_by  text
+);

@@ -1,62 +1,196 @@
+// Author registration — Shopify is the single source of truth for auth.
+// New authors get a Shopify account (tags: author, club_member) + free 1-year
+// club membership + a Supabase users record with NO password stored here.
+//
+// Upgrade path (club member → author): verifies existing Shopify password,
+// then adds the author tag and author role — no new password needed.
+
 const SUPABASE_URL        = process.env.SUPABASE_URL;
 const SUPABASE_KEY        = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_KEY;
 const SHOPIFY_DOMAIN      = process.env.SHOPIFY_DOMAIN      || 'zgqk4e-1m.myshopify.com';
 const SHOPIFY_ADMIN_TOKEN = process.env.SHOPIFY_ADMIN_TOKEN;
+const STOREFRONT_TOKEN    = process.env.SHOPIFY_STOREFRONT_TOKEN || 'ae73197f5be74e707d3f9ef8d2ee1593';
 const API_VERSION         = '2024-01';
-const crypto              = require('crypto');
 
 const cors = {
   'Access-Control-Allow-Origin':  '*',
   'Access-Control-Allow-Headers': 'Content-Type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS'
 };
+const ok  = body => ({ statusCode: 200, headers: cors, body: JSON.stringify(body) });
+const err = msg  => ok({ success: false, error: msg });
 
-function generateSalt() {
-  return crypto.randomBytes(16).toString('hex');
-}
+const adminHeaders = {
+  'X-Shopify-Access-Token': SHOPIFY_ADMIN_TOKEN,
+  'Content-Type':           'application/json'
+};
 
-function hashPassword(password, salt) {
-  return crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha512').toString('hex');
-}
+// ── Shopify helpers ──────────────────────────────────────────────────────────
 
-// ── Sync the new author password to the existing Shopify account ─────────────
-// Called when a club member upgrades to author so both portals immediately
-// share the same credential without waiting for the first Author's Space login.
-async function syncShopifyPassword(email, password) {
-  if (!SHOPIFY_ADMIN_TOKEN) return;
+// Find Shopify customer by email — returns { id, tags } or null
+async function findShopifyCustomer(email) {
   try {
-    // Find the existing customer by email
-    const searchRes = await fetch(
-      `https://${SHOPIFY_DOMAIN}/admin/api/${API_VERSION}/customers/search.json?query=email:${encodeURIComponent(email)}&fields=id`,
-      { headers: { 'X-Shopify-Access-Token': SHOPIFY_ADMIN_TOKEN } }
+    const res  = await fetch(
+      `https://${SHOPIFY_DOMAIN}/admin/api/${API_VERSION}/customers/search.json?query=email:${encodeURIComponent(email)}&fields=id,tags&limit=1`,
+      { headers: adminHeaders }
     );
-    const searchData = await searchRes.json();
-    const customerId = searchData?.customers?.[0]?.id;
-    if (!customerId) return;
+    const data = await res.json();
+    return data?.customers?.[0] || null;
+  } catch { return null; }
+}
 
-    // Update the Shopify customer's password to match the new author password
-    await fetch(
-      `https://${SHOPIFY_DOMAIN}/admin/api/${API_VERSION}/customers/${customerId}.json`,
+// Create brand-new Shopify customer with author + club_member tags
+async function createShopifyCustomer(email, name, password) {
+  const firstName = (name || email).split(' ')[0];
+  const lastName  = (name || '').split(' ').slice(1).join(' ') || '';
+  const res = await fetch(
+    `https://${SHOPIFY_DOMAIN}/admin/api/${API_VERSION}/customers.json`,
+    {
+      method: 'POST',
+      headers: adminHeaders,
+      body: JSON.stringify({
+        customer: {
+          first_name:            firstName,
+          last_name:             lastName,
+          email,
+          password,
+          password_confirmation: password,
+          verified_email:        true,
+          tags:                  'author, club_member',
+          send_email_welcome:    false
+        }
+      })
+    }
+  );
+  const data = await res.json();
+  if (res.ok) return { success: true, customerId: data.customer?.id };
+  const errStr = JSON.stringify(data?.errors || {}).toLowerCase();
+  return { success: false, emailTaken: errStr.includes('taken'), error: errStr };
+}
+
+// Add author tag to an existing Shopify customer (club_member added after plan subscription)
+async function addAuthorTags(customerId, existingTagsStr) {
+  const existing = (existingTagsStr || '').split(',').map(t => t.trim()).filter(Boolean);
+  const merged   = [...new Set([...existing, 'author'])].join(', ');
+  const res = await fetch(
+    `https://${SHOPIFY_DOMAIN}/admin/api/${API_VERSION}/customers/${customerId}.json`,
+    {
+      method: 'PUT',
+      headers: adminHeaders,
+      body: JSON.stringify({ customer: { id: customerId, tags: merged } })
+    }
+  );
+  return res.ok;
+}
+
+// Verify password against Shopify Storefront (used for upgrade path)
+async function verifyShopifyPassword(email, password) {
+  try {
+    const res = await fetch(
+      `https://${SHOPIFY_DOMAIN}/api/${API_VERSION}/graphql.json`,
       {
-        method:  'PUT',
+        method:  'POST',
         headers: {
-          'X-Shopify-Access-Token': SHOPIFY_ADMIN_TOKEN,
-          'Content-Type':           'application/json'
+          'Content-Type':                      'application/json',
+          'X-Shopify-Storefront-Access-Token': STOREFRONT_TOKEN
         },
         body: JSON.stringify({
-          customer: {
-            id:                    customerId,
-            password,
-            password_confirmation: password
-          }
+          query: `mutation CustomerAccessTokenCreate($input: CustomerAccessTokenCreateInput!) {
+            customerAccessTokenCreate(input: $input) {
+              customerAccessToken { accessToken }
+              customerUserErrors  { code message }
+            }
+          }`,
+          variables: { input: { email, password } }
         })
       }
     );
-  } catch(e) {
-    // Non-fatal — login-user.js will sync on first login if this fails
-    console.warn('syncShopifyPassword failed:', e.message);
-  }
+    const data  = await res.json();
+    const token = data?.data?.customerAccessTokenCreate?.customerAccessToken?.accessToken;
+    return !!token;
+  } catch { return false; }
 }
+
+// ── Supabase helpers ─────────────────────────────────────────────────────────
+
+async function getSupabaseUser(email) {
+  try {
+    const res  = await fetch(
+      `${SUPABASE_URL}/rest/v1/users?email=eq.${encodeURIComponent(email)}&select=email,name,phone,roles&limit=1`,
+      { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
+    );
+    const rows = await res.json();
+    return Array.isArray(rows) && rows.length > 0 ? rows[0] : null;
+  } catch { return null; }
+}
+
+// Upsert to Supabase users — password_hash/salt left empty (Shopify is the auth source).
+// Empty strings are falsy so login-user.js Path A is skipped → falls to Path B (Shopify auth).
+async function upsertSupabaseUser(email, name, phone, roles, isNew) {
+  const payload = {
+    name,
+    phone:             phone || null,
+    roles,
+    marketing_consent: true,
+    registered_at:     new Date().toISOString(),
+    // Empty sentinel values satisfy NOT NULL constraints while signalling
+    // "no local password" — login-user.js Path A checks truthiness and skips.
+    password_hash:     '',
+    salt:              ''
+  };
+  if (isNew) payload.email = email;
+
+  const url    = isNew
+    ? `${SUPABASE_URL}/rest/v1/users`
+    : `${SUPABASE_URL}/rest/v1/users?email=eq.${encodeURIComponent(email)}`;
+  const method = isNew ? 'POST' : 'PATCH';
+
+  const res = await fetch(url, {
+    method,
+    headers: {
+      'apikey':        SUPABASE_KEY,
+      'Authorization': `Bearer ${SUPABASE_KEY}`,
+      'Content-Type':  'application/json',
+      'Prefer':        'return=minimal'
+    },
+    body: JSON.stringify(payload)
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    console.error('upsertSupabaseUser failed:', res.status, errText);
+  }
+  return res.ok;
+}
+
+// Add free 1-year club membership to book_club_members
+async function addFreeClubMembership(email, name) {
+  const now       = new Date();
+  const oneYearOn = new Date(now);
+  oneYearOn.setFullYear(oneYearOn.getFullYear() + 1);
+
+  // Upsert so re-registrations don't fail
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/book_club_members?on_conflict=email`,
+    {
+      method: 'POST',
+      headers: {
+        'apikey':        SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+        'Content-Type':  'application/json',
+        'Prefer':        'resolution=merge-duplicates'
+      },
+      body: JSON.stringify({
+        email,
+        name,
+        joined_at: now.toISOString()
+      })
+    }
+  );
+  return res.ok;
+}
+
+// ── Main handler ─────────────────────────────────────────────────────────────
 
 exports.handler = async function(event) {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: cors, body: '' };
@@ -64,126 +198,80 @@ exports.handler = async function(event) {
     return { statusCode: 405, headers: cors, body: 'Method Not Allowed' };
 
   const { name, email, phone, password, marketing_consent } = JSON.parse(event.body || '{}');
-  if (!name || !email || !password) {
-    return {
-      statusCode: 200, headers: cors,
-      body: JSON.stringify({ error: 'Name, email and password are required' })
-    };
-  }
-
-  const salt          = generateSalt();
-  const password_hash = hashPassword(password, salt);
+  if (!name || !email || !password)
+    return err('Name, email and password are required');
 
   try {
-    // ── Check for existing user record ──────────────────────────────────────
-    const checkRes = await fetch(
-      `${SUPABASE_URL}/rest/v1/users?email=eq.${encodeURIComponent(email)}&select=email,name,phone,roles&limit=1`,
-      { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
-    );
-    const existing     = await checkRes.json();
-    const existingUser = Array.isArray(existing) && existing.length > 0 ? existing[0] : null;
+    const existingUser     = await getSupabaseUser(email);
+    const existingRoles    = existingUser?.roles || [];
+    const isAlreadyAuthor  = existingRoles.includes('author');
 
-    if (existingUser) {
-      const existingRoles = existingUser.roles || [];
+    // ── Already an author ────────────────────────────────────────────────────
+    if (isAlreadyAuthor) {
+      return err('An author account with this email already exists. Please log in instead.');
+    }
 
-      // Already a fully registered author
-      if (existingRoles.includes('author')) {
-        return {
-          statusCode: 200, headers: cors,
-          body: JSON.stringify({ error: 'An author account with this email already exists. Please log in instead.' })
-        };
+    const shopifyCustomer = await findShopifyCustomer(email);
+
+    // ── Club member upgrading to author ──────────────────────────────────────
+    if (existingUser && existingRoles.includes('club_member')) {
+
+      // Verify they know their existing Shopify password before upgrading
+      if (shopifyCustomer) {
+        const valid = await verifyShopifyPassword(email, password);
+        if (!valid) return err('Incorrect password. Please use your existing Book Club password to upgrade to Author.');
+        // Add author tag to existing Shopify account
+        await addAuthorTags(shopifyCustomer.id, shopifyCustomer.tags);
       }
 
-      // ── Club member upgrading to author ─────────────────────────────────
-      // 1. Add 'author' role + set Supabase password
-      const newRoles  = [...existingRoles, 'author'];
-      const updateRes = await fetch(
-        `${SUPABASE_URL}/rest/v1/users?email=eq.${encodeURIComponent(email)}`,
-        {
-          method: 'PATCH',
-          headers: {
-            'apikey':        SUPABASE_KEY,
-            'Authorization': `Bearer ${SUPABASE_KEY}`,
-            'Content-Type':  'application/json',
-            'Prefer':        'return=minimal'
-          },
-          body: JSON.stringify({
-            name,
-            phone:              phone || existingUser.phone || null,
-            password_hash,
-            salt,
-            roles:              newRoles,
-            marketing_consent:  marketing_consent !== undefined ? marketing_consent : true,
-            registered_at:      new Date().toISOString()
-          })
+      // Update Supabase roles — club_member added after plan subscription
+      const newRoles = [...new Set([...existingRoles, 'author'])];
+      await upsertSupabaseUser(email, name, phone || existingUser.phone, newRoles, false);
+
+      return ok({
+        success:  true,
+        upgraded: true,
+        message:  "Author role added to your account. Subscribe to a plan to activate your free Book Club membership."
+      });
+    }
+
+    // ── Brand-new author ─────────────────────────────────────────────────────
+
+    if (shopifyCustomer) {
+      // Shopify account exists (e.g. purchased a book before) — add author tag only
+      await addAuthorTags(shopifyCustomer.id, shopifyCustomer.tags);
+    } else {
+      // Create fresh Shopify account with author tag only (club_member added after plan subscribe)
+      const created = await createShopifyCustomer(email, name, password);
+      if (!created.success) {
+        if (created.emailTaken) {
+          // Race condition: re-fetch and add tags
+          const found = await findShopifyCustomer(email);
+          if (found) await addAuthorTags(found.id, found.tags);
+        } else {
+          console.error('createShopifyCustomer failed:', created.error);
+          return err('Could not create account. Please try again.');
         }
-      );
-
-      if (!updateRes.ok) {
-        const errText = await updateRes.text();
-        console.error('Role upgrade PATCH failed:', errText);
-        return {
-          statusCode: 200, headers: cors,
-          body: JSON.stringify({ error: 'Registration failed. Please try again.' })
-        };
       }
-
-      // 2. Immediately sync new password to existing Shopify account so
-      //    both Author's Space and Book Club login use the same credential
-      //    from this point forward (fire-and-forget — login-user.js is
-      //    the safety net if this fails).
-      syncShopifyPassword(email, password).catch(() => {});
-
-      return {
-        statusCode: 200, headers: cors,
-        body: JSON.stringify({
-          success:  true,
-          upgraded: true,
-          message:  "Author role added to your Book Club account. You can now log in to Author's Space with your new password."
-        })
-      };
     }
+    console.log('Shopify author account ready for:', email);
 
-    // ── New user — create with 'author' role ────────────────────────────────
-    const insertRes = await fetch(`${SUPABASE_URL}/rest/v1/users`, {
-      method: 'POST',
-      headers: {
-        'apikey':        SUPABASE_KEY,
-        'Authorization': `Bearer ${SUPABASE_KEY}`,
-        'Content-Type':  'application/json',
-        'Prefer':        'return=minimal'
-      },
-      body: JSON.stringify({
-        email,
-        name,
-        phone:              phone || null,
-        password_hash,
-        salt,
-        roles:              ['author'],
-        marketing_consent:  marketing_consent !== undefined ? marketing_consent : true,
-        registered_at:      new Date().toISOString()
-      })
-    });
+    // NOTE: Free club membership is granted in save-subscription.js
+    // when the author subscribes to a plan — not at registration time.
 
-    if (!insertRes.ok) {
-      const errText = await insertRes.text();
-      console.error('User insert failed:', errText);
-      return {
-        statusCode: 200, headers: cors,
-        body: JSON.stringify({ error: 'Registration failed. Please try again.' })
-      };
-    }
+    // Save to Supabase — NO password stored, Shopify is the auth source
+    const saved = await upsertSupabaseUser(
+      email, name, phone || null,
+      ['author'],     // club_member role added after plan subscription
+      !existingUser   // isNew
+    );
 
-    return {
-      statusCode: 200, headers: cors,
-      body: JSON.stringify({ success: true })
-    };
+    if (!saved) return err('Registration failed. Please try again.');
 
-  } catch(e) {
+    return ok({ success: true });
+
+  } catch (e) {
     console.error('register-user exception:', e.message);
-    return {
-      statusCode: 500, headers: cors,
-      body: JSON.stringify({ error: 'Registration failed' })
-    };
+    return { statusCode: 500, headers: cors, body: JSON.stringify({ error: 'Registration failed' }) };
   }
 };

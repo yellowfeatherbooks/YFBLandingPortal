@@ -106,6 +106,9 @@ exports.handler = async (event) => {
     // ── 3. Merge — Supabase first (authoritative), Shopify fills gaps ────────
     const supabaseMapped = supabaseRows.map(r => ({
       ...r,
+      // Normalise status: Supabase uses 'listed' for approved books;
+      // the app expects 'live' to show the green Live badge.
+      status:          r.status === 'listed' ? 'live' : r.status,
       submittted_date: r.submitted_date,
       shopify_Id:      r.shopify_id
     }));

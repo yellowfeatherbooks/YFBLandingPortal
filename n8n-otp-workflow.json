@@ -1,0 +1,74 @@
+{
+  "name": "YFB — OTP Email",
+  "nodes": [
+    {
+      "id": "node-webhook",
+      "name": "OTP Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [0, 0],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "yfb-otp",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "node-build",
+      "name": "Build OTP Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [240, 0],
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || $input.first().json;\n\nconst to        = body.to        || '';\nconst toName    = body.toName    || to.split('@')[0] || 'there';\nconst otp       = body.otp       || '';\nconst firstName = toName.split(' ')[0] || 'there';\n\nconst emailHtml = `<!DOCTYPE html>\n<html lang=\"en\">\n<head><meta charset=\"UTF-8\"/><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"/></head>\n<body style=\"margin:0;padding:0;background:#f4f4f4;font-family:Arial,sans-serif;\">\n<div style=\"max-width:480px;margin:32px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,0.08);\">\n\n  <!-- Header -->\n  <div style=\"background:#1a1a2e;padding:28px 32px;text-align:center;\">\n    <img src=\"https://yellowfeatherbooks.com/logo-landscape.png\" alt=\"Yellow Feather Books\" height=\"44\"\n      onerror=\"this.style.display='none'\" style=\"display:block;margin:0 auto;\"/>\n  </div>\n\n  <!-- Body -->\n  <div style=\"padding:36px 32px;text-align:center;\">\n    <p style=\"margin:0 0 8px;font-size:16px;color:#333;\">Hello <strong>${firstName}</strong>,</p>\n    <p style=\"margin:0 0 28px;font-size:14px;color:#666;\">Your Yellow Feather Books login verification code is:</p>\n\n    <!-- OTP Box -->\n    <div style=\"background:#f5f0e8;border:2px dashed #C9922A;border-radius:12px;padding:24px;margin:0 auto 28px;max-width:280px;\">\n      <div style=\"font-size:42px;font-weight:900;letter-spacing:0.3em;color:#1a1a2e;font-family:monospace;\">${otp}</div>\n    </div>\n\n    <p style=\"margin:0 0 8px;font-size:13px;color:#888;\">⏱ This code expires in <strong>5 minutes</strong>.</p>\n    <p style=\"margin:0;font-size:13px;color:#888;\">🔒 Do not share this code with anyone.</p>\n  </div>\n\n  <!-- Footer -->\n  <div style=\"background:#f5f0e8;padding:16px 32px;font-size:12px;color:#888;text-align:center;border-top:1px solid #e5e0d8;line-height:1.8;\">\n    If you did not request this code, you can safely ignore this email.<br/>\n    Yellow Feather Books &nbsp;&middot;&nbsp;\n    <a href=\"https://yellowfeatherbooks.com\" style=\"color:#C9922A;\">yellowfeatherbooks.com</a>\n  </div>\n\n</div>\n</body></html>`;\n\nreturn [{ json: { to, toName, otp, emailHtml, subject: `${otp} — Your Yellow Feather Books Login OTP` } }];"
+      }
+    },
+    {
+      "id": "node-send-email",
+      "name": "Send OTP Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [480, 0],
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "sendTo": "={{ $json.to }}",
+        "subject": "={{ $json.subject }}",
+        "message": "={{ $json.emailHtml }}",
+        "options": { "emailType": "html" }
+      },
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "n4S10HXIC145nr8L",
+          "name": "Gmail account 2"
+        }
+      }
+    },
+    {
+      "id": "node-respond",
+      "name": "Respond OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [720, 0],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"success\": true }"
+      }
+    }
+  ],
+  "connections": {
+    "OTP Webhook": {
+      "main": [[{ "node": "Build OTP Email", "type": "main", "index": 0 }]]
+    },
+    "Build OTP Email": {
+      "main": [[{ "node": "Send OTP Email", "type": "main", "index": 0 }]]
+    },
+    "Send OTP Email": {
+      "main": [[{ "node": "Respond OK", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "tags": ["yfb", "otp", "auth", "email"]
+}

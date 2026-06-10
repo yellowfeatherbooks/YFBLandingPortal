@@ -241,6 +241,90 @@ async function getMetaobjectOptions() {
   return json({ success: true, genre, bookCoverType, languageVersion, targetAudience });
 }
 
+// ── Genre → Collection mapping ───────────────────────────────────────────────
+
+const GENRE_HANDLE_MAP = {
+  'romance':              'romance',
+  'malayalam fiction':    'malayalam-fiction',
+  'novels':               'novels',
+  'novel':                'novels',
+  'crime & thrillers':    'crime-thrillers',
+  'crime and thrillers':  'crime-thrillers',
+  'crime':                'crime-thrillers',
+  'thriller':             'crime-thrillers',
+  'thrillers':            'crime-thrillers',
+  'young adult':          'young-adult',
+  'period drama':         'period-drama',
+  'classics':             'classics',
+  'award winners':        'award-winners',
+  'award winning':        'award-winners',
+  'world literature':     'world-literature',
+  "children's books":     'childrens-books',
+  'childrens books':      'childrens-books',
+  'children':             'childrens-books',
+  'memories':             'memories',
+  'memories & nostalgia': 'memories',
+  'travel':               'travel',
+  'self help':            'self-help',
+  'self-help':            'self-help',
+  'poetry':               'poetry',
+  'stories':              'stories',
+  'best sellers':         'best-sellers',
+  'trending':             'trending',
+};
+
+async function addProductToGenreCollection(productGid, genre) {
+  try {
+    const handle = GENRE_HANDLE_MAP[genre.toLowerCase().trim()];
+    if (!handle) {
+      console.log(`addProductToGenreCollection: no handle mapping for genre "${genre}" — skipping`);
+      return;
+    }
+    const colData = await shopifyGql(`{ collectionByHandle(handle: ${JSON.stringify(handle)}) { id } }`);
+    const collectionGid = colData?.data?.collectionByHandle?.id;
+    if (!collectionGid) {
+      console.warn(`addProductToGenreCollection: collection "${handle}" not found in Shopify`);
+      return;
+    }
+    const res = await shopifyGql(`
+      mutation collectionAddProducts($id: ID!, $productIds: [ID!]!) {
+        collectionAddProducts(id: $id, productIds: $productIds) {
+          collection { id title }
+          userErrors { field message }
+        }
+      }`, { id: collectionGid, productIds: [productGid] });
+    const errors = res?.data?.collectionAddProducts?.userErrors || [];
+    if (errors.length) console.warn('collectionAddProducts errors:', JSON.stringify(errors));
+    else console.log(`Product added to collection "${handle}" successfully`);
+  } catch (e) {
+    console.warn('addProductToGenreCollection failed (non-fatal):', e.message);
+  }
+}
+
+// Set requires_shipping=true and taxable=false on the first variant (REST)
+async function setupVariantDefaults(shopifyProductId) {
+  try {
+    const varRes = await fetch(
+      `https://${SHOPIFY_DOMAIN}/admin/api/${API_VERSION}/products/${shopifyProductId}/variants.json`,
+      { headers: { 'X-Shopify-Access-Token': SHOPIFY_TOKEN } }
+    );
+    const varData  = await varRes.json();
+    const variantId = varData?.variants?.[0]?.id;
+    if (!variantId) { console.warn('setupVariantDefaults: no variant found'); return; }
+    await fetch(
+      `https://${SHOPIFY_DOMAIN}/admin/api/${API_VERSION}/variants/${variantId}.json`,
+      {
+        method:  'PUT',
+        headers: { 'X-Shopify-Access-Token': SHOPIFY_TOKEN, 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ variant: { id: variantId, taxable: false, requires_shipping: true } })
+      }
+    );
+    console.log('Variant defaults set (taxable:false, requires_shipping:true) for variant', variantId);
+  } catch (e) {
+    console.warn('setupVariantDefaults error:', e.message);
+  }
+}
+
 // ── Submit Book (creates draft in Shopify, pending admin approval) ────────────
 
 async function submitBook(body, salesEmail) {
@@ -324,6 +408,16 @@ async function submitBook(body, salesEmail) {
     const upErrors = upRes?.data?.productUpdate?.userErrors || [];
     if (upErrors.length) console.warn('Category/metafield errors:', JSON.stringify(upErrors));
     else console.log('Category + metafields set on draft:', upRes?.data?.productUpdate?.product?.category?.name, '— metafields:', mfInput.length);
+  }
+
+  // Step 4 — Set variant defaults (requires_shipping + no tax) on the draft product
+  if (shopifyId && SHOPIFY_TOKEN) {
+    await setupVariantDefaults(shopifyId);
+  }
+
+  // Step 4b — Add product to matching Shopify collection based on genre
+  if (productGid && genre && SHOPIFY_TOKEN) {
+    await addProductToGenreCollection(productGid, genre);
   }
 
   // Step 5 — Save to Supabase as under_review (initial_stock stored for approval step)

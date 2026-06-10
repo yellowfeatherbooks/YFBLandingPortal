@@ -10173,9 +10173,11 @@ Questions? We're always here!
           <td style="padding:0.4rem 0.5rem;">${mrpCell}</td>
           <td style="padding:0.4rem 0.5rem;">${stockCell}</td>
           <td style="padding:0.4rem 0.5rem;color:${statusColor};font-size:0.78rem;font-weight:600;">${statusLabel}</td>
-          ${r.error ? `<td style="color:#f87171;font-size:0.72rem;">${r.error}</td>`
-            : r.normalizedName ? `<td style="color:#6b7280;font-size:0.68rem;" title="Normalized lookup key">🔑 ${r.normalizedName}</td>`
-            : '<td></td>'}
+          <td style="font-size:0.68rem;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+            ${r.error ? `<span style="color:#f87171;">${r.error}</span>`
+              : r.normalizedName ? `<span style="color:#6b7280;" title="Lookup key: ${r.normalizedName}">🔑 ${r.normalizedName}</span>`
+              : ''}
+          </td>
           <td style="padding:0.4rem 0.3rem;text-align:center;">
             <button onclick="ssDeleteRow('${escapedName}')" title="Remove from preview"
               style="background:none;border:none;cursor:pointer;color:#6b7280;font-size:0.9rem;padding:0 0.2rem;line-height:1;"

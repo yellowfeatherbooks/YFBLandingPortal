@@ -6089,6 +6089,9 @@
             <input type="file" id="ss-csv-input" accept=".csv" onchange="ssLoadCsv(this)"
               style="font-size:0.82rem;color:#ccc;" />
             <span id="ss-csv-status" style="font-size:0.8rem;color:var(--muted);"></span>
+            <button id="ss-clear-btn" onclick="ssClearFile()" style="display:none;background:rgba(248,113,113,0.1);border:1px solid #f87171;color:#f87171;border-radius:6px;padding:0.25rem 0.75rem;font-size:0.8rem;cursor:pointer;">
+              🗑 Clear
+            </button>
           </div>
         </div>
 
@@ -9914,6 +9917,19 @@ Questions? We're always here!
         .replace(/â€œ/g, '“').replace(/â€/g, '”').replace(/â€¦/g, '…');
     }
 
+    function ssClearFile() {
+      _ssRows    = [];
+      _ssPreview = [];
+      const fileInput = document.getElementById('ss-csv-input');
+      if (fileInput) fileInput.value = '';
+      document.getElementById('ss-csv-status').textContent = '';
+      document.getElementById('ss-clear-btn').style.display = 'none';
+      document.getElementById('ss-preview-wrap').style.display = 'none';
+      document.getElementById('ss-sync-wrap').style.display   = 'none';
+      document.getElementById('ss-preview-table').innerHTML   = '';
+      document.getElementById('ss-summary-bar').innerHTML     = '';
+    }
+
     // Parse BillBook CSV export
     function ssLoadCsv(input) {
       const file = input.files[0];
@@ -9946,6 +9962,7 @@ Questions? We're always here!
 
         document.getElementById('ss-csv-status').textContent =
           `✅ ${_ssRows.length} books loaded`;
+        document.getElementById('ss-clear-btn').style.display   = 'inline-block';
         document.getElementById('ss-preview-wrap').style.display = 'block';
         document.getElementById('ss-sync-wrap').style.display    = 'none';
         document.getElementById('ss-preview-table').innerHTML     = '';

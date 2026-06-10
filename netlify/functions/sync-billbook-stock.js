@@ -76,41 +76,75 @@ function normalize(str) {
     .trim();
 }
 
-// Search Shopify for a product by title (exact then fuzzy)
-async function findShopifyProduct(title) {
-  // Search using Shopify's product search
-  const query = `title:${JSON.stringify(title)}`;
-  const res = await fetch(
-    `https://${SHOPIFY_DOMAIN}/admin/api/${API_VERSION}/products.json?title=${encodeURIComponent(title)}&fields=id,title,variants,status&limit=5`,
-    { headers: REST_HEADERS }
-  );
-  const data = await res.json();
-  const products = data?.products || [];
+// ── Bulk product cache ────────────────────────────────────────────────────────
+// Fetch ALL Shopify products once and build a normalized-title lookup map.
+// This avoids 1233 individual REST calls and enables better fuzzy matching.
 
+let _productCache = null; // { normTitle → shopifyProduct }
+
+async function loadAllProducts() {
+  if (_productCache) return _productCache;
+  _productCache = {};
+  let url = `https://${SHOPIFY_DOMAIN}/admin/api/${API_VERSION}/products.json?fields=id,title,variants,status&limit=250`;
+  while (url) {
+    const res  = await fetch(url, { headers: REST_HEADERS });
+    const data = await res.json();
+    const products = data?.products || [];
+    for (const p of products) {
+      _productCache[normalize(p.title)] = p;
+    }
+    // Follow Link header for pagination
+    const link = res.headers.get('Link') || '';
+    const next = link.match(/<([^>]+)>;\s*rel="next"/);
+    url = next ? next[1] : null;
+  }
+  return _productCache;
+}
+
+// Word-overlap score: fraction of CSV words found in Shopify title words
+function wordOverlap(a, b) {
+  const wa = a.split(' ').filter(Boolean);
+  const wb = new Set(b.split(' ').filter(Boolean));
+  if (!wa.length) return 0;
+  return wa.filter(w => wb.has(w)).length / wa.length;
+}
+
+// Find best-matching Shopify product for a CSV title
+async function findShopifyProduct(title) {
+  const cache = await loadAllProducts();
   const normTarget = normalize(title);
 
-  // Exact normalized match first
-  let match = products.find(p => normalize(p.title) === normTarget);
+  // 1. Exact normalized match
+  if (cache[normTarget]) return toResult(cache[normTarget]);
 
-  // Partial match fallback (target starts with product title or vice versa)
-  if (!match) {
-    match = products.find(p => {
-      const normP = normalize(p.title);
-      return normP.includes(normTarget) || normTarget.includes(normP);
-    });
+  // 2. One side contains the other (handles extra subtitle words)
+  for (const [normKey, p] of Object.entries(cache)) {
+    if (normKey.includes(normTarget) || normTarget.includes(normKey)) {
+      return toResult(p);
+    }
   }
 
-  if (!match) return null;
+  // 3. High word-overlap (≥ 0.80) — handles minor spelling diffs / extra articles
+  let best = null, bestScore = 0;
+  for (const [normKey, p] of Object.entries(cache)) {
+    const score = wordOverlap(normTarget, normKey);
+    if (score > bestScore) { bestScore = score; best = p; }
+  }
+  if (bestScore >= 0.80) return toResult(best);
 
-  const variant = match.variants?.[0];
+  return null;
+}
+
+function toResult(p) {
+  const variant = p.variants?.[0];
   return {
-    productId:   match.id,
-    productTitle: match.title,
-    variantId:   variant?.id,
+    productId:       p.id,
+    productTitle:    p.title,
+    variantId:       variant?.id,
     inventoryItemId: variant?.inventory_item_id,
     currentPrice:    variant?.price,
     currentCompare:  variant?.compare_at_price,
-    status:          match.status
+    status:          p.status
   };
 }
 
@@ -186,11 +220,6 @@ exports.handler = async (event) => {
       const { name, sellingPrice, stockQty, mrp } = row;
       if (!name) continue;
 
-      // Small delay to avoid Shopify rate limits
-      if (results.length > 0 && results.length % 5 === 0) {
-        await new Promise(r => setTimeout(r, 500));
-      }
-
       let shopify = null;
       try { shopify = await findShopifyProduct(name); } catch (e) {}
 
@@ -213,6 +242,10 @@ exports.handler = async (event) => {
       };
 
       if (action === 'sync') {
+        // Small delay every 10 writes to respect Shopify rate limits
+        if (results.filter(r => r.status === 'synced').length % 10 === 0) {
+          await new Promise(r => setTimeout(r, 300));
+        }
         let priceOk = true, stockOk = true, errors = [];
 
         // Update price + MRP

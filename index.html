@@ -6110,10 +6110,18 @@
             </div>
           </div>
           <div id="ss-summary-bar" style="display:flex;gap:1rem;flex-wrap:wrap;font-size:0.8rem;margin-bottom:0.75rem;"></div>
-          <div id="ss-preview-btn-row" style="margin-bottom:0.75rem;">
+          <div id="ss-preview-btn-row" style="margin-bottom:0.75rem;display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
             <button class="admin-filter-btn" onclick="ssRunPreview()" id="ss-preview-btn" style="background:rgba(212,175,55,0.1);border-color:var(--gold);color:var(--gold);">
               🔍 Match with Shopify
             </button>
+            <label style="font-size:0.8rem;color:var(--muted);">Rows to process:
+              <select id="ss-row-limit" style="background:#1a1a2e;border:1px solid rgba(255,255,255,0.15);border-radius:5px;color:#e5e7eb;padding:0.2rem 0.4rem;font-size:0.8rem;margin-left:4px;">
+                <option value="0">All</option>
+                <option value="100">First 100</option>
+                <option value="250">First 250</option>
+                <option value="500">First 500</option>
+              </select>
+            </label>
           </div>
           <div id="ss-preview-table"></div>
         </div>
@@ -10165,7 +10173,9 @@ Questions? We're always here!
           <td style="padding:0.4rem 0.5rem;">${mrpCell}</td>
           <td style="padding:0.4rem 0.5rem;">${stockCell}</td>
           <td style="padding:0.4rem 0.5rem;color:${statusColor};font-size:0.78rem;font-weight:600;">${statusLabel}</td>
-          ${r.error ? `<td style="color:#f87171;font-size:0.72rem;">${r.error}</td>` : '<td></td>'}
+          ${r.error ? `<td style="color:#f87171;font-size:0.72rem;">${r.error}</td>`
+            : r.normalizedName ? `<td style="color:#6b7280;font-size:0.68rem;" title="Normalized lookup key">🔑 ${r.normalizedName}</td>`
+            : '<td></td>'}
           <td style="padding:0.4rem 0.3rem;text-align:center;">
             <button onclick="ssDeleteRow('${escapedName}')" title="Remove from preview"
               style="background:none;border:none;cursor:pointer;color:#6b7280;font-size:0.9rem;padding:0 0.2rem;line-height:1;"
@@ -10208,12 +10218,14 @@ Questions? We're always here!
 
       try {
         // Process in batches of 50 to avoid Netlify 26s timeout
-        const BATCH = 50;
+        const BATCH    = 50;
+        const limitVal = parseInt(document.getElementById('ss-row-limit')?.value || '0');
+        const rowsToProcess = (limitVal > 0) ? _ssRows.slice(0, limitVal) : _ssRows;
         _ssPreview  = [];
         let _ssCacheSize = 0;
-        for (let i = 0; i < _ssRows.length; i += BATCH) {
-          const batch = _ssRows.slice(i, i + BATCH);
-          btn.textContent = `⏳ Matching… ${Math.min(i + BATCH, _ssRows.length)}/${_ssRows.length}`;
+        for (let i = 0; i < rowsToProcess.length; i += BATCH) {
+          const batch = rowsToProcess.slice(i, i + BATCH);
+          btn.textContent = `⏳ Matching… ${Math.min(i + BATCH, rowsToProcess.length)}/${rowsToProcess.length}`;
           const res  = await fetch('/.netlify/functions/sync-billbook-stock', {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },

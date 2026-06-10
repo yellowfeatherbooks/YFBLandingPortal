@@ -260,7 +260,7 @@ exports.handler = async (event) => {
       try { shopify = await findShopifyProduct(name); } catch (e) {}
 
       if (!shopify) {
-        results.push({ name, sellingPrice, stockQty, mrp, status: 'not_found' });
+        results.push({ name, sellingPrice, stockQty, mrp, status: 'not_found', normalizedName: normalize(name) });
         continue;
       }
 

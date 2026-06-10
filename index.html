@@ -6099,7 +6099,10 @@
         <div id="ss-preview-wrap" style="display:none;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:1.25rem;margin-bottom:1rem;">
           <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.75rem;">
             <div style="font-weight:700;color:var(--gold);">Step 2 — Preview Matches</div>
-            <div style="display:flex;gap:0.5rem;">
+            <div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center;">
+              <input id="ss-search" type="text" placeholder="🔍 Search book…"
+                oninput="ssRenderTable(_ssPreview)"
+                style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:0.3rem 0.7rem;color:#e5e7eb;font-size:0.8rem;width:180px;outline:none;" />
               <button class="admin-filter-btn active" id="ss-filter-all"    onclick="ssFilter('all',this)">All</button>
               <button class="admin-filter-btn"         id="ss-filter-match" onclick="ssFilter('matched',this)">Matched</button>
               <button class="admin-filter-btn"         id="ss-filter-miss"  onclick="ssFilter('not_found',this)">Not Found</button>
@@ -9920,8 +9923,11 @@ Questions? We're always here!
     function ssClearFile() {
       _ssRows    = [];
       _ssPreview = [];
+      _ssSort    = { col: null, dir: 1 };
       const fileInput = document.getElementById('ss-csv-input');
       if (fileInput) fileInput.value = '';
+      const searchEl = document.getElementById('ss-search');
+      if (searchEl) searchEl.value = '';
       document.getElementById('ss-csv-status').textContent = '';
       document.getElementById('ss-clear-btn').style.display = 'none';
       document.getElementById('ss-preview-wrap').style.display = 'none';
@@ -9979,15 +9985,51 @@ Questions? We're always here!
       ssRenderTable(_ssPreview);
     }
 
+    var _ssSort = { col: null, dir: 1 }; // col: 'name'|'price'|'mrp'|'stock'|'status', dir: 1=asc -1=desc
+
+    function ssSortBy(col) {
+      if (_ssSort.col === col) _ssSort.dir *= -1;
+      else { _ssSort.col = col; _ssSort.dir = 1; }
+      ssRenderTable(_ssPreview);
+    }
+
     function ssRenderTable(results) {
-      const filtered = results.filter(r =>
-        _ssFilter === 'all' ? true : r.status === _ssFilter
+      const searchVal = (document.getElementById('ss-search')?.value || '').toLowerCase().trim();
+
+      let filtered = results.filter(r =>
+        (_ssFilter === 'all' ? true : r.status === _ssFilter) &&
+        (!searchVal || (r.name||'').toLowerCase().includes(searchVal) || (r.shopifyTitle||'').toLowerCase().includes(searchVal))
       );
+
+      // Sort
+      if (_ssSort.col) {
+        filtered = filtered.slice().sort((a, b) => {
+          let va, vb;
+          if (_ssSort.col === 'name')   { va = (a.name||'').toLowerCase();  vb = (b.name||'').toLowerCase(); }
+          if (_ssSort.col === 'price')  { va = parseFloat(a.sellingPrice)||0; vb = parseFloat(b.sellingPrice)||0; }
+          if (_ssSort.col === 'mrp')    { va = parseFloat(a.mrp)||0;         vb = parseFloat(b.mrp)||0; }
+          if (_ssSort.col === 'stock')  { va = parseFloat(a.stockQty)||0;    vb = parseFloat(b.stockQty)||0; }
+          if (_ssSort.col === 'status') { va = a.status||'';                 vb = b.status||''; }
+          if (va < vb) return -1 * _ssSort.dir;
+          if (va > vb) return  1 * _ssSort.dir;
+          return 0;
+        });
+      }
+
       if (!filtered.length) {
         document.getElementById('ss-preview-table').innerHTML =
           '<div style="color:var(--muted);font-size:0.82rem;padding:0.5rem 0;">No results in this filter.</div>';
         return;
       }
+
+      const sortArrow = (col) => {
+        if (_ssSort.col !== col) return '<span style="color:#555;margin-left:4px;">⇅</span>';
+        return _ssSort.dir === 1
+          ? '<span style="color:var(--gold);margin-left:4px;">↑</span>'
+          : '<span style="color:var(--gold);margin-left:4px;">↓</span>';
+      };
+      const thStyle = 'padding:0.4rem 0.5rem;text-align:left;cursor:pointer;user-select:none;white-space:nowrap;';
+
       const rows = filtered.map(r => {
         const statusColor = r.status === 'matched' ? '#4ade80'
                           : r.status === 'synced'  ? '#4ade80'
@@ -10013,15 +10055,16 @@ Questions? We're always here!
       }).join('');
 
       document.getElementById('ss-preview-table').innerHTML = `
+        <div style="font-size:0.75rem;color:var(--muted);margin-bottom:0.4rem;">Showing ${filtered.length} of ${results.length} books</div>
         <div class="admin-table-wrap">
           <table class="admin-table">
             <thead><tr>
-              <th style="padding:0.4rem 0.5rem;text-align:left;">BillBook Name</th>
+              <th style="${thStyle}" onclick="ssSortBy('name')">BillBook Name${sortArrow('name')}</th>
               <th style="padding:0.4rem 0.5rem;text-align:left;">Shopify Match</th>
-              <th style="padding:0.4rem 0.5rem;text-align:left;">Price</th>
-              <th style="padding:0.4rem 0.5rem;text-align:left;">MRP</th>
-              <th style="padding:0.4rem 0.5rem;text-align:left;">Stock</th>
-              <th style="padding:0.4rem 0.5rem;text-align:left;">Status</th>
+              <th style="${thStyle}" onclick="ssSortBy('price')">Price${sortArrow('price')}</th>
+              <th style="${thStyle}" onclick="ssSortBy('mrp')">MRP${sortArrow('mrp')}</th>
+              <th style="${thStyle}" onclick="ssSortBy('stock')">Stock${sortArrow('stock')}</th>
+              <th style="${thStyle}" onclick="ssSortBy('status')">Status${sortArrow('status')}</th>
               <th style="padding:0.4rem 0.5rem;text-align:left;">Note</th>
             </tr></thead>
             <tbody>${rows}</tbody>

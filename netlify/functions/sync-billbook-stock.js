@@ -89,35 +89,26 @@ async function loadAllProducts() {
   if (_productCache) return _productCache;
   _productCache = {};
   _productPages = 0;
-  let pageInfo  = null; // cursor for next page
   const BASE    = `https://${SHOPIFY_DOMAIN}/admin/api/${API_VERSION}/products.json`;
+  let sinceId   = 0; // since_id pagination — no Link header needed
 
   while (true) {
     _productPages++;
-    // IMPORTANT: When using page_info cursor, Shopify forbids other params (including fields).
-    // Only limit + page_info allowed on page 2+.
-    const qs  = pageInfo
-      ? `limit=250&page_info=${encodeURIComponent(pageInfo)}`
-      : `limit=250&fields=id,title,variants,status`;
+    const qs  = `limit=250&fields=id,title,variants,status&since_id=${sinceId}`;
     const res  = await fetch(`${BASE}?${qs}`, { headers: REST_HEADERS });
     const data = await res.json();
     const products = data?.products || [];
+
+    if (!products.length) break; // no more products
 
     for (const p of products) {
       _productCache[normalize(p.title)]           = p;
       _productCache[p.title.toLowerCase().trim()] = p;
     }
 
-    // Extract next page cursor from Link header
-    // Try all possible header name casings
-    let linkHeader = '';
-    for (const [k, v] of res.headers.entries()) {
-      if (k.toLowerCase() === 'link') { linkHeader = v; break; }
-    }
-    const nextMatch = linkHeader.match(/<[^>]*[?&]page_info=([^&>]+)[^>]*>;\s*rel="next"/);
-    pageInfo = nextMatch ? decodeURIComponent(nextMatch[1]) : null;
+    sinceId = products[products.length - 1].id; // advance cursor to last ID on this page
 
-    if (!pageInfo || products.length === 0 || _productPages >= 25) break;
+    if (products.length < 250 || _productPages >= 25) break; // last page or safety cap
   }
   return _productCache;
 }

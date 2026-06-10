@@ -94,9 +94,10 @@ async function loadAllProducts() {
 
   while (true) {
     _productPages++;
-    // Build URL: first page uses no page_info, subsequent pages use cursor
+    // IMPORTANT: When using page_info cursor, Shopify forbids other params (including fields).
+    // Only limit + page_info allowed on page 2+.
     const qs  = pageInfo
-      ? `limit=250&fields=id,title,variants,status&page_info=${encodeURIComponent(pageInfo)}`
+      ? `limit=250&page_info=${encodeURIComponent(pageInfo)}`
       : `limit=250&fields=id,title,variants,status`;
     const res  = await fetch(`${BASE}?${qs}`, { headers: REST_HEADERS });
     const data = await res.json();

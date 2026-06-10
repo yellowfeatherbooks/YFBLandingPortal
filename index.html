@@ -10283,37 +10283,50 @@ Questions? We're always here!
       if (!toSync.length) { alert('No matched books to sync. Please run preview first.'); return; }
       const label = _ssSelected.size > 0 ? `${toSync.length} selected` : `all ${toSync.length} matched`;
       if (!confirm(`Sync ${label} books to Shopify? This will update prices and stock.`)) return;
-      const matched = toSync;
 
       const btn = document.getElementById('ss-sync-btn');
-      btn.disabled = true; btn.textContent = `⏳ Syncing ${matched.length} books…`;
+      btn.disabled = true;
       document.getElementById('ss-sync-result').innerHTML = '';
 
       try {
-        const res  = await fetch('/.netlify/functions/sync-billbook-stock', {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({
-            adminEmail: _adminSession.email,
-            adminKey:   _adminSession.adminKey,
-            action:     'sync',
-            rows:       matched.map(r => ({
-              name:         r.name,
-              sellingPrice: r.sellingPrice,
-              stockQty:     r.stockQty,
-              mrp:          r.mrp
-            }))
-          })
-        });
-        const data = await res.json();
-        if (!data.success) { alert('Error: ' + data.error); return; }
+        // Batch sync in groups of 20 to stay within Netlify 26s timeout
+        const BATCH     = 20;
+        let syncedAll   = [];
 
-        const s = data.summary || {};
-        _ssPreview = data.results.concat(_ssPreview.filter(r => r.status === 'not_found'));
+        for (let i = 0; i < toSync.length; i += BATCH) {
+          const batch = toSync.slice(i, i + BATCH);
+          btn.textContent = `⏳ Syncing… ${Math.min(i + BATCH, toSync.length)}/${toSync.length}`;
+
+          const res  = await fetch('/.netlify/functions/sync-billbook-stock', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({
+              adminEmail: _adminSession.email,
+              adminKey:   _adminSession.adminKey,
+              action:     'sync',
+              rows:       batch.map(r => ({
+                name:         r.name,
+                sellingPrice: r.sellingPrice,
+                stockQty:     r.stockQty,
+                mrp:          r.mrp
+              }))
+            })
+          });
+          const data = await res.json();
+          if (!data.success) { alert('Sync error: ' + (data.error || 'Unknown')); break; }
+          syncedAll = syncedAll.concat(data.results || []);
+        }
+
+        // Merge sync results back into _ssPreview
+        const syncedNames = new Map(syncedAll.map(r => [r.name, r]));
+        _ssPreview = _ssPreview.map(r => syncedNames.has(r.name) ? syncedNames.get(r.name) : r);
         ssRenderTable(_ssPreview);
 
-        // Build downloadable CSV report for not_found + failed books
-        const reportRows = _ssPreview.filter(r => ['not_found','failed','stock_failed','price_failed'].includes(r.status));
+        const totalSynced = syncedAll.filter(r => r.status === 'synced').length;
+        const totalFailed = syncedAll.filter(r => ['failed','stock_failed','price_failed'].includes(r.status)).length;
+
+        // Build downloadable CSV report for failed books
+        const reportRows = _ssPreview.filter(r => ['failed','stock_failed','price_failed'].includes(r.status));
         let downloadBtn = '';
         if (reportRows.length) {
           const csvLines = ['BillBook Name,Selling Price,MRP,Stock Qty,Status,Note'];
@@ -10336,15 +10349,15 @@ Questions? We're always here!
         document.getElementById('ss-sync-result').innerHTML = `
           <div style="padding:0.75rem;border-radius:8px;background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.25);font-size:0.85rem;">
             <strong style="color:#4ade80;">Sync complete!</strong><br>
-            🚀 Synced: ${s.synced || 0} &nbsp;|&nbsp;
-            💥 Failed: ${s.failed || 0} &nbsp;|&nbsp;
-            ❌ Not found: ${s.not_found || 0}
+            🚀 Synced: ${totalSynced} &nbsp;|&nbsp;
+            💥 Failed: ${totalFailed}
             ${downloadBtn}
           </div>`;
       } catch (e) {
         alert('Network error: ' + e.message);
       } finally {
-        btn.disabled = false; btn.textContent = '🚀 Sync to Shopify';
+        btn.disabled = false;
+        ssUpdateSyncBtn();
       }
     }
 

@@ -9999,6 +9999,13 @@ Questions? We're always here!
       ssRenderTable(_ssPreview);
     }
 
+    function ssDeleteRow(name) {
+      _ssPreview = _ssPreview.filter(r => r.name !== name);
+      _ssSelected.delete(name);
+      ssRenderTable(_ssPreview);
+      ssUpdateSyncBtn();
+    }
+
     function ssToggleRow(name, checked) {
       if (checked) _ssSelected.add(name); else _ssSelected.delete(name);
       ssUpdateSyncBtn();
@@ -10090,6 +10097,7 @@ Questions? We're always here!
                  style="width:15px;height:15px;cursor:pointer;accent-color:var(--gold);" />
              </td>`
           : `<td style="padding:0.4rem 0.5rem;text-align:center;width:32px;"></td>`;
+        const escapedName = r.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
         return `<tr style="${isChecked && canSync ? 'background:rgba(212,175,55,0.06);' : ''}">
           ${cbCell}
           <td style="padding:0.4rem 0.5rem;color:#e5e7eb;">${r.name}</td>
@@ -10099,6 +10107,11 @@ Questions? We're always here!
           <td style="padding:0.4rem 0.5rem;color:#ccc;font-size:0.78rem;">${r.stockQty}</td>
           <td style="padding:0.4rem 0.5rem;color:${statusColor};font-size:0.78rem;font-weight:600;">${statusLabel}</td>
           ${r.error ? `<td style="color:#f87171;font-size:0.72rem;">${r.error}</td>` : '<td></td>'}
+          <td style="padding:0.4rem 0.3rem;text-align:center;">
+            <button onclick="ssDeleteRow('${escapedName}')" title="Remove from preview"
+              style="background:none;border:none;cursor:pointer;color:#6b7280;font-size:0.9rem;padding:0 0.2rem;line-height:1;"
+              onmouseover="this.style.color='#f87171'" onmouseout="this.style.color='#6b7280'">🗑</button>
+          </td>
         </tr>`;
       }).join('');
 
@@ -10119,6 +10132,7 @@ Questions? We're always here!
               <th style="${thStyle}" onclick="ssSortBy('stock')">Stock${sortArrow('stock')}</th>
               <th style="${thStyle}" onclick="ssSortBy('status')">Status${sortArrow('status')}</th>
               <th style="padding:0.4rem 0.5rem;text-align:left;">Note</th>
+              <th style="padding:0.4rem 0.5rem;width:32px;"></th>
             </tr></thead>
             <tbody>${rows}</tbody>
           </table>

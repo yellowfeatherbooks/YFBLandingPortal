@@ -5,6 +5,23 @@ const crypto      = require('crypto');
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_KEY;
 
+// ── Server-side in-memory cache (shared across warm Lambda instances) ─────────
+// Thousands of visitors hit GET /admin-flash-sale — this means only one Supabase
+// read every 5 minutes regardless of how many users are online simultaneously.
+let _cache = null; // { books, ts }
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+function getCached() {
+  if (_cache && (Date.now() - _cache.ts) < CACHE_TTL) return _cache.books;
+  return null;
+}
+function setCache(books) {
+  _cache = { books, ts: Date.now() };
+}
+function bustCache() {
+  _cache = null;
+}
+
 const cors = {
   'Access-Control-Allow-Origin':  '*',
   'Access-Control-Allow-Headers': 'Content-Type',
@@ -30,8 +47,10 @@ async function verifyAdmin(email, adminKey) {
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: cors, body: '' };
 
-  // ── GET: public read ──────────────────────────────────────────────────────
+  // ── GET: public read (cached) ─────────────────────────────────────────────
   if (event.httpMethod === 'GET') {
+    const cached = getCached();
+    if (cached) return json({ books: cached, fromCache: true });
     try {
       const res  = await fetch(
         `${SUPABASE_URL}/rest/v1/site_config?key=eq.flash_sale&select=value&limit=1`,
@@ -39,6 +58,7 @@ exports.handler = async (event) => {
       );
       const rows = await res.json();
       const books = rows?.[0]?.value?.books || [];
+      setCache(books);
       return json({ books });
     } catch(e) {
       return json({ books: [] }); // graceful fallback
@@ -53,6 +73,8 @@ exports.handler = async (event) => {
     if (!await verifyAdmin(adminEmail, adminKey)) return json({ error: 'Unauthorized' }, 401);
     if (!Array.isArray(books))      return json({ error: 'books must be an array' }, 400);
     if (books.length > 10)         return json({ error: 'Maximum 10 books allowed' }, 400);
+
+    bustCache(); // invalidate cache so next GET fetches fresh data immediately
 
     await fetch(`${SUPABASE_URL}/rest/v1/site_config`, {
       method: 'POST',

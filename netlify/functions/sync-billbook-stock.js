@@ -86,8 +86,7 @@ let _inventoryCache = null; // { inventoryItemId → available qty }
 async function loadAllProducts() {
   if (_productCache) return _productCache;
   _productCache = {};
-  // status=any ensures draft/archived products are included
-  let url = `https://${SHOPIFY_DOMAIN}/admin/api/${API_VERSION}/products.json?status=any&fields=id,title,variants,status&limit=250`;
+  let url = `https://${SHOPIFY_DOMAIN}/admin/api/${API_VERSION}/products.json?fields=id,title,variants,status&limit=250`;
   let pages = 0;
   while (url) {
     pages++;

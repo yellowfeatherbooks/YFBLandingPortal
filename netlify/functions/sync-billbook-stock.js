@@ -83,26 +83,40 @@ function normalize(str) {
 let _productCache   = null; // { normTitle → shopifyProduct }
 let _inventoryCache = null; // { inventoryItemId → available qty }
 
+let _productPages = 0; // track pages loaded for debugging
+
 async function loadAllProducts() {
   if (_productCache) return _productCache;
   _productCache = {};
-  let url = `https://${SHOPIFY_DOMAIN}/admin/api/${API_VERSION}/products.json?fields=id,title,variants,status&limit=250`;
-  let pages = 0;
-  while (url) {
-    pages++;
-    const res  = await fetch(url, { headers: REST_HEADERS });
+  _productPages = 0;
+  let pageInfo  = null; // cursor for next page
+  const BASE    = `https://${SHOPIFY_DOMAIN}/admin/api/${API_VERSION}/products.json`;
+
+  while (true) {
+    _productPages++;
+    // Build URL: first page uses no page_info, subsequent pages use cursor
+    const qs  = pageInfo
+      ? `limit=250&fields=id,title,variants,status&page_info=${encodeURIComponent(pageInfo)}`
+      : `limit=250&fields=id,title,variants,status`;
+    const res  = await fetch(`${BASE}?${qs}`, { headers: REST_HEADERS });
     const data = await res.json();
     const products = data?.products || [];
+
     for (const p of products) {
-      // Store under both normalized title AND original lowercase (belt-and-suspenders)
-      _productCache[normalize(p.title)] = p;
+      _productCache[normalize(p.title)]           = p;
       _productCache[p.title.toLowerCase().trim()] = p;
     }
-    // Shopify cursor pagination via Link header
-    const link = res.headers.get('link') || res.headers.get('Link') || '';
-    const next = link.match(/<([^>]+)>;\s*rel="next"/);
-    url = next ? next[1] : null;
-    if (pages > 20) break; // safety cap: 20 × 250 = 5000 products max
+
+    // Extract next page cursor from Link header
+    // Try all possible header name casings
+    let linkHeader = '';
+    for (const [k, v] of res.headers.entries()) {
+      if (k.toLowerCase() === 'link') { linkHeader = v; break; }
+    }
+    const nextMatch = linkHeader.match(/<[^>]*[?&]page_info=([^&>]+)[^>]*>;\s*rel="next"/);
+    pageInfo = nextMatch ? decodeURIComponent(nextMatch[1]) : null;
+
+    if (!pageInfo || products.length === 0 || _productPages >= 25) break;
   }
   return _productCache;
 }
@@ -305,7 +319,9 @@ exports.handler = async (event) => {
       failed:    results.filter(r => ['failed','stock_failed','price_failed'].includes(r.status)).length,
     };
 
-    const cacheSize = _productCache ? Math.floor(Object.keys(_productCache).length / 2) : 0; // ÷2 because we store each product twice
+    // Unique product count (each product stored under 2 keys, but may overlap if normalize == lowercase)
+    const uniqueKeys = _productCache ? Object.keys(_productCache).length : 0;
+    const cacheSize  = { keys: uniqueKeys, pages: _productPages };
     return json({ success: true, summary, results, cacheSize });
 
   } catch (e) {

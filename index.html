@@ -10735,6 +10735,8 @@ Questions? We're always here!
       try {
         const data = await adminPost('admin-flash-sale', { books: _adminFlashBooks });
         if (data.success) {
+          // Bust the frontend cache so visitors see the new flash sale immediately
+          try { localStorage.removeItem('yfb_flash_sale_v1'); } catch(e) {}
           statusEl.style.color = '#34d399';
           statusEl.textContent = '✓ Saved! Flash sale updated.';
         } else {
@@ -16204,12 +16206,32 @@ Questions? We're always here!
       var _flashIndex = 0;    // currently displayed book index
       var _autoTimer  = null; // auto-rotate interval
 
-      // Load flash books from admin config, with Shopify API fallback for missing variantIds
+      // Load flash books from admin config, with 5-minute localStorage cache.
+      // Avoids hitting Supabase/Netlify on every guest page load during high traffic.
+      var FLASH_CACHE_KEY = 'yfb_flash_sale_v1';
+      var FLASH_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
       async function loadFlashBooks() {
         try {
+          // Serve from cache if fresh
+          try {
+            var cached = JSON.parse(localStorage.getItem(FLASH_CACHE_KEY) || 'null');
+            if (cached && cached.ts && (Date.now() - cached.ts) < FLASH_CACHE_TTL && Array.isArray(cached.books)) {
+              var cachedBooks = cached.books.filter(function(b) { return b && b.id; });
+              cachedBooks.forEach(function(b) {
+                if (typeof _books !== 'undefined' && b.id && !_books[b.id]) _books[b.id] = b;
+              });
+              return cachedBooks;
+            }
+          } catch(e) {}
+
+          // Cache miss or expired — fetch from server
           var res  = await fetch('/.netlify/functions/admin-flash-sale');
           var data = await res.json();
           var books = (data.books || []).filter(function(b) { return b && b.id; });
+
+          // Store in cache
+          try { localStorage.setItem(FLASH_CACHE_KEY, JSON.stringify({ ts: Date.now(), books: books })); } catch(e) {}
 
           // Ensure each book is registered in _books so addToCart works
           books.forEach(function(b) {

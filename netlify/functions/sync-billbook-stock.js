@@ -52,9 +52,23 @@ async function shopifyGql(query, variables = {}) {
   return res.json();
 }
 
+// Fix common UTF-8 mojibake from BillBook CSV exports
+function fixEncoding(str) {
+  return (str || '')
+    .replace(/â€"/g, '–')   // em dash
+    .replace(/â€˜/g, ''')   // left single quote
+    .replace(/â€™/g, ''')   // right single quote
+    .replace(/â€œ/g, '"')   // left double quote
+    .replace(/â€/g,  '"')   // right double quote
+    .replace(/â€¦/g, '…')   // ellipsis
+    .replace(/Ã©/g,  'é')   // é
+    .replace(/Ã /g,  'à')   // à
+    .replace(/Ã¨/g,  'è');  // è
+}
+
 // Normalize title for fuzzy matching: lowercase, remove punctuation/extra spaces
 function normalize(str) {
-  return (str || '')
+  return fixEncoding(str || '')
     .toLowerCase()
     .replace(/[''"".,\-–—:;!?()\[\]]/g, ' ')
     .replace(/\s+/g, ' ')

@@ -9907,6 +9907,13 @@ Questions? We're always here!
     var _ssPreview    = [];   // preview results from backend
     var _ssFilter     = 'all';
 
+    // Fix UTF-8 mojibake from BillBook CSV exports
+    function ssFix(str) {
+      return (str || '')
+        .replace(/â€"/g, '–').replace(/â€˜/g, '‘').replace(/â€™/g, '’')
+        .replace(/â€œ/g, '“').replace(/â€/g, '”').replace(/â€¦/g, '…');
+    }
+
     // Parse BillBook CSV export
     function ssLoadCsv(input) {
       const file = input.files[0];
@@ -9927,7 +9934,7 @@ Questions? We're always here!
         for (let i = headerIdx + 1; i < lines.length; i++) {
           const cols = lines[i].split(',');
           if (cols.length < 6) continue;
-          const name       = cols[0].trim();
+          const name       = ssFix(cols[0].trim());
           const purPrice   = parseFloat(cols[3]) || 0;
           const sellPrice  = parseFloat(cols[4]) || 0;
           const stockRaw   = cols[5].trim().replace(' PCS','').trim();
@@ -10013,21 +10020,32 @@ Questions? We're always here!
       document.getElementById('ss-sync-wrap').style.display = 'none';
 
       try {
-        const res  = await fetch('/.netlify/functions/sync-billbook-stock', {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({
-            adminEmail: _adminSession.email,
-            adminKey:   _adminSession.adminKey,
-            action:     'preview',
-            rows:       _ssRows
-          })
-        });
-        const data = await res.json();
-        if (!data.success) { alert('Error: ' + data.error); return; }
+        // Process in batches of 50 to avoid Netlify 26s timeout
+        const BATCH = 50;
+        _ssPreview  = [];
+        for (let i = 0; i < _ssRows.length; i += BATCH) {
+          const batch = _ssRows.slice(i, i + BATCH);
+          btn.textContent = `⏳ Matching… ${Math.min(i + BATCH, _ssRows.length)}/${_ssRows.length}`;
+          const res  = await fetch('/.netlify/functions/sync-billbook-stock', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({
+              adminEmail: _adminSession.email,
+              adminKey:   _adminSession.adminKey,
+              action:     'preview',
+              rows:       batch
+            })
+          });
+          const data = await res.json();
+          if (!data.success) { alert('Error: ' + (data.error || 'Unknown')); return; }
+          _ssPreview = _ssPreview.concat(data.results || []);
+        }
 
-        _ssPreview = data.results || [];
-        const s    = data.summary || {};
+        const s = {
+          total:     _ssPreview.length,
+          matched:   _ssPreview.filter(r => r.status === 'matched').length,
+          not_found: _ssPreview.filter(r => r.status === 'not_found').length,
+        };
 
         document.getElementById('ss-summary-bar').innerHTML = `
           <span style="color:#4ade80;">✅ Matched: ${s.matched || 0}</span>

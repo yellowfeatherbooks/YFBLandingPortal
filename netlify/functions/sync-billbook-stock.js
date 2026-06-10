@@ -146,9 +146,12 @@ async function findShopifyProduct(title) {
   if (cache[normTarget]) return toResult(cache[normTarget]);
 
   // 2. One side contains the other (handles extra subtitle words)
-  for (const [normKey, p] of Object.entries(cache)) {
-    if (normKey.includes(normTarget) || normTarget.includes(normKey)) {
-      return toResult(p);
+  // Guard: both strings must be at least 5 chars to avoid "ak" matching "aakashavismayam"
+  if (normTarget.length >= 5) {
+    for (const [normKey, p] of Object.entries(cache)) {
+      if (normKey.length >= 5 && (normKey.includes(normTarget) || normTarget.includes(normKey))) {
+        return toResult(p);
+      }
     }
   }
 

@@ -1619,6 +1619,12 @@
         <button class="auth-tab active" id="tab-login" onclick="switchAuthTab('login')">Log In</button>
         <button class="auth-tab" id="tab-signup" onclick="switchAuthTab('signup')">Sign Up</button>
       </div>
+      <!-- Author signup temporarily disabled — remove this block to re-enable -->
+      <div id="coming-soon-banner" style="display:none;background:rgba(212,175,55,0.12);border:1px solid rgba(212,175,55,0.3);border-radius:10px;padding:1.5rem;text-align:center;margin-top:0.5rem;">
+        <div style="font-size:2rem;margin-bottom:0.5rem;">✍️</div>
+        <div style="color:var(--cream);font-weight:600;margin-bottom:0.4rem;">Author Registration</div>
+        <div style="color:var(--muted);font-size:0.9rem;line-height:1.6;">We're putting the finishing touches on Author registration.<br><strong style="color:var(--gold);">Coming Shortly!</strong></div>
+      </div>
 
       <!-- Login Panel -->
       <div id="auth-login-panel">
@@ -2619,11 +2625,20 @@
     }, { threshold: 0.15 });
     reveals.forEach(el => observer.observe(el));
 
+    // Set to true when author signup is ready to re-enable
+    var AUTHOR_SIGNUP_ENABLED = false;
+
     function switchAuthTab(tab) {
       document.getElementById('auth-login-panel').style.display  = tab === 'login'  ? 'block' : 'none';
-      document.getElementById('auth-signup-panel').style.display = tab === 'signup' ? 'block' : 'none';
       document.getElementById('tab-login').classList.toggle('active',  tab === 'login');
       document.getElementById('tab-signup').classList.toggle('active', tab === 'signup');
+      if (tab === 'signup' && !AUTHOR_SIGNUP_ENABLED) {
+        document.getElementById('auth-signup-panel').style.display = 'none';
+        document.getElementById('coming-soon-banner').style.display = 'block';
+      } else {
+        document.getElementById('auth-signup-panel').style.display = tab === 'signup' ? 'block' : 'none';
+        document.getElementById('coming-soon-banner').style.display = 'none';
+      }
     }
 
     // ── Cross-origin messaging with the landing portal (when embedded in iframe) ──

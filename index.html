@@ -4368,6 +4368,12 @@
             <button class="alp-tab active" id="alp-tab-signin" onclick="alpSwitchTab('signin')">Sign In</button>
             <button class="alp-tab"        id="alp-tab-signup" onclick="alpSwitchTab('signup')">New Author</button>
           </div>
+          <!-- Author signup temporarily disabled -->
+          <div id="alp-coming-soon" style="display:none;background:rgba(212,175,55,0.12);border:1px solid rgba(212,175,55,0.3);border-radius:10px;padding:1.5rem;text-align:center;margin-top:0.5rem;">
+            <div style="font-size:2rem;margin-bottom:0.5rem;">🚀</div>
+            <div style="color:var(--gold);font-weight:700;font-size:1rem;margin-bottom:0.4rem;">Coming Shortly!</div>
+            <div style="color:var(--muted);font-size:0.85rem;line-height:1.5;">Author registration is opening soon. Stay tuned!</div>
+          </div>
 
           <!-- ── Sign In Form ── -->
           <div id="alp-signin-form">
@@ -16035,14 +16041,23 @@ Questions? We're always here!
       document.getElementById('page-content').classList.remove('pane-mode');
       _resetOtpForm('alp');
     }
+    var ALP_SIGNUP_ENABLED = false; // Set to true when author signup is ready
     function alpSwitchTab(tab) {
       const isSignin = tab === 'signin';
-      document.getElementById('alp-signin-form').style.display = isSignin ? '' : 'none';
-      document.getElementById('alp-signup-form').style.display = isSignin ? 'none' : '';
       document.getElementById('alp-tab-signin').classList.toggle('active', isSignin);
       document.getElementById('alp-tab-signup').classList.toggle('active', !isSignin);
       document.getElementById('alp-error').textContent    = '';
-      document.getElementById('alp-reg-error').textContent = '';
+      if (document.getElementById('alp-reg-error')) document.getElementById('alp-reg-error').textContent = '';
+      if (!isSignin && !ALP_SIGNUP_ENABLED) {
+        // Signup disabled — show coming soon banner, hide both forms
+        document.getElementById('alp-signin-form').style.display = 'none';
+        document.getElementById('alp-signup-form').style.display = 'none';
+        document.getElementById('alp-coming-soon').style.display = 'block';
+      } else {
+        document.getElementById('alp-signin-form').style.display = isSignin ? '' : 'none';
+        document.getElementById('alp-signup-form').style.display = isSignin ? 'none' : '';
+        document.getElementById('alp-coming-soon').style.display = 'none';
+      }
     }
 
     async function alpSignupSubmit() {

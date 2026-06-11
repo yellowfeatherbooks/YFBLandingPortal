@@ -92,6 +92,7 @@ async function storefrontCreateCustomer(firstName, lastName, email, password) {
       })
     });
     const data = await res.json();
+    console.log('Storefront customerCreate raw response:', JSON.stringify(data));
     const errors     = data?.data?.customerCreate?.customerUserErrors ?? [];
     const taken      = errors.some(e => e.code === 'TAKEN');
     const customer   = data?.data?.customerCreate?.customer;

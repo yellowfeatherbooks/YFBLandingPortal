@@ -39,33 +39,40 @@ async function findShopifyCustomer(email) {
   } catch { return null; }
 }
 
-// Create brand-new Shopify customer with author + club_member tags
+// Create brand-new Shopify customer via Storefront API so the password is
+// stored in a way that works for future Storefront logins.
+// Admin API-created passwords do NOT work with Storefront API authentication.
 async function createShopifyCustomer(email, name, password) {
   const firstName = (name || email).split(' ')[0];
   const lastName  = (name || '').split(' ').slice(1).join(' ') || '';
-  const res = await fetch(
-    `https://${SHOPIFY_DOMAIN}/admin/api/${API_VERSION}/customers.json`,
-    {
-      method: 'POST',
-      headers: adminHeaders,
-      body: JSON.stringify({
-        customer: {
-          first_name:            firstName,
-          last_name:             lastName,
-          email,
-          password,
-          password_confirmation: password,
-          verified_email:        true,
-          tags:                  'author, club_member',
-          send_email_welcome:    false
-        }
-      })
-    }
-  );
-  const data = await res.json();
-  if (res.ok) return { success: true, customerId: data.customer?.id };
-  const errStr = JSON.stringify(data?.errors || {}).toLowerCase();
-  return { success: false, emailTaken: errStr.includes('taken'), error: errStr };
+  try {
+    const res = await fetch(
+      `https://${SHOPIFY_DOMAIN}/api/${API_VERSION}/graphql.json`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type':                      'application/json',
+          'X-Shopify-Storefront-Access-Token': STOREFRONT_TOKEN
+        },
+        body: JSON.stringify({
+          query: `mutation customerCreate($input: CustomerCreateInput!) {
+            customerCreate(input: $input) {
+              customer { id }
+              customerUserErrors { code message }
+            }
+          }`,
+          variables: { input: { firstName, lastName, email, password } }
+        })
+      }
+    );
+    const data   = await res.json();
+    const errors = data?.data?.customerCreate?.customerUserErrors ?? [];
+    const taken  = errors.some(e => e.code === 'TAKEN');
+    if (data?.data?.customerCreate?.customer) return { success: true };
+    return { success: false, emailTaken: taken, error: JSON.stringify(errors) };
+  } catch(e) {
+    return { success: false, emailTaken: false, error: e.message };
+  }
 }
 
 // Add author tag to an existing Shopify customer (club_member added after plan subscription)
@@ -81,6 +88,32 @@ async function addAuthorTags(customerId, existingTagsStr) {
     }
   );
   return res.ok;
+}
+
+// Login via Storefront API to get a customer access token
+async function storefrontLogin(email, password) {
+  try {
+    const res = await fetch(
+      `https://${SHOPIFY_DOMAIN}/api/${API_VERSION}/graphql.json`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type':                      'application/json',
+          'X-Shopify-Storefront-Access-Token': STOREFRONT_TOKEN
+        },
+        body: JSON.stringify({
+          query: `mutation {
+            customerAccessTokenCreate(input: { email: "${email}", password: "${password.replace(/"/g, '\\"')}" }) {
+              customerAccessToken { accessToken expiresAt }
+              customerUserErrors { message }
+            }
+          }`
+        })
+      }
+    );
+    const data = await res.json();
+    return data?.data?.customerAccessTokenCreate?.customerAccessToken ?? null;
+  } catch { return null; }
 }
 
 // Verify password against Shopify Storefront (used for upgrade path)
@@ -268,7 +301,17 @@ exports.handler = async function(event) {
 
     if (!saved) return err('Registration failed. Please try again.');
 
-    return ok({ success: true });
+    // Get a Storefront access token for auto-login after registration.
+    // Only for new accounts where user set their own password (not the upgrade path).
+    let shopifyToken    = null;
+    let shopifyExpiry   = null;
+    if (!existingUser) {
+      const tokenData  = await storefrontLogin(email, password);
+      shopifyToken     = tokenData?.accessToken  ?? null;
+      shopifyExpiry    = tokenData?.expiresAt     ?? null;
+    }
+
+    return ok({ success: true, shopifyToken, shopifyExpiry });
 
   } catch (e) {
     console.error('register-user exception:', e.message);

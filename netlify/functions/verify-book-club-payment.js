@@ -4,12 +4,10 @@ const RZP_KEY_ID     = process.env.RAZORPAY_KEY_ID;
 const RZP_SECRET     = process.env.RAZORPAY_KEY_SECRET;
 const SUPABASE_URL   = process.env.SUPABASE_URL;
 const SUPABASE_KEY   = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_KEY;
-const SHOPIFY_DOMAIN            = process.env.SHOPIFY_DOMAIN;
+const SHOPIFY_DOMAIN            = process.env.SHOPIFY_DOMAIN            || 'zgqk4e-1m.myshopify.com';
 const SHOPIFY_TOKEN             = process.env.SHOPIFY_ADMIN_TOKEN;
-const SHOPIFY_STOREFRONT_TOKEN  = process.env.SHOPIFY_STOREFRONT_TOKEN || 'ae73197f5be74e707d3f9ef8d2ee1593';
-const STOREFRONT_URL            = SHOPIFY_DOMAIN
-  ? `https://${SHOPIFY_DOMAIN}/api/2024-01/graphql.json`
-  : null;
+const SHOPIFY_STOREFRONT_TOKEN  = process.env.SHOPIFY_STOREFRONT_TOKEN  || 'ae73197f5be74e707d3f9ef8d2ee1593';
+const STOREFRONT_URL            = `https://${SHOPIFY_DOMAIN}/api/2024-01/graphql.json`;
 
 const cors = {
   'Access-Control-Allow-Origin':  '*',

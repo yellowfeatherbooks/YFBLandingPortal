@@ -143,9 +143,12 @@ exports.handler = async (event) => {
         const errStr     = JSON.stringify(createData?.errors || {}).toLowerCase();
 
         if (errStr.includes('taken') || errStr.includes('already been taken')) {
-          // Email already exists (e.g. an existing author joining the club).
-          // Only add the 'Book Club' tag — do NOT change their password, as
-          // that would break their existing author portal login.
+          // Email already exists — find the customer and update their tag + password.
+          // We update the password because the user typed a new one in the club-signup
+          // form and will try to log in with it after joining. Without this update
+          // their Shopify password remains whatever it was before, causing login failure.
+          // Note: Shopify password is separate from the author portal (Supabase) password,
+          // so updating it here does not break author portal logins.
           try {
             const searchRes = await fetch(
               `https://${SHOPIFY_DOMAIN}/admin/api/2024-01/customers/search.json?query=email:${encodeURIComponent(email)}&fields=id,tags`,
@@ -155,25 +158,32 @@ exports.handler = async (event) => {
             const customer   = searchData?.customers?.[0];
             if (customer) {
               const existingTags = (customer.tags || '').split(',').map(t => t.trim()).filter(Boolean);
-              if (!existingTags.includes('Book Club')) {
-                const newTags = [...existingTags, 'Book Club'].join(', ');
-                await fetch(
-                  `https://${SHOPIFY_DOMAIN}/admin/api/2024-01/customers/${customer.id}.json`,
-                  {
-                    method:  'PUT',
-                    headers: {
-                      'X-Shopify-Access-Token': SHOPIFY_TOKEN,
-                      'Content-Type':           'application/json'
-                    },
-                    body: JSON.stringify({
-                      customer: { id: customer.id, tags: newTags }
-                    })
-                  }
-                );
-              }
+              const newTags = existingTags.includes('Book Club')
+                ? existingTags.join(', ')
+                : [...existingTags, 'Book Club'].join(', ');
+
+              // Update tag + password together in one request.
+              // Only update the password if it looks like a real user-chosen password
+              // (not the auto-generated fallback used when the user was already logged in).
+              const isAutoPassword = password === email + '_shopify';
+              const updateBody = isAutoPassword
+                ? { customer: { id: customer.id, tags: newTags } }
+                : { customer: { id: customer.id, tags: newTags, password, password_confirmation: password } };
+
+              await fetch(
+                `https://${SHOPIFY_DOMAIN}/admin/api/2024-01/customers/${customer.id}.json`,
+                {
+                  method:  'PUT',
+                  headers: {
+                    'X-Shopify-Access-Token': SHOPIFY_TOKEN,
+                    'Content-Type':           'application/json'
+                  },
+                  body: JSON.stringify(updateBody)
+                }
+              );
             }
           } catch(syncErr) {
-            console.warn('Shopify tag update failed:', syncErr.message);
+            console.warn('Shopify tag/password update failed:', syncErr.message);
           }
         }
       }

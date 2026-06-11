@@ -77,7 +77,7 @@ async function storefrontCreateCustomer(name, email) {
         variables: {
           input: {
             firstName: name.split(' ')[0] || name,
-            lastName:  name.split(' ').slice(1).join(' ') || '',
+            lastName:  name.split(/\s+/).slice(1).join(' ') || name.split(/\s+/)[0],
             email,
             password:  tempPassword,
           }

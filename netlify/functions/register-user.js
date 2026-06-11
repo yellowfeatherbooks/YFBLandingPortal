@@ -44,7 +44,7 @@ async function findShopifyCustomer(email) {
 // Admin API-created passwords do NOT work with Storefront API authentication.
 async function createShopifyCustomer(email, name, password) {
   const firstName = (name || email).split(' ')[0];
-  const lastName  = (name || '').split(' ').slice(1).join(' ') || '';
+  const lastName  = (name || '').split(/\s+/).slice(1).join(' ') || firstName;
   try {
     const res = await fetch(
       `https://${SHOPIFY_DOMAIN}/api/${API_VERSION}/graphql.json`,

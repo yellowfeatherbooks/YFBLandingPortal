@@ -138,8 +138,9 @@ exports.handler = async (event) => {
     // 2 — Ensure Shopify account exists FIRST (Shopify is the source of truth).
     // Only after this succeeds do we record anything in Supabase.
     const isAutoPassword = password === email + '_shopify';
-    const firstName = name.split(' ')[0];
-    const lastName  = name.split(' ').slice(1).join(' ') || '';
+    const nameParts = name.trim().split(/\s+/);
+    const firstName = nameParts[0];
+    const lastName  = nameParts.slice(1).join(' ') || firstName; // fallback to firstName if single name
 
     let shopifyCustomerId = null;
 

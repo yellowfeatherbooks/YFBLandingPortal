@@ -42,16 +42,71 @@ async function sbFetch(path, opts = {}) {
   });
 }
 
-// Get or create Shopify customer token for cart/checkout
-async function getShopifyToken(email) {
-  if (!SHOPIFY_ADMIN_TOKEN || !email) return null;
+const SHOPIFY_STOREFRONT_TOKEN = process.env.SHOPIFY_STOREFRONT_TOKEN;
+const STOREFRONT_URL = `https://${SHOPIFY_DOMAIN}/api/${API_VERSION}/graphql.json`;
+
+// Check if a Shopify customer exists for this email
+async function shopifyCustomerExists(email) {
+  if (!SHOPIFY_ADMIN_TOKEN || !email) return false;
   try {
     const res  = await fetch(
-      `https://${SHOPIFY_DOMAIN}/admin/api/${API_VERSION}/customers/search.json?query=email:${encodeURIComponent(email)}&fields=id,email`,
+      `https://${SHOPIFY_DOMAIN}/admin/api/${API_VERSION}/customers/search.json?query=email:${encodeURIComponent(email)}&fields=id&limit=1`,
       { headers: { 'X-Shopify-Access-Token': SHOPIFY_ADMIN_TOKEN } }
     );
     const data = await res.json();
-    return data?.customers?.[0]?.id ? data.customers[0] : null;
+    return !!(data?.customers?.[0]?.id);
+  } catch { return false; }
+}
+
+// Create a Shopify customer via Storefront API (password-compatible login)
+async function storefrontCreateCustomer(name, email) {
+  if (!SHOPIFY_STOREFRONT_TOKEN) return false;
+  // Use a secure random temp password — user will reset via Shopify email
+  const tempPassword = email + '_yfb_' + Date.now();
+  try {
+    const res = await fetch(STOREFRONT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Shopify-Storefront-Access-Token': SHOPIFY_STOREFRONT_TOKEN },
+      body: JSON.stringify({
+        query: `mutation customerCreate($input: CustomerCreateInput!) {
+          customerCreate(input: $input) {
+            customer { id }
+            customerUserErrors { code message }
+          }
+        }`,
+        variables: {
+          input: {
+            firstName: name.split(' ')[0] || name,
+            lastName:  name.split(' ').slice(1).join(' ') || '',
+            email,
+            password:  tempPassword,
+          }
+        }
+      })
+    });
+    const data = await res.json();
+    return !!data?.data?.customerCreate?.customer;
+  } catch { return false; }
+}
+
+// Get a Storefront customer access token (for Shopify cart/checkout/login)
+async function storefrontGetToken(email, password) {
+  if (!SHOPIFY_STOREFRONT_TOKEN) return null;
+  try {
+    const res = await fetch(STOREFRONT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Shopify-Storefront-Access-Token': SHOPIFY_STOREFRONT_TOKEN },
+      body: JSON.stringify({
+        query: `mutation {
+          customerAccessTokenCreate(input: { email: "${email}", password: "${password.replace(/"/g, '\\"')}" }) {
+            customerAccessToken { accessToken expiresAt }
+            customerUserErrors { message }
+          }
+        }`
+      })
+    });
+    const data = await res.json();
+    return data?.data?.customerAccessTokenCreate?.customerAccessToken ?? null;
   } catch { return null; }
 }
 
@@ -106,15 +161,55 @@ exports.handler = async (event) => {
   }
 
   const isMember = roles.includes('club_member') || roles.includes('member');
+  const userName = user2.name || user2.email;
+
+  // ── Ensure Shopify account exists and get a Storefront token ──────────────
+  // Without a Shopify token, the user can't add to cart or checkout.
+  // For old club members who have no Shopify account, create one now.
+  let shopifyToken    = null;
+  let shopifyExpiry   = null;
+  const exists = await shopifyCustomerExists(rawEmail);
+  if (!exists && isMember) {
+    // Create Shopify account via Storefront API — this sets a Storefront-
+    // compatible password so they can eventually use password login too.
+    await storefrontCreateCustomer(userName, rawEmail);
+    // Add Book Club tag via Admin API
+    try {
+      const searchRes = await fetch(
+        `https://${SHOPIFY_DOMAIN}/admin/api/${API_VERSION}/customers/search.json?query=email:${encodeURIComponent(rawEmail)}&fields=id,tags&limit=1`,
+        { headers: { 'X-Shopify-Access-Token': SHOPIFY_ADMIN_TOKEN } }
+      );
+      const searchData = await searchRes.json();
+      const cust = searchData?.customers?.[0];
+      if (cust) {
+        const tags = (cust.tags || '').split(',').map(t => t.trim()).filter(Boolean);
+        if (!tags.includes('Book Club')) {
+          await fetch(`https://${SHOPIFY_DOMAIN}/admin/api/${API_VERSION}/customers/${cust.id}.json`, {
+            method: 'PUT',
+            headers: { 'X-Shopify-Access-Token': SHOPIFY_ADMIN_TOKEN, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ customer: { id: cust.id, tags: [...tags, 'Book Club'].join(', ') } })
+          });
+        }
+        // Send Shopify account activation email so user can set their own password
+        await fetch(`https://${SHOPIFY_DOMAIN}/admin/api/${API_VERSION}/customers/${cust.id}/send_invite.json`, {
+          method: 'POST',
+          headers: { 'X-Shopify-Access-Token': SHOPIFY_ADMIN_TOKEN, 'Content-Type': 'application/json' },
+          body: JSON.stringify({})
+        });
+      }
+    } catch(e) { console.warn('Shopify tag/invite failed:', e.message); }
+  }
 
   return json({
-    success:     true,
-    name:        user2.name  || user2.email,
-    email:       user2.email,
-    phone:       user2.phone,
+    success:      true,
+    name:         userName,
+    email:        user2.email,
+    phone:        user2.phone,
     roles,
     isMember,
-    loginMethod: 'otp'
+    loginMethod:  'otp',
+    shopifyToken,
+    shopifyExpiry,
   });
 
   } catch(e) {

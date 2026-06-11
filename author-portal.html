@@ -2641,6 +2641,9 @@
       }
     }
 
+    // Default to login tab on load (signup is disabled)
+    switchAuthTab('login');
+
     // ── Cross-origin messaging with the landing portal (when embedded in iframe) ──
     window.addEventListener('message', function(event) {
       // Only accept messages from the Yellow Feather Books landing portal

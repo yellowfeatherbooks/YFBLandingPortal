@@ -118,10 +118,21 @@ exports.handler = async (event) => {
   if (!email || !otp) return json({ success: false, error: 'Email and OTP are required' }, 400);
 
   try {
-  // Look up user by email
+  // Look up user by email — check both tables since club members may only be in book_club_members
   const userRes2 = await sbFetch(`users?email=eq.${encodeURIComponent(email.toLowerCase().trim())}&select=email,name,phone,roles&limit=1`);
   const users2   = await userRes2.json();
-  const user2    = users2?.[0];
+  let user2      = users2?.[0] ?? null;
+
+  if (!user2) {
+    // Fallback: check book_club_members
+    const memberRes  = await sbFetch(`book_club_members?email=eq.${encodeURIComponent(email.toLowerCase().trim())}&select=email,name,phone&limit=1`);
+    const members2   = await memberRes.json();
+    const member2    = members2?.[0];
+    if (member2) {
+      user2 = { email: member2.email, name: member2.name, phone: member2.phone, roles: ['club_member'] };
+    }
+  }
+
   if (!user2) return json({ success: false, error: 'Account not found.' }, 404);
 
   const waPhone = encodeURIComponent(email.toLowerCase().trim()); // URL-encoded session key

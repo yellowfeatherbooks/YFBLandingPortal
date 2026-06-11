@@ -74,16 +74,37 @@ async function upsertClubMemberRole(email, name, phone) {
   }
 }
 
-// Create a Storefront customer access token (lets the app auto-login after signup)
+// Create customer via Storefront API (password works for future logins via Storefront)
+async function storefrontCreateCustomer(firstName, lastName, email, password) {
+  if (!STOREFRONT_URL || !SHOPIFY_STOREFRONT_TOKEN) return { created: false };
+  try {
+    const res = await fetch(STOREFRONT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Shopify-Storefront-Access-Token': SHOPIFY_STOREFRONT_TOKEN },
+      body: JSON.stringify({
+        query: `mutation customerCreate($input: CustomerCreateInput!) {
+          customerCreate(input: $input) {
+            customer { id }
+            customerUserErrors { code message }
+          }
+        }`,
+        variables: { input: { firstName, lastName, email, password } }
+      })
+    });
+    const data = await res.json();
+    const errors = data?.data?.customerCreate?.customerUserErrors ?? [];
+    const taken  = errors.some(e => e.code === 'TAKEN');
+    return { created: !!data?.data?.customerCreate?.customer, taken, errors };
+  } catch(e) { return { created: false, error: e.message }; }
+}
+
+// Login via Storefront API to get an access token
 async function storefrontLogin(email, password) {
   if (!STOREFRONT_URL || !SHOPIFY_STOREFRONT_TOKEN) return null;
   try {
     const res = await fetch(STOREFRONT_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Shopify-Storefront-Access-Token': SHOPIFY_STOREFRONT_TOKEN,
-      },
+      headers: { 'Content-Type': 'application/json', 'X-Shopify-Storefront-Access-Token': SHOPIFY_STOREFRONT_TOKEN },
       body: JSON.stringify({
         query: `mutation {
           customerAccessTokenCreate(input: { email: "${email}", password: "${password.replace(/"/g, '\\"')}" }) {
@@ -142,86 +163,54 @@ exports.handler = async (event) => {
     }
 
     // 3 — Create or update Shopify customer account
-    // If the email already exists (e.g. an existing author joining the club),
-    // sync the password they entered so autoLogin() in the browser succeeds.
+    // IMPORTANT: We use the Storefront API to create NEW accounts so the password
+    // is stored in a way that works for future Storefront logins. Admin API-created
+    // passwords do NOT work with Storefront API authentication.
+    const isAutoPassword = password === email + '_shopify';
+    let   emailTaken     = false;
+
+    if (!isAutoPassword) {
+      // New user signing up directly via club-signup — create via Storefront API
+      const firstName = name.split(' ')[0];
+      const lastName  = name.split(' ').slice(1).join(' ') || '';
+      const sfResult  = await storefrontCreateCustomer(firstName, lastName, email, password);
+      emailTaken = !!sfResult.taken;
+
+      if (!sfResult.created && !sfResult.taken) {
+        console.warn('Storefront customerCreate failed:', JSON.stringify(sfResult));
+      }
+    } else {
+      // User was already logged in when upgrading — check if account exists
+      emailTaken = true; // they're logged in so account definitely exists
+    }
+
+    // Add 'Book Club' tag via Admin API (works for both new and existing accounts)
     if (SHOPIFY_DOMAIN && SHOPIFY_TOKEN) {
-      const createRes = await fetch(`https://${SHOPIFY_DOMAIN}/admin/api/2024-01/customers.json`, {
-        method:  'POST',
-        headers: {
-          'X-Shopify-Access-Token': SHOPIFY_TOKEN,
-          'Content-Type':           'application/json'
-        },
-        body: JSON.stringify({
-          customer: {
-            first_name:             name.split(' ')[0],
-            last_name:              name.split(' ').slice(1).join(' ') || '',
-            email,
-            phone:                  phone || undefined,
-            password,
-            password_confirmation:  password,
-            verified_email:         true,
-            tags:                   'Book Club',
-            send_email_welcome:     false
-          }
-        })
-      });
-
-      if (!createRes.ok) {
-        const createData = await createRes.json();
-        const errStr     = JSON.stringify(createData?.errors || {}).toLowerCase();
-
-        if (errStr.includes('taken') || errStr.includes('already been taken')) {
-          // Email already exists — find the customer and update their tag + password.
-          // We update the password because the user typed a new one in the club-signup
-          // form and will try to log in with it after joining. Without this update
-          // their Shopify password remains whatever it was before, causing login failure.
-          // Note: Shopify password is separate from the author portal (Supabase) password,
-          // so updating it here does not break author portal logins.
-          try {
-            const searchRes = await fetch(
-              `https://${SHOPIFY_DOMAIN}/admin/api/2024-01/customers/search.json?query=email:${encodeURIComponent(email)}&fields=id,tags`,
-              { headers: { 'X-Shopify-Access-Token': SHOPIFY_TOKEN } }
-            );
-            const searchData = await searchRes.json();
-            const customer   = searchData?.customers?.[0];
-            if (customer) {
-              const existingTags = (customer.tags || '').split(',').map(t => t.trim()).filter(Boolean);
-              const newTags = existingTags.includes('Book Club')
-                ? existingTags.join(', ')
-                : [...existingTags, 'Book Club'].join(', ');
-
-              // Update tag + password together in one request.
-              // Only update the password if it looks like a real user-chosen password
-              // (not the auto-generated fallback used when the user was already logged in).
-              const isAutoPassword = password === email + '_shopify';
-              const updateBody = isAutoPassword
-                ? { customer: { id: customer.id, tags: newTags } }
-                : { customer: { id: customer.id, tags: newTags, password, password_confirmation: password } };
-
-              await fetch(
-                `https://${SHOPIFY_DOMAIN}/admin/api/2024-01/customers/${customer.id}.json`,
-                {
-                  method:  'PUT',
-                  headers: {
-                    'X-Shopify-Access-Token': SHOPIFY_TOKEN,
-                    'Content-Type':           'application/json'
-                  },
-                  body: JSON.stringify(updateBody)
-                }
-              );
-            }
-          } catch(syncErr) {
-            console.warn('Shopify tag/password update failed:', syncErr.message);
+      try {
+        const searchRes  = await fetch(
+          `https://${SHOPIFY_DOMAIN}/admin/api/2024-01/customers/search.json?query=email:${encodeURIComponent(email)}&fields=id,tags`,
+          { headers: { 'X-Shopify-Access-Token': SHOPIFY_TOKEN } }
+        );
+        const searchData = await searchRes.json();
+        const customer   = searchData?.customers?.[0];
+        if (customer) {
+          const existingTags = (customer.tags || '').split(',').map(t => t.trim()).filter(Boolean);
+          if (!existingTags.includes('Book Club')) {
+            const newTags = [...existingTags, 'Book Club'].join(', ');
+            await fetch(`https://${SHOPIFY_DOMAIN}/admin/api/2024-01/customers/${customer.id}.json`, {
+              method:  'PUT',
+              headers: { 'X-Shopify-Access-Token': SHOPIFY_TOKEN, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ customer: { id: customer.id, tags: newTags } })
+            });
           }
         }
+      } catch(tagErr) {
+        console.warn('Book Club tag update failed:', tagErr.message);
       }
     }
 
-    // 4 — Get a Storefront access token so the app can auto-login after signup.
-    // Admin API-created passwords are not always usable via the Storefront API,
-    // so we obtain a token server-side and return it to the app.
-    // Only attempt if this was a real user-chosen password (not auto-generated).
-    const isAutoPassword = password === email + '_shopify';
+    // 4 — Get a Storefront access token for auto-login in the app.
+    // Storefront-created accounts will authenticate fine here.
     let shopifyToken = null;
     if (!isAutoPassword) {
       shopifyToken = await storefrontLogin(email, password);

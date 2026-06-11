@@ -53,11 +53,23 @@ exports.handler = async (event) => {
 
   console.log('OTP request: email =', email, 'purpose =', purpose);
 
-  // Look up user by email
-  const userRes = await sbFetch(`users?email=eq.${encodeURIComponent(email.toLowerCase().trim())}&select=email,name,phone,roles&limit=1`);
+  const normEmail = email.toLowerCase().trim();
+
+  // Look up user — check both tables since club members may only be in book_club_members
+  const userRes = await sbFetch(`users?email=eq.${encodeURIComponent(normEmail)}&select=email,name,phone,roles&limit=1`);
   const users   = await userRes.json();
   console.log('User lookup result:', JSON.stringify(users));
-  const user    = users?.[0];
+  let user = users?.[0] ?? null;
+
+  if (!user) {
+    // Fallback: check book_club_members (covers members who joined before users record was created)
+    const memberRes  = await sbFetch(`book_club_members?email=eq.${encodeURIComponent(normEmail)}&select=email,name,phone&limit=1`);
+    const members    = await memberRes.json();
+    const member     = members?.[0];
+    if (member) {
+      user = { email: member.email, name: member.name, phone: member.phone, roles: ['club_member'] };
+    }
+  }
 
   if (!user) {
     return json({ success: false, error: 'No account found with this email. Please use your registered email address.' }, 404);

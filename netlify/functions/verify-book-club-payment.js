@@ -92,9 +92,10 @@ async function storefrontCreateCustomer(firstName, lastName, email, password) {
       })
     });
     const data = await res.json();
-    const errors = data?.data?.customerCreate?.customerUserErrors ?? [];
-    const taken  = errors.some(e => e.code === 'TAKEN');
-    return { created: !!data?.data?.customerCreate?.customer, taken, errors };
+    const errors     = data?.data?.customerCreate?.customerUserErrors ?? [];
+    const taken      = errors.some(e => e.code === 'TAKEN');
+    const customer   = data?.data?.customerCreate?.customer;
+    return { created: !!customer, customerId: customer?.id ?? null, taken, errors };
   } catch(e) { return { created: false, error: e.message }; }
 }
 
@@ -143,15 +144,24 @@ exports.handler = async (event) => {
 
     let shopifyCustomerId = null;
 
+    // Helper: look up customer ID by email using Admin API (with retry for index lag)
+    async function findCustomerId(emailAddr) {
+      for (let attempt = 0; attempt < 3; attempt++) {
+        if (attempt > 0) await new Promise(r => setTimeout(r, 1500));
+        const res  = await fetch(
+          `https://${SHOPIFY_DOMAIN}/admin/api/2024-01/customers/search.json?query=email:${encodeURIComponent(emailAddr)}&fields=id,tags&limit=1`,
+          { headers: { 'X-Shopify-Access-Token': SHOPIFY_TOKEN } }
+        );
+        const data = await res.json();
+        const id   = data?.customers?.[0]?.id;
+        if (id) return id;
+      }
+      return null;
+    }
+
     if (isAutoPassword) {
       // User was already logged in — their Shopify account already exists.
-      // Look it up so we can add the tag.
-      const searchRes  = await fetch(
-        `https://${SHOPIFY_DOMAIN}/admin/api/2024-01/customers/search.json?query=email:${encodeURIComponent(email)}&fields=id,tags&limit=1`,
-        { headers: { 'X-Shopify-Access-Token': SHOPIFY_TOKEN } }
-      );
-      const searchData = await searchRes.json();
-      shopifyCustomerId = searchData?.customers?.[0]?.id ?? null;
+      shopifyCustomerId = await findCustomerId(email);
       if (!shopifyCustomerId) throw new Error('Could not find your Shopify account. Please contact support.');
     } else {
       // New user — create via Storefront API so password works for future logins.
@@ -163,13 +173,14 @@ exports.handler = async (event) => {
         throw new Error('Could not create your account. Please try again or contact support.');
       }
 
-      // Fetch the customer id (needed for tagging)
-      const searchRes  = await fetch(
-        `https://${SHOPIFY_DOMAIN}/admin/api/2024-01/customers/search.json?query=email:${encodeURIComponent(email)}&fields=id,tags&limit=1`,
-        { headers: { 'X-Shopify-Access-Token': SHOPIFY_TOKEN } }
-      );
-      const searchData = await searchRes.json();
-      shopifyCustomerId = searchData?.customers?.[0]?.id ?? null;
+      // For newly created accounts, use the ID returned directly from the mutation
+      // (avoids search-index lag). Fall back to search for 'taken' (existing) accounts.
+      if (sfResult.customerId) {
+        // Extract numeric ID from GID like "gid://shopify/Customer/12345"
+        shopifyCustomerId = sfResult.customerId.split('/').pop();
+      } else {
+        shopifyCustomerId = await findCustomerId(email);
+      }
     }
 
     // 3 — Add 'Book Club' tag to Shopify customer

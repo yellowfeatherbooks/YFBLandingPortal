@@ -135,7 +135,66 @@ exports.handler = async (event) => {
 
     if (expected !== razorpay_signature) throw new Error('Payment verification failed.');
 
-    // 2 — Save member to Supabase book_club_members table
+    // 2 — Ensure Shopify account exists FIRST (Shopify is the source of truth).
+    // Only after this succeeds do we record anything in Supabase.
+    const isAutoPassword = password === email + '_shopify';
+    const firstName = name.split(' ')[0];
+    const lastName  = name.split(' ').slice(1).join(' ') || '';
+
+    let shopifyCustomerId = null;
+
+    if (isAutoPassword) {
+      // User was already logged in — their Shopify account already exists.
+      // Look it up so we can add the tag.
+      const searchRes  = await fetch(
+        `https://${SHOPIFY_DOMAIN}/admin/api/2024-01/customers/search.json?query=email:${encodeURIComponent(email)}&fields=id,tags&limit=1`,
+        { headers: { 'X-Shopify-Access-Token': SHOPIFY_TOKEN } }
+      );
+      const searchData = await searchRes.json();
+      shopifyCustomerId = searchData?.customers?.[0]?.id ?? null;
+      if (!shopifyCustomerId) throw new Error('Could not find your Shopify account. Please contact support.');
+    } else {
+      // New user — create via Storefront API so password works for future logins.
+      const sfResult = await storefrontCreateCustomer(firstName, lastName, email, password);
+
+      if (!sfResult.created && !sfResult.taken) {
+        // Hard fail — we cannot proceed without a Shopify account
+        console.error('Storefront customerCreate failed:', JSON.stringify(sfResult));
+        throw new Error('Could not create your account. Please try again or contact support.');
+      }
+
+      // Fetch the customer id (needed for tagging)
+      const searchRes  = await fetch(
+        `https://${SHOPIFY_DOMAIN}/admin/api/2024-01/customers/search.json?query=email:${encodeURIComponent(email)}&fields=id,tags&limit=1`,
+        { headers: { 'X-Shopify-Access-Token': SHOPIFY_TOKEN } }
+      );
+      const searchData = await searchRes.json();
+      shopifyCustomerId = searchData?.customers?.[0]?.id ?? null;
+    }
+
+    // 3 — Add 'Book Club' tag to Shopify customer
+    if (shopifyCustomerId && SHOPIFY_TOKEN) {
+      try {
+        const custRes    = await fetch(
+          `https://${SHOPIFY_DOMAIN}/admin/api/2024-01/customers/${shopifyCustomerId}.json?fields=id,tags`,
+          { headers: { 'X-Shopify-Access-Token': SHOPIFY_TOKEN } }
+        );
+        const custData   = await custRes.json();
+        const existingTags = (custData?.customer?.tags || '').split(',').map(t => t.trim()).filter(Boolean);
+        if (!existingTags.includes('Book Club')) {
+          const newTags = [...existingTags, 'Book Club'].join(', ');
+          await fetch(`https://${SHOPIFY_DOMAIN}/admin/api/2024-01/customers/${shopifyCustomerId}.json`, {
+            method:  'PUT',
+            headers: { 'X-Shopify-Access-Token': SHOPIFY_TOKEN, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ customer: { id: shopifyCustomerId, tags: newTags } })
+          });
+        }
+      } catch(tagErr) {
+        console.warn('Book Club tag update failed (non-fatal):', tagErr.message);
+      }
+    }
+
+    // 4 — Shopify confirmed. Now save to Supabase.
     if (SUPABASE_URL && SUPABASE_KEY) {
       await fetch(`${SUPABASE_URL}/rest/v1/book_club_members`, {
         method:  'POST',
@@ -158,85 +217,32 @@ exports.handler = async (event) => {
         })
       });
 
-      // 2b — Also record club_member role in the shared users table
+      // Also record club_member role in the shared users table
       await upsertClubMemberRole(email, name, phone);
     }
 
-    // 3 — Create or update Shopify customer account
-    // IMPORTANT: We use the Storefront API to create NEW accounts so the password
-    // is stored in a way that works for future Storefront logins. Admin API-created
-    // passwords do NOT work with Storefront API authentication.
-    const isAutoPassword = password === email + '_shopify';
-    let   emailTaken     = false;
-
-    if (!isAutoPassword) {
-      // New user signing up directly via club-signup — create via Storefront API
-      const firstName = name.split(' ')[0];
-      const lastName  = name.split(' ').slice(1).join(' ') || '';
-      const sfResult  = await storefrontCreateCustomer(firstName, lastName, email, password);
-      emailTaken = !!sfResult.taken;
-
-      if (!sfResult.created && !sfResult.taken) {
-        console.warn('Storefront customerCreate failed:', JSON.stringify(sfResult));
-      }
-    } else {
-      // User was already logged in when upgrading — check if account exists
-      emailTaken = true; // they're logged in so account definitely exists
-    }
-
-    // Add 'Book Club' tag via Admin API (works for both new and existing accounts)
-    if (SHOPIFY_DOMAIN && SHOPIFY_TOKEN) {
-      try {
-        const searchRes  = await fetch(
-          `https://${SHOPIFY_DOMAIN}/admin/api/2024-01/customers/search.json?query=email:${encodeURIComponent(email)}&fields=id,tags`,
-          { headers: { 'X-Shopify-Access-Token': SHOPIFY_TOKEN } }
-        );
-        const searchData = await searchRes.json();
-        const customer   = searchData?.customers?.[0];
-        if (customer) {
-          const existingTags = (customer.tags || '').split(',').map(t => t.trim()).filter(Boolean);
-          if (!existingTags.includes('Book Club')) {
-            const newTags = [...existingTags, 'Book Club'].join(', ');
-            await fetch(`https://${SHOPIFY_DOMAIN}/admin/api/2024-01/customers/${customer.id}.json`, {
-              method:  'PUT',
-              headers: { 'X-Shopify-Access-Token': SHOPIFY_TOKEN, 'Content-Type': 'application/json' },
-              body: JSON.stringify({ customer: { id: customer.id, tags: newTags } })
-            });
-          }
-        }
-      } catch(tagErr) {
-        console.warn('Book Club tag update failed:', tagErr.message);
-      }
-    }
-
-    // 4 — Get a Storefront access token for auto-login in the app.
-    // Storefront-created accounts will authenticate fine here.
+    // 5 — Get a Storefront access token for auto-login in the app.
     let shopifyToken = null;
     if (!isAutoPassword) {
       shopifyToken = await storefrontLogin(email, password);
     }
 
-    // 5 — Trigger n8n invoice workflow
+    // 6 — Trigger n8n invoice workflow (fire and forget)
     const n8nUrl = process.env.N8N_BOOK_CLUB_INVOICE_URL || 'https://yellowfeather.app.n8n.cloud/webhook/yfb-book-club-invoice';
-    try {
-      const n8nRes = await fetch(n8nUrl, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ email, name, phone: phone || null, razorpay_payment_id, razorpay_order_id })
-      });
-      console.log('n8n invoice webhook status:', n8nRes.status);
-    } catch(n8nErr) {
-      console.error('n8n invoice webhook failed:', n8nErr.message);
-    }
+    fetch(n8nUrl, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ email, name, phone: phone || null, razorpay_payment_id, razorpay_order_id })
+    }).then(r => console.log('n8n invoice webhook status:', r.status))
+      .catch(e => console.error('n8n invoice webhook failed:', e.message));
 
     return {
       statusCode: 200,
       headers: { ...cors, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        success: true,
-        // Return Shopify token so app can auto-login without re-entering password
-        shopifyToken: shopifyToken?.accessToken ?? null,
-        shopifyTokenExpiry: shopifyToken?.expiresAt ?? null,
+        success:            true,
+        shopifyToken:       shopifyToken?.accessToken    ?? null,
+        shopifyTokenExpiry: shopifyToken?.expiresAt      ?? null,
       })
     };
   } catch(err) {

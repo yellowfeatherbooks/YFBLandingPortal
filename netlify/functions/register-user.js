@@ -270,23 +270,24 @@ exports.handler = async function(event) {
 
     // ── Brand-new author ─────────────────────────────────────────────────────
 
-    if (shopifyCustomer) {
-      // Shopify account exists (e.g. purchased a book before) — add author tag only
-      await addAuthorTags(shopifyCustomer.id, shopifyCustomer.tags);
-    } else {
-      // Create fresh Shopify account with author tag only (club_member added after plan subscribe)
+    if (!shopifyCustomer) {
+      // Create fresh Shopify account — HARD FAIL if this doesn't succeed.
+      // Shopify is the source of truth; we don't save anything to Supabase
+      // until the Shopify account is confirmed.
       const created = await createShopifyCustomer(email, name, password);
-      if (!created.success) {
-        if (created.emailTaken) {
-          // Race condition: re-fetch and add tags
-          const found = await findShopifyCustomer(email);
-          if (found) await addAuthorTags(found.id, found.tags);
-        } else {
-          console.error('createShopifyCustomer failed:', created.error);
-          return err('Could not create account. Please try again.');
-        }
+      if (!created.success && !created.emailTaken) {
+        console.error('createShopifyCustomer failed:', created.error);
+        return err('Could not create your account. Please try again.');
       }
+      // If emailTaken it's a race condition — account exists, fall through to tag it
     }
+
+    // Re-fetch to get the Shopify customer id for tagging
+    const shopifyCustomerForTag = await findShopifyCustomer(email);
+    if (!shopifyCustomerForTag) {
+      return err('Could not verify your Shopify account. Please try again.');
+    }
+    await addAuthorTags(shopifyCustomerForTag.id, shopifyCustomerForTag.tags);
     console.log('Shopify author account ready for:', email);
 
     // NOTE: Free club membership is granted in save-subscription.js

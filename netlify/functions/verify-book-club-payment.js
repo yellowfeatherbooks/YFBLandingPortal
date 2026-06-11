@@ -4,8 +4,12 @@ const RZP_KEY_ID     = process.env.RAZORPAY_KEY_ID;
 const RZP_SECRET     = process.env.RAZORPAY_KEY_SECRET;
 const SUPABASE_URL   = process.env.SUPABASE_URL;
 const SUPABASE_KEY   = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_KEY;
-const SHOPIFY_DOMAIN = process.env.SHOPIFY_DOMAIN;
-const SHOPIFY_TOKEN  = process.env.SHOPIFY_ADMIN_TOKEN;
+const SHOPIFY_DOMAIN            = process.env.SHOPIFY_DOMAIN;
+const SHOPIFY_TOKEN             = process.env.SHOPIFY_ADMIN_TOKEN;
+const SHOPIFY_STOREFRONT_TOKEN  = process.env.SHOPIFY_STOREFRONT_ACCESS_TOKEN;
+const STOREFRONT_URL            = SHOPIFY_DOMAIN
+  ? `https://${SHOPIFY_DOMAIN}/api/2024-01/graphql.json`
+  : null;
 
 const cors = {
   'Access-Control-Allow-Origin':  '*',
@@ -68,6 +72,30 @@ async function upsertClubMemberRole(email, name, phone) {
   } catch(e) {
     console.warn('upsertClubMemberRole failed:', e.message);
   }
+}
+
+// Create a Storefront customer access token (lets the app auto-login after signup)
+async function storefrontLogin(email, password) {
+  if (!STOREFRONT_URL || !SHOPIFY_STOREFRONT_TOKEN) return null;
+  try {
+    const res = await fetch(STOREFRONT_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Shopify-Storefront-Access-Token': SHOPIFY_STOREFRONT_TOKEN,
+      },
+      body: JSON.stringify({
+        query: `mutation {
+          customerAccessTokenCreate(input: { email: "${email}", password: "${password.replace(/"/g, '\\"')}" }) {
+            customerAccessToken { accessToken expiresAt }
+            customerUserErrors { message }
+          }
+        }`
+      })
+    });
+    const data = await res.json();
+    return data?.data?.customerAccessTokenCreate?.customerAccessToken ?? null;
+  } catch { return null; }
 }
 
 exports.handler = async (event) => {
@@ -189,7 +217,17 @@ exports.handler = async (event) => {
       }
     }
 
-    // 4 — Trigger n8n invoice workflow
+    // 4 — Get a Storefront access token so the app can auto-login after signup.
+    // Admin API-created passwords are not always usable via the Storefront API,
+    // so we obtain a token server-side and return it to the app.
+    // Only attempt if this was a real user-chosen password (not auto-generated).
+    const isAutoPassword = password === email + '_shopify';
+    let shopifyToken = null;
+    if (!isAutoPassword) {
+      shopifyToken = await storefrontLogin(email, password);
+    }
+
+    // 5 — Trigger n8n invoice workflow
     const n8nUrl = process.env.N8N_BOOK_CLUB_INVOICE_URL || 'https://yellowfeather.app.n8n.cloud/webhook/yfb-book-club-invoice';
     try {
       const n8nRes = await fetch(n8nUrl, {
@@ -205,7 +243,12 @@ exports.handler = async (event) => {
     return {
       statusCode: 200,
       headers: { ...cors, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ success: true })
+      body: JSON.stringify({
+        success: true,
+        // Return Shopify token so app can auto-login without re-entering password
+        shopifyToken: shopifyToken?.accessToken ?? null,
+        shopifyTokenExpiry: shopifyToken?.expiresAt ?? null,
+      })
     };
   } catch(err) {
     return {

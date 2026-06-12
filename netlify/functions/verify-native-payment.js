@@ -2,26 +2,10 @@
  * verify-native-payment.js
  * Called by the Yellow Feather Books Android app after Razorpay payment succeeds.
  *
- * 1. Verifies the Razorpay payment signature
- * 2. Completes the Shopify Draft Order (creates real Shopify order marked as paid)
- * 3. Updates Draft Order note with Razorpay payment ID
- * 4. Returns order number for confirmation screen
- *
- * POST body:
- * {
- *   razorpay_order_id:   "order_...",
- *   razorpay_payment_id: "pay_...",
- *   razorpay_signature:  "...",
- *   draft_order_id:      123456
- * }
- *
- * Response:
- * {
- *   success: true,
- *   order_id:     "5678901234",
- *   order_number: 1042,
- *   order_name:   "#1042"
- * }
+ * 1. Verifies Razorpay signature
+ * 2. Completes Shopify Draft Order → creates real Shopify order marked as paid
+ * 3. Fetches the real order to get its name (e.g. "#YFBS1241")
+ * 4. Returns order name for confirmation screen
  */
 
 const crypto = require('crypto');
@@ -51,20 +35,15 @@ exports.handler = async (event) => {
   if (!RZP_SECRET)    return json({ error: 'Razorpay not configured' }, 500);
 
   let body;
-  try {
-    body = JSON.parse(event.body || '{}');
-  } catch {
-    return json({ error: 'Invalid JSON body' }, 400);
-  }
+  try { body = JSON.parse(event.body || '{}'); }
+  catch { return json({ error: 'Invalid JSON body' }, 400); }
 
   const { razorpay_order_id, razorpay_payment_id, razorpay_signature, draft_order_id } = body;
 
-  if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+  if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature)
     return json({ error: 'Missing Razorpay payment details' }, 400);
-  }
-  if (!draft_order_id) {
+  if (!draft_order_id)
     return json({ error: 'Missing draft_order_id' }, 400);
-  }
 
   try {
     // ── 1. Verify Razorpay signature ──────────────────────────────────────────
@@ -78,15 +57,12 @@ exports.handler = async (event) => {
       return json({ success: false, error: 'Payment verification failed — invalid signature' }, 400);
     }
 
-    // ── 2. Update Draft Order note with payment ID (for reconciliation) ───────
+    // ── 2. Update Draft Order note with payment ID ────────────────────────────
     await fetch(
       `https://${SHOPIFY_DOMAIN}/admin/api/${API_VERSION}/draft_orders/${draft_order_id}.json`,
       {
         method:  'PUT',
-        headers: {
-          'Content-Type':           'application/json',
-          'X-Shopify-Access-Token': SHOPIFY_TOKEN,
-        },
+        headers: { 'Content-Type': 'application/json', 'X-Shopify-Access-Token': SHOPIFY_TOKEN },
         body: JSON.stringify({
           draft_order: {
             note: `Paid via Razorpay | payment_id: ${razorpay_payment_id} | order_id: ${razorpay_order_id}`,
@@ -95,16 +71,12 @@ exports.handler = async (event) => {
       }
     );
 
-    // ── 3. Complete the Draft Order → creates real Shopify Order ─────────────
-    // payment_pending=false → order is marked as paid immediately
+    // ── 3. Complete Draft Order → becomes a real Shopify order ────────────────
     const completeRes = await fetch(
       `https://${SHOPIFY_DOMAIN}/admin/api/${API_VERSION}/draft_orders/${draft_order_id}/complete.json?payment_pending=false`,
       {
         method:  'PUT',
-        headers: {
-          'Content-Type':           'application/json',
-          'X-Shopify-Access-Token': SHOPIFY_TOKEN,
-        },
+        headers: { 'Content-Type': 'application/json', 'X-Shopify-Access-Token': SHOPIFY_TOKEN },
         body: JSON.stringify({}),
       }
     );
@@ -116,18 +88,36 @@ exports.handler = async (event) => {
       return json({ success: false, error: 'Failed to complete order: ' + JSON.stringify(completeData.errors) }, 400);
     }
 
-    const draftOrder = completeData.draft_order;
-    if (!draftOrder?.order_id) {
-      console.error('No order_id returned from complete:', JSON.stringify(completeData));
+    const completedDraft = completeData.draft_order;
+    if (!completedDraft?.order_id) {
+      console.error('No order_id in complete response:', JSON.stringify(completeData));
       return json({ success: false, error: 'Order completion did not return order ID' }, 500);
     }
 
-    // order_id is numeric, order_name is something like "#1042"
+    // ── 4. Fetch the real Shopify order to get proper order name (#YFBS1241) ──
+    const orderId = completedDraft.order_id;
+    let orderName = `#${orderId}`;
+    let orderNumber = orderId;
+
+    try {
+      const orderRes = await fetch(
+        `https://${SHOPIFY_DOMAIN}/admin/api/${API_VERSION}/orders/${orderId}.json?fields=id,name,order_number`,
+        { headers: { 'X-Shopify-Access-Token': SHOPIFY_TOKEN } }
+      );
+      const orderData = await orderRes.json();
+      if (orderData.order?.name) {
+        orderName   = orderData.order.name;        // e.g. "#YFBS1241"
+        orderNumber = orderData.order.order_number; // e.g. 1241
+      }
+    } catch (fetchErr) {
+      console.error('Failed to fetch order name (non-fatal):', fetchErr.message);
+    }
+
     return json({
       success:      true,
-      order_id:     String(draftOrder.order_id),
-      order_number: draftOrder.order?.order_number || draftOrder.order_id,
-      order_name:   draftOrder.order?.name || `#${draftOrder.order_id}`,
+      order_id:     String(orderId),
+      order_number: orderNumber,
+      order_name:   orderName,
     });
 
   } catch (err) {

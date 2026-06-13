@@ -6171,7 +6171,7 @@
                 </label>
                 <label class="wac-media-opt">
                   <input type="radio" name="wac-media-type" value="video" onchange="wacMediaTypeChange('video')">
-                  <span>🎥 Video <small>(max 5 MB)</small></span>
+                  <span>🎥 Video <small>(max 10 MB)</small></span>
                 </label>
                 <label class="wac-media-opt">
                   <input type="radio" name="wac-media-type" value="none" onchange="wacMediaTypeChange('none')">
@@ -6199,7 +6199,7 @@
                   ondragleave="this.classList.remove('drag-over')"
                   ondrop="wacHandleVidDrop(event)">
                   <div style="font-size:2rem;margin-bottom:0.4rem;">🎥</div>
-                  <div style="font-size:0.82rem;color:var(--muted);">Click or drag video here<br><span style="font-size:0.72rem;">MP4 — max 5 MB</span></div>
+                  <div style="font-size:0.82rem;color:var(--muted);">Click or drag video here<br><span style="font-size:0.72rem;">MP4 — max 10 MB</span></div>
                 </div>
                 <input type="file" id="wac-vid-input" accept="video/mp4,video/3gpp" style="display:none;" onchange="wacHandleVidSelect(this)">
                 <div id="wac-vid-preview"></div>
@@ -8619,8 +8619,8 @@ Questions? We're always here!
     async function wacHandleVidSelect(input) {
       const file = input.files[0];
       if (!file) return;
-      if (file.size > 5 * 1024 * 1024) {
-        alert('Video must be under 5 MB. This file is ' + (file.size/1024/1024).toFixed(1) + ' MB.');
+      if (file.size > 10 * 1024 * 1024) {
+        alert('Video must be under 10 MB. This file is ' + (file.size/1024/1024).toFixed(1) + ' MB.');
         input.value = ''; return;
       }
       const dataUrl = await wacFileToBase64(file);

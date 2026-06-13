@@ -8787,9 +8787,22 @@ Questions? We're always here!
           <button class="orders-filter-clear" style="color:var(--gold);border-color:rgba(201,146,42,0.3);" onclick="wacDirectPageNav(-1)" ${_wacDirectPage<=1?'disabled style="opacity:0.4;"':''}>◀ Prev</button>
           <span style="font-size:0.75rem;color:var(--muted);">Page ${_wacDirectPage} / ${totalPages}</span>
           <button class="orders-filter-clear" style="color:var(--gold);border-color:rgba(201,146,42,0.3);" onclick="wacDirectPageNav(1)" ${_wacDirectPage>=totalPages?'disabled style="opacity:0.4;"':''}>Next ▶</button>
-          <span style="font-size:0.7rem;color:var(--muted);margin-left:0.5rem;">${_wacDirectSelected.size} selected on this page</span>
+          <span style="display:flex;align-items:center;gap:0.25rem;margin-left:0.25rem;">
+            <input id="wac-jump-page-input" type="number" min="1" max="${totalPages}" placeholder="pg"
+              style="width:3.2rem;padding:0.25rem 0.4rem;border-radius:6px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.07);color:var(--text);font-size:0.72rem;text-align:center;"
+              onkeydown="if(event.key==='Enter')wacDirectJumpToPage()">
+            <button class="orders-filter-clear" style="color:var(--gold);border-color:rgba(201,146,42,0.3);padding:0.25rem 0.5rem;font-size:0.72rem;" onclick="wacDirectJumpToPage()">Go</button>
+          </span>
+          <span style="font-size:0.7rem;color:var(--muted);margin-left:0.25rem;">${_wacDirectSelected.size} selected on this page</span>
           <button class="orders-filter-clear" style="color:#4ade80;border-color:rgba(74,222,128,0.3);background:rgba(74,222,128,0.08);" onclick="wacDirectSelectPage(true)">✓ All</button>
           <button class="orders-filter-clear" onclick="wacDirectSelectPage(false)">✕ None</button>
+        </div>
+        <div style="display:flex;align-items:center;gap:0.4rem;margin-bottom:0.5rem;">
+          <span style="font-size:0.75rem;">🔍</span>
+          <input id="wac-user-search" type="text" placeholder="Find by name or phone…"
+            style="flex:1;padding:0.3rem 0.6rem;border-radius:7px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.07);color:var(--text);font-size:0.78rem;"
+            oninput="wacDirectFilterRows(this.value)">
+          <button class="orders-filter-clear" style="font-size:0.72rem;padding:0.25rem 0.5rem;" onclick="document.getElementById('wac-user-search').value='';wacDirectFilterRows('')">✕</button>
         </div>`;
         html += _wacDirectRows.map((c,i) => {
           const isBlacklisted = _wacBlacklist.has(c.phone);
@@ -8830,6 +8843,43 @@ Questions? We're always here!
       document.getElementById('wac-recipients-list').innerHTML = '<div style="color:var(--muted);font-size:0.82rem;padding:0.5rem;">⏳ Loading page ' + newPage + '…</div>';
       await wacLoadDirectPage(newPage);
       wacRenderRecipients();
+    }
+
+    async function wacDirectJumpToPage() {
+      const input     = document.getElementById('wac-jump-page-input');
+      if (!input) return;
+      const totalPages = Math.ceil(_wacDirectTotal / _wacDirectPageSize);
+      const target    = Math.max(1, Math.min(totalPages, parseInt(input.value) || 1));
+      input.value     = '';
+      if (target === _wacDirectPage) return;
+      _wacDirectPage  = target;
+      document.getElementById('wac-recipients-list').innerHTML = '<div style="color:var(--muted);font-size:0.82rem;padding:0.5rem;">⏳ Loading page ' + target + '…</div>';
+      await wacLoadDirectPage(target);
+      wacRenderRecipients();
+    }
+
+    function wacDirectFilterRows(query) {
+      const q = (query || '').toLowerCase().trim();
+      const list = document.getElementById('wac-recipients-list');
+      if (!list) return;
+      // Filter rows in the rendered list without re-rendering everything
+      const rows = list.querySelectorAll('.wac-recipient-row');
+      let shown = 0;
+      rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        const match = !q || text.includes(q);
+        row.style.display = match ? '' : 'none';
+        if (match) shown++;
+      });
+      // Show "no match" hint if nothing visible
+      let hint = list.querySelector('#wac-search-hint');
+      if (!hint) {
+        hint = document.createElement('div');
+        hint.id = 'wac-search-hint';
+        hint.style.cssText = 'color:var(--muted);font-size:0.78rem;padding:0.5rem;';
+        list.appendChild(hint);
+      }
+      hint.textContent = q && shown === 0 ? `No match for "${query}" on this page — try a different page.` : '';
     }
 
     function wacDirectSelectPage(checked) {

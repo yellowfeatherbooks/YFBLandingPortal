@@ -9012,7 +9012,7 @@ Questions? We're always here!
 
         // Batch size: 5 for video (WhatsApp fetches from Cloudinary = slower),
         // 10 for image/text. Keeps each batch well under Netlify's 10s timeout.
-        const BATCH = (_wacMediaType === 'video') ? 5 : 10;
+        const BATCH = (_wacMediaType === 'video') ? 3 : 10;
         let totalSent = 0, totalFailed = 0, allErrors = [];
         for (let i = 0; i < selectedPhones.length; i += BATCH) {
           const batch = selectedPhones.slice(i, i + BATCH);
@@ -9021,20 +9021,29 @@ Questions? We're always here!
             `Sending ${i + 1}–${Math.min(i + BATCH, selectedPhones.length)} of ${selectedPhones.length}…`;
           document.getElementById('wac-progress-bar').style.width = pct + '%';
 
-          // Wrap in try/catch per batch so one timeout doesn't abort the whole campaign
+          // Wrap in try/catch per batch so one timeout doesn't abort the whole campaign.
+          // Also race against a hard 15s client-side timeout so a hanging Netlify connection
+          // doesn't freeze the whole campaign loop.
           let data;
           try {
-            data = await adminPost('admin-wa-campaign', {
+            const fetchPromise = adminPost('admin-wa-campaign', {
               action: 'send-campaign',
               phones: batch,
               message,
               media: mediaPayload,
               mediaType: _wacMediaType
             });
+            const timeoutPromise = new Promise((_, rej) =>
+              setTimeout(() => rej(new Error('Batch timed out (15s)')), 15000)
+            );
+            data = await Promise.race([fetchPromise, timeoutPromise]);
           } catch (batchErr) {
-            // Netlify timeout returns non-JSON — treat as all failed in this batch
+            // Netlify timeout returns non-JSON or connection hangs — treat as all failed in this batch
             totalFailed += batch.length;
             allErrors.push({ phone: batch[0], error: 'Batch timed out: ' + batchErr.message });
+            // Update UI so admin can see it's still making progress
+            document.getElementById('wac-stat-failed').querySelector('div').textContent = totalFailed;
+            document.getElementById('wac-stat-total').querySelector('div').textContent  = totalSent + totalFailed;
             continue; // keep going with next batch
           }
 

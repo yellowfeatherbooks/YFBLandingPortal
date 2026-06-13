@@ -6273,6 +6273,7 @@
                   <button onclick="wacSelectAll(false)" class="orders-filter-clear" style="color:var(--muted);border-color:rgba(255,255,255,0.15);background:none;">✕ None</button>
                 </div>
               </div>
+              <div id="wac-direct-nav" style="display:none;"></div>
               <div id="wac-recipients-list" style="max-height:320px;overflow-y:auto;"></div>
             </div>
 
@@ -8777,33 +8778,37 @@ Questions? We're always here!
         }).join('');
       }
 
-      // Direct customers paginated section
+      // Direct customers paginated section — nav goes into sticky #wac-direct-nav, rows into scrollable list
+      const navEl = document.getElementById('wac-direct-nav');
       if (wacIncludesDirect() && _wacDirectTotal > 0) {
         const totalPages = Math.ceil(_wacDirectTotal / _wacDirectPageSize);
-        html += `<div style="font-size:0.7rem;font-weight:700;color:var(--muted);padding:0.4rem 0.6rem;background:rgba(255,255,255,0.03);border-radius:6px;margin:0.75rem 0 0.4rem;">
-          📋 Direct Customers — Page ${_wacDirectPage} of ${totalPages} (${_wacDirectTotal} total)</div>`;
-        // Page nav
-        html += `<div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem;flex-wrap:wrap;">
-          <button class="orders-filter-clear" style="color:var(--gold);border-color:rgba(201,146,42,0.3);" onclick="wacDirectPageNav(-1)" ${_wacDirectPage<=1?'disabled style="opacity:0.4;"':''}>◀ Prev</button>
-          <span style="font-size:0.75rem;color:var(--muted);">Page ${_wacDirectPage} / ${totalPages}</span>
-          <button class="orders-filter-clear" style="color:var(--gold);border-color:rgba(201,146,42,0.3);" onclick="wacDirectPageNav(1)" ${_wacDirectPage>=totalPages?'disabled style="opacity:0.4;"':''}>Next ▶</button>
-          <span style="display:flex;align-items:center;gap:0.25rem;margin-left:0.25rem;">
-            <input id="wac-jump-page-input" type="number" min="1" max="${totalPages}" placeholder="pg"
-              style="width:3.2rem;padding:0.25rem 0.4rem;border-radius:6px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.07);color:var(--text);font-size:0.72rem;text-align:center;"
-              onkeydown="if(event.key==='Enter')wacDirectJumpToPage()">
-            <button class="orders-filter-clear" style="color:var(--gold);border-color:rgba(201,146,42,0.3);padding:0.25rem 0.5rem;font-size:0.72rem;" onclick="wacDirectJumpToPage()">Go</button>
-          </span>
-          <span style="font-size:0.7rem;color:var(--muted);margin-left:0.25rem;">${_wacDirectSelected.size} selected on this page</span>
-          <button class="orders-filter-clear" style="color:#4ade80;border-color:rgba(74,222,128,0.3);background:rgba(74,222,128,0.08);" onclick="wacDirectSelectPage(true)">✓ All</button>
-          <button class="orders-filter-clear" onclick="wacDirectSelectPage(false)">✕ None</button>
-        </div>
-        <div style="display:flex;align-items:center;gap:0.4rem;margin-bottom:0.5rem;">
-          <span style="font-size:0.75rem;">🔍</span>
-          <input id="wac-user-search" type="text" placeholder="Find by name or phone…"
-            style="flex:1;padding:0.3rem 0.6rem;border-radius:7px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.07);color:var(--text);font-size:0.78rem;"
-            oninput="wacDirectFilterRows(this.value)">
-          <button class="orders-filter-clear" style="font-size:0.72rem;padding:0.25rem 0.5rem;" onclick="document.getElementById('wac-user-search').value='';wacDirectFilterRows('')">✕</button>
-        </div>`;
+        // Preserve search query across re-renders
+        const prevSearch = (navEl && navEl.querySelector('#wac-user-search')?.value) || '';
+        navEl.style.display = '';
+        navEl.innerHTML = `
+          <div style="font-size:0.7rem;font-weight:700;color:var(--muted);padding:0.4rem 0.6rem;background:rgba(255,255,255,0.03);border-radius:6px;margin:0.75rem 0 0.4rem;">
+            📋 Direct Customers — Page ${_wacDirectPage} of ${totalPages} (${_wacDirectTotal} total)</div>
+          <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem;flex-wrap:wrap;">
+            <button class="orders-filter-clear" style="color:var(--gold);border-color:rgba(201,146,42,0.3);" onclick="wacDirectPageNav(-1)" ${_wacDirectPage<=1?'disabled style="opacity:0.4;"':''}>◀ Prev</button>
+            <span style="font-size:0.75rem;color:var(--muted);">Page ${_wacDirectPage} / ${totalPages}</span>
+            <button class="orders-filter-clear" style="color:var(--gold);border-color:rgba(201,146,42,0.3);" onclick="wacDirectPageNav(1)" ${_wacDirectPage>=totalPages?'disabled style="opacity:0.4;"':''}>Next ▶</button>
+            <span style="display:flex;align-items:center;gap:0.25rem;margin-left:0.25rem;">
+              <input id="wac-jump-page-input" type="number" min="1" max="${totalPages}" placeholder="pg"
+                style="width:3.2rem;padding:0.25rem 0.4rem;border-radius:6px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.07);color:var(--text);font-size:0.72rem;text-align:center;"
+                onkeydown="if(event.key==='Enter')wacDirectJumpToPage()">
+              <button class="orders-filter-clear" style="color:var(--gold);border-color:rgba(201,146,42,0.3);padding:0.25rem 0.5rem;font-size:0.72rem;" onclick="wacDirectJumpToPage()">Go</button>
+            </span>
+            <span style="font-size:0.7rem;color:var(--muted);margin-left:0.25rem;">${_wacDirectSelected.size} selected on this page</span>
+            <button class="orders-filter-clear" style="color:#4ade80;border-color:rgba(74,222,128,0.3);background:rgba(74,222,128,0.08);" onclick="wacDirectSelectPage(true)">✓ All</button>
+            <button class="orders-filter-clear" onclick="wacDirectSelectPage(false)">✕ None</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:0.4rem;margin-bottom:0.5rem;">
+            <span style="font-size:0.75rem;">🔍</span>
+            <input id="wac-user-search" type="text" placeholder="Find by name or phone…" value="${prevSearch.replace(/"/g,'&quot;')}"
+              style="flex:1;padding:0.3rem 0.6rem;border-radius:7px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.07);color:var(--text);font-size:0.78rem;"
+              oninput="wacDirectFilterRows(this.value)">
+            <button class="orders-filter-clear" style="font-size:0.72rem;padding:0.25rem 0.5rem;" onclick="document.getElementById('wac-user-search').value='';wacDirectFilterRows('')">✕</button>
+          </div>`;
         html += _wacDirectRows.map((c,i) => {
           const isBlacklisted = _wacBlacklist.has(c.phone);
           const isChecked     = !isBlacklisted && _wacDirectSelected.has(c.phone);
@@ -8818,6 +8823,11 @@ Questions? We're always here!
             <button class="wac-blacklist-btn ${isBlacklisted?'active':''}" onclick="wacDirectBlacklist('${c.phone}','${c.name}',${i})">
               ${isBlacklisted?'✓ Unblock':'🚫 Block'}</button></div>`;
         }).join('');
+        // Re-apply search filter after render
+        if (prevSearch) setTimeout(() => wacDirectFilterRows(prevSearch), 0);
+      } else if (navEl) {
+        navEl.style.display = 'none';
+        navEl.innerHTML = '';
       }
 
       list.innerHTML = html || '<div style="color:var(--muted);font-size:0.82rem;padding:0.5rem;">No recipients found.</div>';
@@ -8862,7 +8872,7 @@ Questions? We're always here!
       const q = (query || '').toLowerCase().trim();
       const list = document.getElementById('wac-recipients-list');
       if (!list) return;
-      // Filter rows in the rendered list without re-rendering everything
+      // Filter rows in the scrollable list only (nav is in #wac-direct-nav above)
       const rows = list.querySelectorAll('.wac-recipient-row');
       let shown = 0;
       rows.forEach(row => {

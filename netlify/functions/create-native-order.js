@@ -24,8 +24,8 @@ const RZP_KEY_ID     = process.env.RAZORPAY_KEY_ID;
 const RZP_SECRET     = process.env.RAZORPAY_KEY_SECRET;
 const API_VERSION    = '2024-01';
 
-// Shipping rules (INR)
-const FREE_SHIPPING_THRESHOLD = 999;
+// Shipping rules (INR): ₹50 for orders below ₹1000, free for ₹1000 and above
+const FREE_SHIPPING_THRESHOLD = 1000;
 const SHIPPING_CHARGE         = 50;
 
 const cors = {

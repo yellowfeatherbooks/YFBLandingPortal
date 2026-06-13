@@ -13671,9 +13671,9 @@ Questions? We're always here!
               <button class="cart-checkout-btn" style="background:rgba(255,255,255,0.05);border:1px solid var(--border);color:var(--cream);margin-bottom:0.5rem;" onclick="prepareAndCheckout('${checkoutUrl}')">Checkout All →</button>
               <button class="cart-checkout-btn" onclick="authorDiscountCheckout('${checkoutUrl}')">✍️ Checkout My Books (−10%) →</button>
             ` : isAuthorMode && authorDiscount > 0 ? `
-              <button class="cart-checkout-btn" onclick="prepareAndCheckout('${checkoutUrl}')">✍️ Checkout with Author Discount →</button>
+              <button class="cart-checkout-btn" onclick="startNativeCheckout()">✍️ Checkout with Author Discount →</button>
             ` : `
-              <button class="cart-checkout-btn" onclick="prepareAndCheckout('${checkoutUrl}')">Checkout →</button>
+              <button class="cart-checkout-btn" onclick="startNativeCheckout()">Checkout →</button>
             `}
           </div>`;
       } catch(e) {
@@ -14658,6 +14658,55 @@ Questions? We're always here!
       pointer-events: none;
     }
     .checkout-overlay.active { display: flex; }
+
+    /* ── Native inline checkout (address + Razorpay) ── */
+    .nco-overlay {
+      display: none; position: fixed; inset: 0; z-index: 2200;
+      background: rgba(10,8,20,0.72); backdrop-filter: blur(4px);
+      align-items: center; justify-content: center; padding: 1rem;
+    }
+    .nco-overlay.active { display: flex; }
+    .nco-modal {
+      background: var(--navy2, #161228);
+      border: 1px solid rgba(201,146,42,0.35);
+      border-radius: 18px; width: 100%; max-width: 460px;
+      max-height: 92vh; overflow-y: auto;
+      box-shadow: 0 12px 50px rgba(0,0,0,0.6);
+      color: var(--cream);
+      animation: toast-slide-up 0.3s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    .nco-head {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1.1rem 1.3rem; border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; background: var(--navy2, #161228); z-index: 1;
+    }
+    .nco-head h3 { margin: 0; font-size: 1.05rem; }
+    .nco-close { background: none; border: none; color: var(--muted); font-size: 1.4rem; cursor: pointer; line-height: 1; }
+    .nco-body { padding: 1.1rem 1.3rem 1.4rem; }
+    .nco-sec-title { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--gold); font-weight: 700; margin: 1.1rem 0 0.6rem; }
+    .nco-sec-title:first-child { margin-top: 0; }
+    .nco-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+    .nco-saved { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.7rem; }
+    .nco-addr-card {
+      border: 1px solid var(--border); border-radius: 10px; padding: 0.6rem 0.75rem;
+      cursor: pointer; font-size: 0.82rem; line-height: 1.4; color: rgba(245,240,232,0.85);
+    }
+    .nco-addr-card.sel { border-color: var(--gold); background: rgba(201,146,42,0.1); }
+    .nco-link { background: none; border: none; color: var(--gold); font-size: 0.8rem; cursor: pointer; padding: 0; text-decoration: underline; align-self: flex-start; }
+    .nco-summary { border-top: 1px solid var(--border); margin-top: 1rem; padding-top: 0.8rem; }
+    .nco-sum-row { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 0.35rem; color: rgba(245,240,232,0.85); }
+    .nco-sum-row.disc { color: #4ade80; }
+    .nco-sum-row.total { font-size: 1rem; font-weight: 700; color: var(--cream); border-top: 1px solid var(--border); padding-top: 0.5rem; margin-top: 0.3rem; }
+    .nco-pay {
+      width: 100%; margin-top: 1rem; padding: 0.9rem; border: none; border-radius: 10px;
+      background: var(--gold); color: #1a1530; font-weight: 700; font-size: 0.95rem; cursor: pointer;
+    }
+    .nco-pay:hover { background: var(--gold2); }
+    .nco-pay:disabled { opacity: 0.6; cursor: not-allowed; }
+    .nco-err { display: none; background: rgba(248,113,113,0.12); color: #fca5a5; border-radius: 8px; padding: 0.6rem 0.8rem; font-size: 0.8rem; margin-top: 0.8rem; }
+    .nco-check { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; color: rgba(245,240,232,0.8); margin-top: 0.5rem; cursor: pointer; }
+    .nco-success { text-align: center; padding: 1.5rem 0.5rem; }
+    .nco-success .ico { font-size: 3rem; }
     .checkout-toast {
       pointer-events: auto;
       background: var(--navy2);
@@ -15004,6 +15053,11 @@ Questions? We're always here!
     <!-- filled dynamically -->
   </div>
 
+  <!-- Native inline checkout (address collection + Razorpay payment) -->
+  <div class="nco-overlay" id="nco-overlay" onclick="if(event.target===this)closeNativeCheckout()">
+    <div class="nco-modal" id="nco-modal"><!-- filled dynamically --></div>
+  </div>
+
   <script>
     // ── Checkout popup ──
     let _checkoutPopup  = null;
@@ -15152,6 +15206,291 @@ Questions? We're always here!
       overlay.classList.add('active');
       // Auto-dismiss after 6 seconds
       setTimeout(hideCheckoutToast, 6000);
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // Native inline checkout — address collection + Razorpay payment.
+    // Replaces the Shopify hosted-checkout redirect for standard carts.
+    // Backend: create-native-order.js (draft order + Razorpay order)
+    //          verify-native-payment.js (verify + complete real order)
+    // ─────────────────────────────────────────────────────────────
+    var _nco = { items: [], discountCode: null, discountPercent: 0, addresses: [], selectedAddrId: null, order: null, busy: false };
+
+    function _ncoEsc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+
+    function closeNativeCheckout(){
+      var ov = document.getElementById('nco-overlay');
+      if (ov) ov.classList.remove('active');
+    }
+
+    async function startNativeCheckout(){
+      if (!_cartId) { alert('Your cart is empty.'); return; }
+      // 1. Load current cart lines
+      let lines = [];
+      try {
+        const json = await sfFetch('query GetCart($cartId: ID!){ cart(id:$cartId){ ' + CART_FIELDS + ' } }', { cartId: _cartId });
+        lines = json?.data?.cart?.lines?.edges?.map(function(e){ return e.node; }) || [];
+      } catch(e) { alert('Could not load your cart. Please try again.'); return; }
+      if (!lines.length) { alert('Your cart is empty.'); return; }
+
+      _nco.items = lines.map(function(l){
+        return {
+          variantId: l.merchandise?.id,
+          quantity:  l.quantity || 1,
+          title:     l.merchandise?.product?.title || 'Book',
+          price:     l.merchandise?.price?.amount || '0'
+        };
+      }).filter(function(i){ return i.variantId; });
+
+      // 2. Determine whole-cart discount (mirrors prepareAndCheckout)
+      const authorMode = document.body.classList.contains('author-mode');
+      _nco.discountCode = null; _nco.discountPercent = 0;
+      if (authorMode && _authorAllSubmitted && _lastAuthorDiscount > 0) { _nco.discountCode = 'AUTHOR10'; _nco.discountPercent = 10; }
+      else if (isBookClubMember) { _nco.discountCode = 'CLUB10'; _nco.discountPercent = 10; }
+      else if (window._flash5Applied) { _nco.discountCode = window._flashDiscountCode || 'FLASH5'; _nco.discountPercent = 5; }
+
+      _nco.order = null; _nco.selectedAddrId = null; _nco.addresses = [];
+
+      // 3. Render + open
+      _ncoRender();
+      document.getElementById('nco-overlay').classList.add('active');
+
+      // 4. Load saved addresses (members) / guest address (localStorage)
+      _ncoLoadAddresses();
+    }
+
+    function _ncoRender(){
+      const name  = (typeof bookClubMemberName !== 'undefined' && bookClubMemberName) || '';
+      const email = (typeof readerEmail !== 'undefined' && readerEmail) || '';
+      const subtotal = _nco.items.reduce(function(s,i){ return s + parseFloat(i.price||0)*(i.quantity||1); }, 0);
+      const itemCount = _nco.items.reduce(function(s,i){ return s + (i.quantity||1); }, 0);
+      const disc = subtotal * _nco.discountPercent / 100;
+      const discountedSub = subtotal - disc;
+      const estShip = discountedSub < 1000 ? 50 : 0;   // Shopify: ₹50 below ₹1000, free at ₹1000+
+      const estTotal = discountedSub + estShip;
+      const m = document.getElementById('nco-modal');
+      m.innerHTML =
+        '<div class="nco-head"><h3>Checkout</h3><button class="nco-close" onclick="closeNativeCheckout()" aria-label="Close">✕</button></div>' +
+        '<div class="nco-body">' +
+          '<div class="nco-sec-title">Contact</div>' +
+          '<div class="sf-field"><label class="sf-label">Full Name *</label><input id="nco-name" class="sf-input" value="' + _ncoEsc(name) + '" placeholder="Your name" /></div>' +
+          '<div class="sf-field"><label class="sf-label">Email *</label><input id="nco-email" type="email" class="sf-input" value="' + _ncoEsc(email) + '" placeholder="you@example.com" /></div>' +
+          '<div class="sf-field"><label class="sf-label">Mobile *</label><input id="nco-phone" type="tel" maxlength="10" class="sf-input" placeholder="10-digit mobile" /></div>' +
+          '<div class="nco-sec-title">Delivery Address</div>' +
+          '<div id="nco-saved" class="nco-saved"></div>' +
+          '<div id="nco-addr-form">' +
+            '<div class="sf-field"><label class="sf-label">Address Line 1 *</label><input id="nco-a1" class="sf-input" placeholder="House no, street" /></div>' +
+            '<div class="sf-field"><label class="sf-label">Address Line 2</label><input id="nco-a2" class="sf-input" placeholder="Area, landmark (optional)" /></div>' +
+            '<div class="nco-row2">' +
+              '<div class="sf-field"><label class="sf-label">City *</label><input id="nco-city" class="sf-input" /></div>' +
+              '<div class="sf-field"><label class="sf-label">State *</label><input id="nco-prov" class="sf-input" /></div>' +
+            '</div>' +
+            '<div class="nco-row2">' +
+              '<div class="sf-field"><label class="sf-label">PIN Code *</label><input id="nco-zip" class="sf-input" maxlength="6" /></div>' +
+              '<div class="sf-field"><label class="sf-label">Country</label><input id="nco-country" class="sf-input" value="India" /></div>' +
+            '</div>' +
+            (readerToken ? '<label class="nco-check"><input type="checkbox" id="nco-save-addr" checked /> Save this address to my account</label>' : '') +
+          '</div>' +
+          '<div class="nco-summary" id="nco-summary">' +
+            '<div class="nco-sum-row"><span>Subtotal (' + itemCount + ' item' + (itemCount===1?'':'s') + ')</span><span>₹' + subtotal.toFixed(2) + '</span></div>' +
+            (_nco.discountPercent>0 ? '<div class="nco-sum-row disc"><span>Discount (' + _ncoEsc(_nco.discountCode) + ' −' + _nco.discountPercent + '%)</span><span>−₹' + (subtotal*_nco.discountPercent/100).toFixed(2) + '</span></div>' : '') +
+            '<div class="nco-sum-row"><span>Shipping</span><span id="nco-ship">' + (estShip > 0 ? '₹' + estShip.toFixed(2) : 'FREE') + '</span></div>' +
+            '<div class="nco-sum-row total"><span>Total</span><span id="nco-total">₹' + estTotal.toFixed(2) + '</span></div>' +
+            '<div style="font-size:0.7rem;color:var(--muted);margin-top:0.3rem;">Free shipping on orders ≥ ₹1000. Final total confirmed at payment.</div>' +
+          '</div>' +
+          '<div class="nco-err" id="nco-err"></div>' +
+          '<button class="nco-pay" id="nco-pay-btn" onclick="_ncoPay()">Continue to Payment →</button>' +
+          '<div style="text-align:center;font-size:0.68rem;color:var(--muted);margin-top:0.6rem;">🔒 Secure payment via Razorpay</div>' +
+        '</div>';
+    }
+
+    async function _ncoLoadAddresses(){
+      const savedEl = document.getElementById('nco-saved');
+      if (readerToken) {
+        try {
+          const json = await sfFetch('query Addrs($t:String!){ customer(customerAccessToken:$t){ phone defaultAddress{ id } addresses(first:10){ nodes{ id address1 address2 city province country zip phone } } } }', { t: readerToken });
+          const cust = json?.data?.customer;
+          const defId = cust?.defaultAddress?.id || null;
+          const addrs = cust?.addresses?.nodes || [];
+          _nco.addresses = addrs;
+          if (cust?.phone) { const p = document.getElementById('nco-phone'); if (p && !p.value) p.value = String(cust.phone).replace(/\D/g,'').slice(-10); }
+          if (addrs.length && savedEl) {
+            savedEl.innerHTML = addrs.map(function(a,i){
+              const line = [a.address1,a.address2,a.city,a.province,a.zip].filter(Boolean).join(', ');
+              return '<div class="nco-addr-card" id="nco-addr-' + i + '" onclick="_ncoSelectAddr(' + i + ')">' + _ncoEsc(line) + (a.id===defId ? ' <span style="color:var(--gold);font-size:0.7rem;">(default)</span>' : '') + '</div>';
+            }).join('') + '<button class="nco-link" type="button" onclick="_ncoNewAddr()">+ Use a different address</button>';
+            const defIdx = Math.max(0, addrs.findIndex(function(a){ return a.id===defId; }));
+            _ncoSelectAddr(defIdx);
+          }
+        } catch(e) { /* no saved addresses — show empty form */ }
+      } else {
+        try {
+          const g = JSON.parse(localStorage.getItem('yfb_guest_address') || 'null');
+          if (g) { _ncoFillForm(g); const ph = document.getElementById('nco-phone'); if (ph && g.phone && !ph.value) ph.value = String(g.phone).replace(/\D/g,'').slice(-10); }
+        } catch(e){}
+      }
+    }
+
+    function _ncoFillForm(a){
+      const set = function(id,v){ const el = document.getElementById(id); if (el) el.value = v || ''; };
+      set('nco-a1', a.address1); set('nco-a2', a.address2); set('nco-city', a.city);
+      set('nco-prov', a.province); set('nco-zip', a.zip); set('nco-country', a.country || 'India');
+    }
+
+    function _ncoSelectAddr(i){
+      const a = _nco.addresses[i];
+      _nco.selectedAddrId = (a && a.id) || null;
+      document.querySelectorAll('.nco-addr-card').forEach(function(el,idx){ el.classList.toggle('sel', idx===i); });
+      if (a) { _ncoFillForm(a); const ph = document.getElementById('nco-phone'); if (ph && a.phone && !ph.value) ph.value = String(a.phone).replace(/\D/g,'').slice(-10); }
+      const sc = document.getElementById('nco-save-addr'); if (sc) sc.checked = false;
+    }
+
+    function _ncoNewAddr(){
+      _nco.selectedAddrId = null;
+      document.querySelectorAll('.nco-addr-card').forEach(function(el){ el.classList.remove('sel'); });
+      _ncoFillForm({ country: 'India' });
+      const sc = document.getElementById('nco-save-addr'); if (sc) sc.checked = true;
+      const a1 = document.getElementById('nco-a1'); if (a1) a1.focus();
+    }
+
+    async function _ncoSaveAddress(address, phone){
+      if (!readerToken) return;
+      try {
+        const json = await sfFetch('mutation AddrCreate($t:String!,$a:MailingAddressInput!){ customerAddressCreate(customerAccessToken:$t,address:$a){ customerAddress{ id } customerUserErrors{ message } } }', {
+          t: readerToken,
+          a: { address1: address.address1, address2: address.address2, city: address.city, province: address.province, zip: address.zip, country: address.country || 'India', phone: '+91' + phone }
+        });
+        const newId = json?.data?.customerAddressCreate?.customerAddress?.id;
+        if (newId) {
+          await sfFetch('mutation SetDef($t:String!,$id:ID!){ customerDefaultAddressUpdate(customerAccessToken:$t,addressId:$id){ customer{ id } customerUserErrors{ message } } }', { t: readerToken, id: newId });
+        }
+      } catch(e) { /* non-fatal */ }
+    }
+
+    async function _ncoPay(){
+      if (_nco.busy) return;
+      const errEl = document.getElementById('nco-err');
+      const show = function(msg){ errEl.textContent = msg; errEl.style.display = 'block'; };
+      errEl.style.display = 'none';
+
+      const val = function(id){ const el = document.getElementById(id); return el ? el.value.trim() : ''; };
+      const name = val('nco-name');
+      const email = val('nco-email');
+      const phone = (document.getElementById('nco-phone').value || '').replace(/\D/g,'');
+      const a1 = val('nco-a1'), a2 = val('nco-a2'), city = val('nco-city'), prov = val('nco-prov'), zip = val('nco-zip');
+      const country = val('nco-country') || 'India';
+
+      if (!name) return show('Please enter your name.');
+      if (!/^[^@]+@[^@]+\.[^@]+$/.test(email)) return show('Please enter a valid email address.');
+      if (!/^[6-9]\d{9}$/.test(phone)) return show('Please enter a valid 10-digit Indian mobile number.');
+      if (!a1) return show('Please enter your address.');
+      if (!city) return show('Please enter your city.');
+      if (!prov) return show('Please enter your state.');
+      if (!/^\d{6}$/.test(zip)) return show('Please enter a valid 6-digit PIN code.');
+
+      const nameParts = name.split(/\s+/);
+      const firstName = nameParts[0];
+      const lastName = nameParts.slice(1).join(' ') || firstName;
+      const address = { address1: a1, address2: a2, city: city, province: prov, zip: zip, country: country, countryCode: 'IN' };
+
+      const btn = document.getElementById('nco-pay-btn');
+      _nco.busy = true; btn.disabled = true; btn.textContent = 'Preparing order…';
+
+      // Persist guest address / save new member address
+      try {
+        if (!readerToken) {
+          localStorage.setItem('yfb_guest_address', JSON.stringify(Object.assign({}, address, { phone: phone })));
+        } else {
+          const saveChk = document.getElementById('nco-save-addr');
+          if (!_nco.selectedAddrId && saveChk && saveChk.checked) { _ncoSaveAddress(address, phone); }
+        }
+      } catch(e){}
+
+      let order;
+      try {
+        const res = await fetch('/.netlify/functions/create-native-order', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            items: _nco.items,
+            customer: { email: email, firstName: firstName, lastName: lastName, phone: '+91' + phone },
+            address: address,
+            discountCode: _nco.discountCode,
+            discountPercent: _nco.discountPercent
+          })
+        });
+        order = await res.json();
+        if (!res.ok || order.error) throw new Error(order.error || 'Could not create order.');
+      } catch(e) {
+        _nco.busy = false; btn.disabled = false; btn.textContent = 'Continue to Payment →';
+        return show(e.message || 'Could not create your order. Please try again.');
+      }
+      _nco.order = order;
+
+      // Update summary with authoritative totals from Shopify
+      const setTxt = function(id,v){ const el = document.getElementById(id); if (el) el.textContent = v; };
+      const ship = parseFloat(order.shipping || 0);
+      setTxt('nco-ship', ship > 0 ? '₹' + ship.toFixed(2) : 'FREE');
+      setTxt('nco-total', '₹' + parseFloat(order.total || 0).toFixed(2));
+
+      const payLabel = 'Pay ₹' + parseFloat(order.total || 0).toFixed(2) + ' →';
+      btn.textContent = payLabel; _nco.busy = false; btn.disabled = false;
+
+      // Open Razorpay
+      const rzp = new Razorpay({
+        key: order.key,
+        amount: order.amount,
+        currency: order.currency || 'INR',
+        name: 'Yellow Feather Books',
+        description: 'Order payment',
+        order_id: order.razorpay_order_id,
+        prefill: { name: name, email: email, contact: '+91' + phone },
+        theme: { color: '#C9922A' },
+        handler: function(response){ _ncoVerify(response); },
+        modal: { ondismiss: function(){ const b = document.getElementById('nco-pay-btn'); if (b){ b.disabled = false; b.textContent = payLabel; } } }
+      });
+      rzp.on('payment.failed', function(resp){ show((resp && resp.error && resp.error.description) || 'Payment failed. Please try again.'); });
+      rzp.open();
+    }
+
+    async function _ncoVerify(response){
+      const m = document.getElementById('nco-modal');
+      const body = m.querySelector('.nco-body');
+      if (body) body.innerHTML = '<div class="nco-success"><div class="ico">⏳</div><p>Confirming your payment…</p></div>';
+      try {
+        const res = await fetch('/.netlify/functions/verify-native-payment', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            razorpay_order_id: response.razorpay_order_id,
+            razorpay_payment_id: response.razorpay_payment_id,
+            razorpay_signature: response.razorpay_signature,
+            draft_order_id: _nco.order.draft_order_id
+          })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) throw new Error(data.error || 'Verification failed.');
+        _ncoShowSuccess(data.order_name || '');
+      } catch(e) {
+        if (body) body.innerHTML = '<div class="nco-success"><div class="ico">⚠️</div><p>Payment received, but we hit a snag confirming your order.</p><p style="font-size:0.8rem;color:var(--muted);">' + _ncoEsc(e.message || '') + '</p><p style="font-size:0.8rem;color:var(--muted);">Please contact support with payment ID <strong>' + _ncoEsc(response.razorpay_payment_id || '') + '</strong>.</p><button class="nco-pay" onclick="closeNativeCheckout()">Close</button></div>';
+      }
+    }
+
+    function _ncoShowSuccess(orderName){
+      // Clear the cart locally
+      try {
+        _cartId = null;
+        localStorage.removeItem('yfb_guest_cart_id');
+        localStorage.removeItem('yfb_member_cart_id');
+        if (typeof refreshCartCount === 'function') refreshCartCount();
+        const cc = document.getElementById('cart-container'); if (cc && typeof renderEmptyCart === 'function') renderEmptyCart(cc);
+      } catch(e){}
+      try { if (typeof prefetchOrders === 'function') prefetchOrders(); } catch(e){}
+      const m = document.getElementById('nco-modal');
+      const body = m.querySelector('.nco-body');
+      const html = '<div class="nco-success"><div class="ico">🎉</div><h3 style="margin:0.4rem 0;">Order Placed!</h3>' +
+        (orderName ? '<p style="font-size:0.95rem;">Your order <strong>' + _ncoEsc(orderName) + '</strong> is confirmed.</p>' : '') +
+        '<p style="font-size:0.82rem;color:var(--muted);">A confirmation email is on its way. Track it under <strong>My Orders</strong>.</p>' +
+        '<button class="nco-pay" style="margin-top:1rem;" onclick="closeNativeCheckout()">Continue Shopping →</button></div>';
+      if (body) body.innerHTML = html; else m.innerHTML = '<div class="nco-body">' + html + '</div>';
     }
   </script>
 

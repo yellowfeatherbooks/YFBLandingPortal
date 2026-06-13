@@ -8960,8 +8960,9 @@ Questions? We're always here!
         const selectedPhones = [...new Set([...shopifyPhones, ...directPhones])];
         if (!selectedPhones.length) throw new Error('No recipients selected. Please select at least one recipient.');
 
-        // Send in batches of 15 to avoid Netlify timeout
-        const BATCH = 15;
+        // Batch size: 5 for video (WhatsApp fetches from Cloudinary = slower),
+        // 10 for image/text. Keeps each batch well under Netlify's 10s timeout.
+        const BATCH = (_wacMediaType === 'video') ? 5 : 10;
         let totalSent = 0, totalFailed = 0, allErrors = [];
         for (let i = 0; i < selectedPhones.length; i += BATCH) {
           const batch = selectedPhones.slice(i, i + BATCH);
@@ -8970,18 +8971,36 @@ Questions? We're always here!
             `Sending ${i + 1}–${Math.min(i + BATCH, selectedPhones.length)} of ${selectedPhones.length}…`;
           document.getElementById('wac-progress-bar').style.width = pct + '%';
 
-          const data = await adminPost('admin-wa-campaign', {
-            action: 'send-campaign',
-            phones: batch,
-            message,
-            media: mediaPayload,
-            mediaType: _wacMediaType
-          });
+          // Wrap in try/catch per batch so one timeout doesn't abort the whole campaign
+          let data;
+          try {
+            data = await adminPost('admin-wa-campaign', {
+              action: 'send-campaign',
+              phones: batch,
+              message,
+              media: mediaPayload,
+              mediaType: _wacMediaType
+            });
+          } catch (batchErr) {
+            // Netlify timeout returns non-JSON — treat as all failed in this batch
+            totalFailed += batch.length;
+            allErrors.push({ phone: batch[0], error: 'Batch timed out: ' + batchErr.message });
+            continue; // keep going with next batch
+          }
 
-          if (!data.success) throw new Error(data.error);
+          if (!data.success) {
+            totalFailed += batch.length;
+            allErrors.push({ error: data.error });
+            continue;
+          }
           totalSent   += data.sent   || 0;
           totalFailed += data.failed || 0;
           if (data.errors?.length) allErrors.push(...data.errors);
+
+          // Update running totals in UI after each batch
+          document.getElementById('wac-stat-sent').querySelector('div').textContent   = totalSent;
+          document.getElementById('wac-stat-failed').querySelector('div').textContent = totalFailed;
+          document.getElementById('wac-stat-total').querySelector('div').textContent  = totalSent + totalFailed;
         }
 
         document.getElementById('wac-progress-bar').style.width = '100%';

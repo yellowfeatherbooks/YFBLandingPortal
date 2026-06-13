@@ -331,7 +331,8 @@ exports.handler = async (event) => {
           }
 
           // Small delay to respect rate limits (~80 msg/sec WhatsApp limit)
-          await new Promise(r => setTimeout(r, 50));
+          // Use 20ms for video (batches are smaller, need to stay under Netlify 10s timeout)
+          await new Promise(r => setTimeout(r, mediaType === 'video' ? 20 : 50));
 
         } catch(e) {
           failed++;

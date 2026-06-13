@@ -8506,7 +8506,12 @@ Questions? We're always here!
     // ═════════════════════════════════════════════════════════════════════════
 
     // ══ Admin: WhatsApp Campaign ═════════════════════════════════════════════
-    var _wacMediaFiles  = [];   // { file, type:'image'|'video', dataUrl, base64 }
+    // Cloudinary unsigned upload config — video is uploaded directly from browser
+    // to bypass Netlify's 6 MB function body limit (base64 of 5 MB video = ~6.7 MB).
+    var CLOUDINARY_CLOUD_NAME   = 'YOUR_CLOUD_NAME';    // ← replace after Cloudinary setup
+    var CLOUDINARY_UPLOAD_PRESET = 'YOUR_UPLOAD_PRESET'; // ← replace after Cloudinary setup
+
+    var _wacMediaFiles  = [];   // { file, type:'image'|'video', dataUrl, base64, videoUrl }
     var _wacMediaType   = 'images';
     var _wacCustomers   = [];
 
@@ -8623,17 +8628,62 @@ Questions? We're always here!
         alert('Video must be under 10 MB. This file is ' + (file.size/1024/1024).toFixed(1) + ' MB.');
         input.value = ''; return;
       }
-      const dataUrl = await wacFileToBase64(file);
-      _wacMediaFiles = [{ file, type: 'video', dataUrl, base64: dataUrl.split(',')[1], mimeType: file.type, name: file.name }];
-      document.getElementById('wac-vid-preview').innerHTML = `
-        <video src="${dataUrl}" controls style="width:100%;border-radius:8px;max-height:160px;"></video>
-        <div class="wac-vid-info">
-          <span>${file.name}</span>
-          <span>${(file.size/1024/1024).toFixed(2)} MB
-            <button onclick="wacRemoveVid()" style="background:rgba(248,113,113,0.15);border:1px solid rgba(248,113,113,0.3);color:#f87171;border-radius:4px;padding:0.1rem 0.4rem;font-size:0.65rem;cursor:pointer;margin-left:0.4rem;">✕ Remove</button>
-          </span>
+
+      // Show uploading state
+      const previewEl = document.getElementById('wac-vid-preview');
+      previewEl.innerHTML = `
+        <div style="padding:1rem;text-align:center;color:var(--muted);font-size:0.82rem;">
+          <div style="margin-bottom:0.5rem;">⬆️ Uploading video…</div>
+          <div id="wac-vid-upload-bar-wrap" style="background:rgba(255,255,255,0.1);border-radius:4px;height:6px;overflow:hidden;">
+            <div id="wac-vid-upload-bar" style="background:var(--gold);height:100%;width:0%;transition:width 0.3s;"></div>
+          </div>
         </div>`;
-      wacUpdatePreview();
+
+      try {
+        // Upload directly to Cloudinary (bypasses Netlify 6 MB body limit)
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+        formData.append('resource_type', 'video');
+
+        const xhr = new XMLHttpRequest();
+        const videoUrl = await new Promise((resolve, reject) => {
+          xhr.open('POST', `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/video/upload`);
+          xhr.upload.onprogress = (e) => {
+            if (e.lengthComputable) {
+              const pct = Math.round((e.loaded / e.total) * 100);
+              const bar = document.getElementById('wac-vid-upload-bar');
+              if (bar) bar.style.width = pct + '%';
+            }
+          };
+          xhr.onload = () => {
+            try {
+              const res = JSON.parse(xhr.responseText);
+              if (res.secure_url) resolve(res.secure_url);
+              else reject(new Error(res.error?.message || 'Cloudinary upload failed'));
+            } catch { reject(new Error('Invalid response from Cloudinary')); }
+          };
+          xhr.onerror = () => reject(new Error('Network error during video upload'));
+          xhr.send(formData);
+        });
+
+        // Show local preview + success
+        const localUrl = URL.createObjectURL(file);
+        _wacMediaFiles = [{ file, type: 'video', dataUrl: localUrl, videoUrl, mimeType: file.type, name: file.name }];
+        previewEl.innerHTML = `
+          <video src="${localUrl}" controls style="width:100%;border-radius:8px;max-height:160px;"></video>
+          <div class="wac-vid-info">
+            <span>${file.name}</span>
+            <span style="color:#4ade80;font-size:0.7rem;">✓ Uploaded (${(file.size/1024/1024).toFixed(2)} MB)
+              <button onclick="wacRemoveVid()" style="background:rgba(248,113,113,0.15);border:1px solid rgba(248,113,113,0.3);color:#f87171;border-radius:4px;padding:0.1rem 0.4rem;font-size:0.65rem;cursor:pointer;margin-left:0.4rem;">✕ Remove</button>
+            </span>
+          </div>`;
+        wacUpdatePreview();
+
+      } catch(err) {
+        previewEl.innerHTML = `<div style="color:#f87171;font-size:0.8rem;padding:0.5rem;">❌ Upload failed: ${err.message}</div>`;
+        _wacMediaFiles = [];
+      }
       input.value = '';
     }
 
@@ -8881,14 +8931,22 @@ Questions? We're always here!
 
       try {
         // Step 1: upload media if any
+        // Images: uploaded via Netlify (small size, base64 is fine under 6MB limit)
+        // Video:  already uploaded to Cloudinary directly from browser — just pass URL
         const mediaPayload = [];
         for (const f of _wacMediaFiles) {
-          document.getElementById('wac-progress-text').textContent = `Uploading ${f.name}…`;
-          const up = await adminPost('admin-wa-campaign', {
-            action: 'upload-media', base64: f.base64, mimeType: f.mimeType, fileName: f.name
-          });
-          if (!up.success) throw new Error('Media upload failed: ' + up.error);
-          mediaPayload.push({ mediaId: up.mediaId, type: f.type });
+          if (f.type === 'video' && f.videoUrl) {
+            // Video was pre-uploaded to Cloudinary — use URL directly
+            mediaPayload.push({ videoUrl: f.videoUrl, type: 'video' });
+          } else {
+            // Image — upload via Netlify as before
+            document.getElementById('wac-progress-text').textContent = `Uploading ${f.name}…`;
+            const up = await adminPost('admin-wa-campaign', {
+              action: 'upload-media', base64: f.base64, mimeType: f.mimeType, fileName: f.name
+            });
+            if (!up.success) throw new Error('Media upload failed: ' + up.error);
+            mediaPayload.push({ mediaId: up.mediaId, type: f.type });
+          }
         }
 
         document.getElementById('wac-progress-text').textContent = 'Preparing campaign…';

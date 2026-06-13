@@ -156,6 +156,10 @@ function buildWaMessage(phone, message, media, mediaType) {
       }
     };
   } else if (mediaType === 'video' && media.length > 0) {
+    // Support both pre-uploaded media (mediaId) and direct URL (videoUrl from Cloudinary)
+    const videoParam = media[0].videoUrl
+      ? { type: 'video', video: { link: media[0].videoUrl } }
+      : { type: 'video', video: { id: media[0].mediaId } };
     return {
       messaging_product: 'whatsapp',
       to: phone,
@@ -166,7 +170,7 @@ function buildWaMessage(phone, message, media, mediaType) {
         components: [
           {
             type: 'header',
-            parameters: [{ type: 'video', video: { id: media[0].mediaId } }]
+            parameters: [videoParam]
           },
           {
             type: 'body',

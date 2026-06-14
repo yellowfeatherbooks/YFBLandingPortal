@@ -10115,6 +10115,23 @@ Questions? We're always here!
         .replace(/â€œ/g, '“').replace(/â€/g, '”').replace(/â€¦/g, '…');
     }
 
+    // Parse one CSV line respecting quoted fields, so a title containing a comma
+    // (e.g. "Aana, Maana, Beena") isn't split into the wrong columns.
+    function ssParseLine(line) {
+      const out = []; let cur = ''; let inQ = false;
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (inQ) {
+          if (ch === '"') { if (line[i + 1] === '"') { cur += '"'; i++; } else { inQ = false; } }
+          else cur += ch;
+        } else if (ch === '"') { inQ = true; }
+        else if (ch === ',') { out.push(cur); cur = ''; }
+        else cur += ch;
+      }
+      out.push(cur);
+      return out;
+    }
+
     function ssClearFile() {
       _ssRows     = [];
       _ssPreview  = [];
@@ -10150,7 +10167,7 @@ Questions? We're always here!
 
         _ssRows = [];
         for (let i = headerIdx + 1; i < lines.length; i++) {
-          const cols = lines[i].split(',');
+          const cols = ssParseLine(lines[i]);
           if (cols.length < 6) continue;
           const name       = ssFix(cols[0].trim());
           const purPrice   = parseFloat(cols[3]) || 0;

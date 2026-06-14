@@ -31,7 +31,6 @@ exports.handler = async (event) => {
     );
     const rows = await res.json();
     const row  = Array.isArray(rows) && rows.length > 0 ? rows[0] : null;
-    console.log('[ms] GET email=', email, '→ cart_id=', row?.cart_id, 'ua=', (event.headers['user-agent']||'').slice(0,40));
 
     return {
       statusCode: 200,

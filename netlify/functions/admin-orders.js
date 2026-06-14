@@ -40,7 +40,7 @@ exports.handler = async (event) => {
   try {
     const fetchLimit = customer_type ? 250 : limit;
     const res = await fetch(
-      `https://${SHOPIFY_DOMAIN}/admin/api/${API_VERSION}/orders.json?status=${status}&limit=${fetchLimit}&fields=id,name,email,created_at,financial_status,fulfillment_status,total_price,subtotal_price,total_tax,line_items,customer,shipping_address,note`,
+      `https://${SHOPIFY_DOMAIN}/admin/api/${API_VERSION}/orders.json?status=${status}&limit=${fetchLimit}&fields=id,name,email,created_at,financial_status,fulfillment_status,total_price,current_total_price,subtotal_price,total_tax,cancelled_at,line_items,customer,shipping_address,note`,
       { headers: { 'X-Shopify-Access-Token': SHOPIFY_TOKEN } }
     );
     const data = await res.json();
@@ -61,7 +61,9 @@ exports.handler = async (event) => {
         created_at:         o.created_at,
         financial_status:   o.financial_status,
         fulfillment_status: o.fulfillment_status || 'unfulfilled',
-        total_price:        o.total_price,
+        total_price:         o.total_price,
+        current_total_price: o.current_total_price,   // total after refunds/edits (net)
+        cancelled_at:        o.cancelled_at || null,
         subtotal_price:     o.subtotal_price,
         total_tax:          o.total_tax,
         note:               o.note || '',

@@ -85,6 +85,33 @@ exports.handler = async (event) => {
     return json({ success: true, sale: rows[0] });
   }
 
+  // ── UPDATE (e.g. mark paid/unpaid) ───────────────────────────────────────────
+  if (action === 'update') {
+    const { id, payment_status, amount, notes } = body;
+    if (!id) return json({ success: false, error: 'id is required' });
+    const patch = {};
+    if (payment_status !== undefined) patch.payment_status = payment_status;
+    if (amount !== undefined && amount !== '' && amount !== null) patch.amount = parseFloat(amount);
+    if (notes !== undefined) patch.notes = notes;
+    if (!Object.keys(patch).length) return json({ success: false, error: 'Nothing to update' });
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/direct_sales?id=eq.${id}`,
+      {
+        method:  'PATCH',
+        headers: {
+          'apikey':        SUPABASE_SVC_KEY,
+          'Authorization': `Bearer ${SUPABASE_SVC_KEY}`,
+          'Content-Type':  'application/json',
+          'Prefer':        'return=representation'
+        },
+        body: JSON.stringify(patch)
+      }
+    );
+    if (!res.ok) return json({ success: false, error: await res.text() });
+    const rows = await res.json();
+    return json({ success: true, sale: rows[0] });
+  }
+
   // ── DELETE ─────────────────────────────────────────────────────────────────
   if (action === 'delete') {
     const { id } = body;
@@ -100,5 +127,5 @@ exports.handler = async (event) => {
     return json({ success: true });
   }
 
-  return json({ success: false, error: 'Unknown action. Use list, add, or delete.' });
+  return json({ success: false, error: 'Unknown action. Use list, add, update, or delete.' });
 };

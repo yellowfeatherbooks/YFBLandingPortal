@@ -5663,7 +5663,7 @@
         <span class="admin-nav-icon">📊</span> Intelligence
       </button>
       <button class="admin-nav-item" data-section="direct-sales" onclick="adminNav('direct-sales',this)">
-        <span class="admin-nav-icon">🤝</span> Direct Sales
+        <span class="admin-nav-icon">🤝</span> Import Direct Sales
       </button>
       <button class="admin-nav-item" data-section="sales-team" onclick="adminNav('sales-team',this)">
         <span class="admin-nav-icon">📊</span> Sales Team
@@ -5913,44 +5913,98 @@
 
       <!-- ── Orders ── -->
       <div id="admin-section-orders" class="admin-section">
+        <!-- Tabs: Online Orders · Direct Sales · Total Sales -->
         <div class="admin-section-header">
-          <h2>📦 Orders</h2>
-          <div class="admin-filter-row">
-            <button class="admin-filter-btn active" onclick="adminFilterOrders('any',this)">All</button>
-            <button class="admin-filter-btn" onclick="adminFilterOrders('open',this)">Open</button>
-            <button class="admin-filter-btn" onclick="adminFilterOrders('closed',this)">Closed</button>
-            <button class="admin-filter-btn" onclick="adminFilterOrders('member',this)">🏆 Club Members</button>
-            <button class="admin-filter-btn" onclick="adminFilterOrders('author',this)">✍️ Authors</button>
+          <div class="admin-filter-row" id="orders-tabbar">
+            <button class="admin-filter-btn active" data-tab="online" onclick="adminOrdersTab('online',this)">🌐 Online Orders</button>
+            <button class="admin-filter-btn" data-tab="direct" onclick="adminOrdersTab('direct',this)">🤝 Direct Sales</button>
+            <button class="admin-filter-btn" data-tab="total" onclick="adminOrdersTab('total',this)">📊 Total Sales</button>
           </div>
         </div>
-        <div id="admin-orders-stats" class="admin-stats"></div>
-        <div id="admin-orders-filters" class="orders-filter-bar" style="display:none;">
-          <input  id="aof-search"    class="orders-filter-input" type="text"   placeholder="🔍 Order # or customer…" oninput="adminApplyOrderFilters()">
-          <select id="aof-type"      class="orders-filter-select" onchange="adminApplyOrderFilters()">
-            <option value="">All Types</option>
-            <option value="member">🏆 Member</option>
-            <option value="author">✍️ Author</option>
-          </select>
-          <select id="aof-payment"   class="orders-filter-select" onchange="adminApplyOrderFilters()">
-            <option value="">All Payments</option>
-            <option value="paid">Paid</option>
-            <option value="pending">Pending</option>
-            <option value="refunded">Refunded</option>
-            <option value="voided">Voided</option>
-          </select>
-          <select id="aof-fulfill"   class="orders-filter-select" onchange="adminApplyOrderFilters()">
-            <option value="">All Fulfillment</option>
-            <option value="fulfilled">Fulfilled</option>
-            <option value="unfulfilled">Unfulfilled</option>
-            <option value="partial">Partial</option>
-          </select>
-          <input  id="aof-date-from" class="orders-filter-input" type="date" title="From date" onchange="adminApplyOrderFilters()">
-          <input  id="aof-date-to"   class="orders-filter-input" type="date" title="To date"   onchange="adminApplyOrderFilters()">
-          <input  id="aof-amt-min"   class="orders-filter-input" type="number" placeholder="₹ Min" style="width:80px;" oninput="adminApplyOrderFilters()">
-          <input  id="aof-amt-max"   class="orders-filter-input" type="number" placeholder="₹ Max" style="width:80px;" oninput="adminApplyOrderFilters()">
-          <button class="orders-filter-clear" onclick="adminClearOrderFilters()">✕ Clear</button>
+
+        <!-- ── Online Orders ── -->
+        <div id="otab-online">
+          <div class="admin-section-header">
+            <h2>🌐 Online Orders</h2>
+            <div class="admin-filter-row">
+              <button class="admin-filter-btn active" onclick="adminFilterOrders('any',this)">All</button>
+              <button class="admin-filter-btn" onclick="adminFilterOrders('open',this)">Open</button>
+              <button class="admin-filter-btn" onclick="adminFilterOrders('closed',this)">Closed</button>
+              <button class="admin-filter-btn" onclick="adminFilterOrders('member',this)">🏆 Club Members</button>
+              <button class="admin-filter-btn" onclick="adminFilterOrders('author',this)">✍️ Authors</button>
+            </div>
+          </div>
+          <div id="admin-orders-stats" class="admin-stats"></div>
+          <div id="admin-orders-filters" class="orders-filter-bar" style="display:none;">
+            <input  id="aof-search"    class="orders-filter-input" type="text"   placeholder="🔍 Order # or customer…" oninput="adminApplyOrderFilters()">
+            <select id="aof-type"      class="orders-filter-select" onchange="adminApplyOrderFilters()">
+              <option value="">All Types</option>
+              <option value="member">🏆 Member</option>
+              <option value="author">✍️ Author</option>
+            </select>
+            <select id="aof-payment"   class="orders-filter-select" onchange="adminApplyOrderFilters()">
+              <option value="">All Payments</option>
+              <option value="paid">Paid</option>
+              <option value="pending">Pending</option>
+              <option value="refunded">Refunded</option>
+              <option value="voided">Voided</option>
+            </select>
+            <select id="aof-fulfill"   class="orders-filter-select" onchange="adminApplyOrderFilters()">
+              <option value="">All Fulfillment</option>
+              <option value="fulfilled">Fulfilled</option>
+              <option value="unfulfilled">Unfulfilled</option>
+              <option value="partial">Partial</option>
+            </select>
+            <input  id="aof-date-from" class="orders-filter-input" type="date" title="From date" style="color-scheme:dark;" onchange="adminApplyOrderFilters()">
+            <input  id="aof-date-to"   class="orders-filter-input" type="date" title="To date"   style="color-scheme:dark;" onchange="adminApplyOrderFilters()">
+            <input  id="aof-amt-min"   class="orders-filter-input" type="number" placeholder="₹ Min" style="width:80px;" oninput="adminApplyOrderFilters()">
+            <input  id="aof-amt-max"   class="orders-filter-input" type="number" placeholder="₹ Max" style="width:80px;" oninput="adminApplyOrderFilters()">
+            <button class="orders-filter-clear" onclick="adminClearOrderFilters()">✕ Clear</button>
+          </div>
+          <div id="admin-orders-body"></div>
         </div>
-        <div id="admin-orders-body"></div>
+
+        <!-- ── Direct Sales (imported offline sales) ── -->
+        <div id="otab-direct" style="display:none;">
+          <div class="admin-section-header"><h2>🤝 Direct Sales</h2></div>
+          <div class="orders-filter-bar">
+            <input  id="ds-search" class="orders-filter-input" type="text" placeholder="🔍 Invoice, customer, book or email…" oninput="adminRenderDirectSales()">
+            <select id="ds-pay"    class="orders-filter-select" onchange="adminRenderDirectSales()">
+              <option value="">All Payments</option>
+              <option value="paid">Paid</option>
+              <option value="unpaid">Unpaid</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+            <input  id="ds-from" class="orders-filter-input" type="date" title="From date" style="color-scheme:dark;" onchange="adminRenderDirectSales()">
+            <input  id="ds-to"   class="orders-filter-input" type="date" title="To date"   style="color-scheme:dark;" onchange="adminRenderDirectSales()">
+            <button class="orders-filter-clear" onclick="adminLoadDirectSales()">↻ Refresh</button>
+          </div>
+          <div id="ds-list-body" style="font-size:0.83rem;color:var(--muted);padding:0.5rem 0;">Loading…</div>
+        </div>
+
+        <!-- ── Total Sales (read-only, combined) ── -->
+        <div id="otab-total" style="display:none;">
+          <div class="admin-section-header"><h2>📊 Total Sales</h2></div>
+          <div id="ts-stats" class="admin-stats"></div>
+          <div class="orders-filter-bar">
+            <input  id="ts-search"  class="orders-filter-input" type="text" placeholder="🔍 Ref, customer or item…" oninput="adminRenderTotalSales()">
+            <select id="ts-source"  class="orders-filter-select" onchange="adminRenderTotalSales()">
+              <option value="">All Sources</option>
+              <option value="Online">🌐 Online</option>
+              <option value="Direct">🤝 Direct</option>
+            </select>
+            <select id="ts-payment" class="orders-filter-select" onchange="adminRenderTotalSales()">
+              <option value="">All Payments</option>
+              <option value="paid">Paid</option>
+              <option value="unpaid">Unpaid / Pending</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+            <input  id="ts-date-from" class="orders-filter-input" type="date" title="From date" style="color-scheme:dark;" onchange="adminRenderTotalSales()">
+            <input  id="ts-date-to"   class="orders-filter-input" type="date" title="To date"   style="color-scheme:dark;" onchange="adminRenderTotalSales()">
+            <button class="orders-filter-clear" onclick="adminLoadTotalSales()">↻ Refresh</button>
+          </div>
+          <div id="ts-body"></div>
+        </div>
       </div>
 
       <!-- ── Book Requests ── -->
@@ -6406,7 +6460,7 @@
       <!-- ── Direct Sales ── -->
       <div id="admin-section-direct-sales" class="admin-section">
         <div class="admin-section-header">
-          <h2>🤝 Direct Sales</h2>
+          <h2>🤝 Import Direct Sales</h2>
         </div>
 
         <!-- Entry form -->
@@ -6479,17 +6533,39 @@
           </div>
         </div>
 
-        <!-- Listing -->
+        <!-- Bulk import from BillBook daybook -->
         <div class="tag-mgmt-card">
-          <h3>📋 Recorded Direct Sales</h3>
-          <div class="book-tag-search-row" style="margin-bottom:0.75rem;">
-            <input type="email" id="ds-filter-email" placeholder="Filter by author email (leave blank for all)"
-              style="font-size:0.83rem;padding:0.5rem 0.75rem;border-radius:6px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);color:var(--text);flex:1;"
-              onkeydown="if(event.key==='Enter') adminLoadDirectSales()" />
-            <button class="book-tag-search-btn" onclick="adminLoadDirectSales()">Load</button>
+          <h3>📥 Bulk import from BillBook</h3>
+          <p style="font-size:0.84rem;color:var(--muted);margin-bottom:1rem;"><strong>📁 Browse salesperson folder</strong> — pick a folder named after the salesperson containing their BillBook <em>sales summary CSV</em> + the <em>invoice PDFs</em>; book titles are parsed from the PDFs automatically and tagged to that salesperson. Or <strong>📂 Upload CSV</strong> / paste a summary for order-level only. One entry per invoice; paid/unpaid read from the file; columns auto-detected; already-imported invoice numbers are skipped.</p>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:0.75rem;">
+            <div style="display:flex;flex-direction:column;gap:0.3rem;">
+              <label style="font-size:0.77rem;color:var(--muted);font-weight:600;">Author / account email for all *</label>
+              <input type="email" id="dsbulk-email" placeholder="e.g. seeba@yellowfeatherbooks.in"
+                style="font-size:0.83rem;padding:0.5rem 0.75rem;border-radius:6px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);color:var(--text);width:100%;box-sizing:border-box;" />
+            </div>
+            <div style="display:flex;flex-direction:column;gap:0.3rem;">
+              <label style="font-size:0.77rem;color:var(--muted);font-weight:600;">Created By filter</label>
+              <input type="text" id="dsbulk-creator" value="Seeba"
+                style="font-size:0.83rem;padding:0.5rem 0.75rem;border-radius:6px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);color:var(--text);width:100%;box-sizing:border-box;" />
+            </div>
           </div>
-          <div id="ds-list-body" style="font-size:0.83rem;color:var(--muted);padding:0.5rem 0;">Click Load to view entries.</div>
+          <div style="margin-bottom:0.5rem;display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;">
+            <input type="file" id="dsbulk-folder" webkitdirectory directory multiple onchange="dsBulkLoadFolder(this)" style="display:none;" />
+            <button class="tag-sync-btn" type="button" onclick="document.getElementById('dsbulk-folder').click()">📁 Browse salesperson folder</button>
+            <input type="file" id="dsbulk-file" accept=".csv,text/csv" onchange="dsBulkLoadFile(this)" style="display:none;" />
+            <button class="tag-sync-btn" type="button" onclick="document.getElementById('dsbulk-file').click()">📂 Upload CSV file</button>
+            <span id="dsbulk-file-name" style="font-size:0.8rem;color:var(--muted);"></span>
+            <span style="font-size:0.78rem;color:var(--muted);">— or paste below</span>
+          </div>
+          <textarea id="dsbulk-csv" rows="6" placeholder="Upload a CSV above, or paste it here (including the header row)…"
+            style="font-size:0.78rem;font-family:monospace;padding:0.6rem 0.75rem;border-radius:6px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);color:var(--text);width:100%;box-sizing:border-box;resize:vertical;"></textarea>
+          <div style="margin-top:0.6rem;display:flex;gap:0.8rem;align-items:center;flex-wrap:wrap;">
+            <button class="tag-sync-btn" onclick="dsBulkParse()">🔍 Preview</button>
+            <span id="dsbulk-status" style="font-size:0.82rem;"></span>
+          </div>
+          <div id="dsbulk-preview" style="margin-top:0.8rem;"></div>
         </div>
+        <p style="font-size:0.82rem;color:var(--muted);">📋 Imported entries are listed under <strong>Orders → Direct Sales</strong>.</p>
 
       </div><!-- /admin-section-direct-sales -->
 
@@ -6603,7 +6679,7 @@
         <span class="tab-icon">🏷️</span>Tags
       </button>
       <button class="admin-mob-tab" data-section="direct-sales" onclick="adminNav('direct-sales',this)">
-        <span class="tab-icon">🤝</span>Direct
+        <span class="tab-icon">🤝</span>Import
       </button>
     </div>
 
@@ -10767,7 +10843,7 @@ Questions? We're always here!
       if (section === 'authors')       adminLoadAuthors();
       if (section === 'members')       adminLoadMembers();
       if (section === 'subscriptions') adminLoadSubscriptions();
-      if (section === 'orders')          adminLoadOrders();
+      if (section === 'orders')          adminOrdersTab('online');
       if (section === 'book-requests')   adminLoadBookReqs();
       if (section === 'signed-requests') { adminLoadSignedReqs(); adminLoadSignedAvailable(); }
       if (section === 'flash')           adminLoadFlashSale();
@@ -11318,50 +11394,90 @@ Questions? We're always here!
       btn.disabled = false; btn.textContent = '➕ Add Sale';
     }
 
+    var _dsAllSales = [];
     async function adminLoadDirectSales() {
-      const listEl       = document.getElementById('ds-list-body');
-      const author_email = (document.getElementById('ds-filter-email').value || '').trim();
-      listEl.innerHTML   = '<div style="padding:1rem;color:var(--muted);">Loading…</div>';
+      const listEl = document.getElementById('ds-list-body');
+      listEl.innerHTML = '<div style="padding:1rem;color:var(--muted);">Loading…</div>';
       try {
-        const data = await adminPost('admin-direct-sales', { action: 'list', author_email: author_email || undefined });
+        const data = await adminPost('admin-direct-sales', { action: 'list' });
         if (!data.success) { listEl.innerHTML = `<div style="color:#f87171;padding:0.5rem;">${data.error}</div>`; return; }
-        const rows = data.sales || [];
-        if (!rows.length) { listEl.innerHTML = '<div style="padding:1rem;color:var(--muted);">No direct sales recorded yet.</div>'; return; }
-
-        const totalRev = rows.reduce((s, r) => s + parseFloat(r.amount || 0), 0);
-        listEl.innerHTML = `
-          <div class="admin-stat-card" style="display:inline-flex;margin-bottom:0.75rem;">
-            <div class="admin-stat-num" style="color:#34d399;">₹${totalRev.toFixed(2)}</div>
-            <div class="admin-stat-label">Total Revenue &nbsp;·&nbsp; ${rows.length} entries</div>
-          </div>
-          <div class="admin-table-wrap">
-            <table class="admin-table">
-              <thead><tr>
-                <th>Author</th><th>Book Title</th><th>Date</th>
-                <th style="text-align:center">Qty</th><th>Amount</th><th>Invoice #</th><th>Payment</th><th>Notes</th><th></th>
-              </tr></thead>
-              <tbody>
-                ${rows.map(r => {
-                  const isPaid = (r.payment_status || 'paid') === 'paid';
-                  return `<tr>
-                    <td class="muted">${r.author_email}</td>
-                    <td><strong>${r.book_title}</strong></td>
-                    <td class="muted" style="white-space:nowrap">${r.sale_date}</td>
-                    <td style="text-align:center">${r.quantity}</td>
-                    <td style="white-space:nowrap">₹${parseFloat(r.amount).toFixed(2)}</td>
-                    <td class="muted">${r.order_number || '—'}</td>
-                    <td>${isPaid ? '<span class="abadge abadge-paid">paid</span>' : '<span class="abadge abadge-pending">unpaid</span>'}</td>
-                    <td class="muted">${r.notes || '—'}</td>
-                    <td><button onclick="adminDeleteDirectSale(${r.id},this)"
-                      style="background:transparent;border:none;cursor:pointer;color:#f87171;font-size:1rem;" title="Delete">🗑</button></td>
-                  </tr>`;
-                }).join('')}
-              </tbody>
-            </table>
-          </div>`;
+        _dsAllSales = data.sales || [];
+        const _f = document.getElementById('ds-from'), _t = document.getElementById('ds-to');
+        if (!_f.value && !_t.value) { const mr = _monthRange(); _f.value = mr.from; _t.value = mr.to; }
+        adminRenderDirectSales();
       } catch(e) {
         listEl.innerHTML = `<div style="color:#f87171;padding:0.5rem;">${e.message}</div>`;
       }
+    }
+    function adminRenderDirectSales() {
+      const listEl = document.getElementById('ds-list-body');
+      const q    = (document.getElementById('ds-search').value || '').trim().toLowerCase();
+      const pay  = document.getElementById('ds-pay').value;
+      const from = document.getElementById('ds-from').value;
+      const to   = document.getElementById('ds-to').value;
+      const rows = _dsAllSales.filter(r => {
+        const st = (r.payment_status || 'paid');
+        if (pay === 'paid'      && st !== 'paid')      return false;
+        if (pay === 'unpaid'    && st !== 'unpaid')    return false;
+        if (pay === 'cancelled' && st !== 'cancelled') return false;
+        const d = (r.sale_date || '').slice(0, 10);
+        if (from && d && d < from) return false;
+        if (to   && d && d > to)   return false;
+        if (q && !(`${r.author_email||''} ${r.book_title||''} ${r.order_number||''} ${r.notes||''}`.toLowerCase().includes(q))) return false;
+        return true;
+      });
+      if (!_dsAllSales.length) { listEl.innerHTML = '<div style="padding:1rem;color:var(--muted);">No direct sales recorded yet.</div>'; return; }
+
+      const collected = rows.filter(r => (r.payment_status || 'paid') === 'paid').reduce((s, r) => s + parseFloat(r.amount || 0), 0);
+      const unpaid    = rows.filter(r => (r.payment_status || 'paid') === 'unpaid').reduce((s, r) => s + parseFloat(r.amount || 0), 0);
+      const lost      = rows.filter(r => (r.payment_status || 'paid') === 'cancelled').reduce((s, r) => s + parseFloat(r.amount || 0), 0);
+      const booked    = collected + unpaid;   // total sales (paid + unpaid), excl cancelled
+      listEl.innerHTML = `
+        <div class="admin-stats" style="margin-bottom:0.75rem;">
+          <div class="admin-stat-card"><div class="admin-stat-num">₹${Math.round(booked).toLocaleString('en-IN')}</div><div class="admin-stat-label">Total Sales · ${rows.length}</div></div>
+          <div class="admin-stat-card"><div class="admin-stat-num" style="color:#34d399;">₹${Math.round(collected).toLocaleString('en-IN')}</div><div class="admin-stat-label">Collected</div></div>
+          <div class="admin-stat-card"><div class="admin-stat-num" style="color:#fbbf24;">₹${Math.round(unpaid).toLocaleString('en-IN')}</div><div class="admin-stat-label">Outstanding</div></div>
+          <div class="admin-stat-card"><div class="admin-stat-num" style="color:#f87171;">₹${Math.round(lost).toLocaleString('en-IN')}</div><div class="admin-stat-label">Cancelled</div></div>
+        </div>
+        ${rows.length ? `<div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead><tr>
+              <th>Account</th><th>Book Title</th><th>Date</th>
+              <th style="text-align:center">Qty</th><th>Amount</th><th>Invoice #</th><th>Payment</th><th>Notes</th><th></th>
+            </tr></thead>
+            <tbody>
+              ${rows.map(r => {
+                const st = (r.payment_status || 'paid');
+                const cancelled = st === 'cancelled', isPaid = st === 'paid';
+                return `<tr style="${cancelled ? 'opacity:0.5;' : ''}">
+                  <td class="muted">${_stkEsc(r.author_email)}</td>
+                  <td><strong>${_stkEsc(r.book_title)}</strong></td>
+                  <td class="muted" style="white-space:nowrap">${_stkEsc(r.sale_date)}</td>
+                  <td style="text-align:center">${r.quantity}</td>
+                  <td style="white-space:nowrap">${cancelled ? `<s class="muted">₹${parseFloat(r.amount).toFixed(2)}</s>` : `₹${parseFloat(r.amount).toFixed(2)}`}</td>
+                  <td class="muted">${_stkEsc(r.order_number) || '—'}</td>
+                  <td style="white-space:nowrap">${cancelled
+                    ? `<span class="abadge" style="background:rgba(248,113,113,0.15);color:#f87171;">cancelled</span> <a onclick="adminSetDSPay(${r.id},'unpaid',this)" title="Restore (→ unpaid)" style="cursor:pointer;color:var(--muted);text-decoration:none;">↺</a>`
+                    : (isPaid
+                      ? `<span class="abadge abadge-paid">paid</span> <a onclick="adminSetDSPay(${r.id},'unpaid',this)" title="Mark unpaid" style="cursor:pointer;color:var(--muted);text-decoration:none;">↺</a>`
+                      : `<button onclick="adminSetDSPay(${r.id},'paid',this)" class="abadge abadge-pending" style="border:none;cursor:pointer;font:inherit;">⏳ unpaid · mark paid ✓</button>`)}</td>
+                  <td class="muted">${_stkEsc(r.notes) || '—'}</td>
+                  <td style="white-space:nowrap">${cancelled ? '' : `<button onclick="adminSetDSPay(${r.id},'cancelled',this)" style="background:transparent;border:none;cursor:pointer;font-size:1rem;" title="Mark cancelled">🚫</button>`}<button onclick="adminDeleteDirectSale(${r.id},this)"
+                    style="background:transparent;border:none;cursor:pointer;color:#f87171;font-size:1rem;" title="Delete">🗑</button></td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>` : '<div style="padding:1rem;color:var(--muted);">No entries match the current filters.</div>'}`;
+    }
+
+    async function adminSetDSPay(id, status, el) {
+      el.style.pointerEvents = 'none'; const prev = el.textContent; el.textContent = '…';
+      try {
+        const data = await adminPost('admin-direct-sales', { action: 'update', id, payment_status: status });
+        if (data.success) { adminLoadDirectSales(); }   // reload so totals + badge refresh
+        else { alert(data.error || 'Update failed.'); el.textContent = prev; el.style.pointerEvents = ''; }
+      } catch (e) { alert('Error: ' + e.message); el.textContent = prev; el.style.pointerEvents = ''; }
     }
 
     async function adminDeleteDirectSale(id, btn) {
@@ -11370,7 +11486,7 @@ Questions? We're always here!
       try {
         const data = await adminPost('admin-direct-sales', { action: 'delete', id });
         if (data.success) {
-          btn.closest('tr').remove();
+          adminLoadDirectSales();
         } else {
           alert(data.error || 'Delete failed.');
           btn.disabled = false; btn.textContent = '🗑';
@@ -11379,6 +11495,277 @@ Questions? We're always here!
         alert('Error: ' + e.message);
         btn.disabled = false; btn.textContent = '🗑';
       }
+    }
+
+    // ── Bulk import from BillBook (column-aware) ──
+    var _dsBulkRows = [];
+    function dsBulkLoadFile(input) {
+      const f = input.files && input.files[0];
+      if (!f) return;
+      const reader = new FileReader();
+      reader.onload = e => {
+        document.getElementById('dsbulk-csv').value = String(e.target.result || '').replace(/^﻿/, '');
+        document.getElementById('dsbulk-file-name').textContent = '📄 ' + f.name;
+        dsBulkParse();
+      };
+      reader.onerror = () => {
+        const s = document.getElementById('dsbulk-status');
+        s.style.color = '#f87171'; s.textContent = 'Could not read the file.';
+      };
+      reader.readAsText(f);
+    }
+    function _dsConvDate(d) {                       // dd/mm/yyyy or dd-mm-yyyy → yyyy-mm-dd (passes yyyy-mm-dd through)
+      d = String(d || '').trim();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
+      const m = d.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})$/);   // accept / - or . separators
+      if (!m) return '';
+      return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+    }
+    // Find a column index by trying several header aliases
+    function _dsCol(header, aliases) {
+      for (const a of aliases) { const i = header.indexOf(a); if (i >= 0) return i; }
+      return -1;
+    }
+    // Parse a sales CSV (BillBook summary/daybook or the prepared enriched file) → row objects.
+    // Returns null if no usable header is found.
+    function _dsParseOrderCsv(csv, creator) {
+      const lines = String(csv || '').replace(/^﻿/, '').split(/\r?\n/);
+      const hi = lines.findIndex(l => /invoice|sr no/i.test(l) && /amount/i.test(l));
+      if (hi < 0) return null;
+      const header = ssParseLine(lines[hi]).map(h => h.trim().toLowerCase());
+      const ci = {
+        invoice: _dsCol(header, ['invoice','invoice no','invoice no.','sr no.','order','order number']),
+        date:    _dsCol(header, ['date','invoice date','sale date']),
+        cust:    _dsCol(header, ['customer','contact name','name']),
+        amount:  _dsCol(header, ['amount','total amount']),
+        status:  _dsCol(header, ['status','invoice status']),
+        money:   _dsCol(header, ['money in']),
+        qty:     _dsCol(header, ['qty','quantity']),
+        title:   _dsCol(header, ['booktitle','book title','title']),
+        notes:   _dsCol(header, ['notes']),
+        type:    _dsCol(header, ['transaction type']),
+        by:      _dsCol(header, ['created by'])
+      };
+      if (ci.amount < 0) return null;
+      const rows = [];
+      for (let i = hi + 1; i < lines.length; i++) {
+        if (!lines[i].trim()) continue;
+        const c = ssParseLine(lines[i]);
+        if (ci.type >= 0 && (c[ci.type] || '').trim().toLowerCase() !== 'sales invoice') continue;
+        if (creator && ci.by >= 0 && (c[ci.by] || '').trim().toLowerCase() !== creator) continue;
+        const amount = parseFloat(c[ci.amount] || '0') || 0;
+        if (!amount) continue;
+        let status = 'paid';
+        if (ci.status >= 0) status = /unpaid|pending|credit/i.test(c[ci.status] || '') ? 'unpaid' : 'paid';
+        else if (ci.money >= 0) status = (parseFloat(c[ci.money] || '0') || 0) > 0 ? 'paid' : 'unpaid';
+        rows.push({
+          rawDate:  ci.date >= 0 ? (c[ci.date] || '').trim() : '',
+          date:     ci.date >= 0 ? _dsConvDate(c[ci.date]) : '',
+          customer: ci.cust >= 0 ? (c[ci.cust] || '').trim() : '',
+          invoice:  ci.invoice >= 0 ? (c[ci.invoice] || '').trim() : '',
+          amount, status,
+          qty:    ci.qty   >= 0 ? (parseInt(c[ci.qty]) || 1) : 1,
+          title:  ci.title >= 0 ? (c[ci.title] || '').trim() : '',
+          notes:  ci.notes >= 0 ? (c[ci.notes] || '').trim() : ''
+        });
+      }
+      return rows;
+    }
+
+    // Dedup against already-imported invoices, then render the preview table.
+    async function _dsBulkFinalize(rows, statusEl, prev) {
+      const existing = new Set();
+      try {
+        const d = await adminPost('admin-direct-sales', { action: 'list' });
+        if (d.success) (d.sales || []).forEach(s => { if (s.order_number) existing.add(String(s.order_number).trim().toLowerCase()); });
+      } catch (e) {}
+      rows.forEach(r => r.dup = r.invoice && existing.has(r.invoice.toLowerCase()));
+      _dsBulkRows = rows;
+
+      const newCount = rows.filter(r => !r.dup).length;
+      statusEl.style.color = 'var(--muted)';
+      statusEl.textContent = `${rows.length} invoices · ${newCount} new · ${rows.length - newCount} already imported`;
+      const hasTitle = rows.some(r => r.title);
+      prev.innerHTML = `
+        <div class="admin-table-wrap"><table class="admin-table">
+          <thead><tr>
+            <th><input type="checkbox" id="dsbulk-all" checked onchange="document.querySelectorAll('.dsbulk-cb').forEach(x=>{if(!x.disabled)x.checked=this.checked})"></th>
+            <th>Date</th><th>Invoice #</th><th>Customer</th>${hasTitle ? '<th>Book(s)</th><th style="text-align:center">Qty</th>' : ''}<th>Amount</th><th>Payment</th><th>Status</th>
+          </tr></thead>
+          <tbody>${rows.map((r, idx) => `<tr style="${r.dup ? 'opacity:0.45' : ''}">
+            <td><input type="checkbox" class="dsbulk-cb" data-idx="${idx}" ${r.dup ? 'disabled' : 'checked'}></td>
+            <td class="muted" style="white-space:nowrap">${_stkEsc(r.rawDate)}${(r.rawDate && !r.date) ? ' ⚠️' : ''}</td>
+            <td>${_stkEsc(r.invoice) || '—'}</td>
+            <td><strong>${_stkEsc(r.customer) || '—'}</strong></td>
+            ${hasTitle ? `<td>${_stkEsc(r.title) || '—'}</td><td style="text-align:center">${r.qty}</td>` : ''}
+            <td style="white-space:nowrap">₹${r.amount.toFixed(2)}</td>
+            <td>${r.status === 'paid' ? '<span class="abadge abadge-paid">paid</span>' : '<span class="abadge abadge-pending">unpaid</span>'}</td>
+            <td class="muted">${r.dup ? 'already imported' : (r.rawDate && !r.date ? 'bad date — skipped' : 'new')}</td>
+          </tr>`).join('')}</tbody>
+        </table></div>
+        <div style="margin-top:0.7rem;display:flex;gap:0.8rem;align-items:center;flex-wrap:wrap;">
+          <button class="tag-sync-btn" onclick="dsBulkImport()">⬆️ Import selected</button>
+          <span id="dsbulk-import-status" style="font-size:0.82rem;"></span>
+        </div>`;
+    }
+
+    async function dsBulkParse() {
+      const csv      = document.getElementById('dsbulk-csv').value || '';
+      const creator  = (document.getElementById('dsbulk-creator').value || '').trim().toLowerCase();
+      const statusEl = document.getElementById('dsbulk-status');
+      const prev     = document.getElementById('dsbulk-preview');
+      statusEl.style.color = '#f87171';
+      if (!csv.trim()) { statusEl.textContent = 'Upload or paste the CSV first.'; return; }
+      const rows = _dsParseOrderCsv(csv, creator);
+      if (rows === null) { statusEl.textContent = 'Could not read the CSV (need an Invoice and an Amount column).'; return; }
+      if (!rows.length) { statusEl.textContent = 'No usable rows found.'; prev.innerHTML = ''; return; }
+      await _dsBulkFinalize(rows, statusEl, prev);
+    }
+
+    // ── Folder import: summary CSV + invoice PDFs → titles auto-parsed in-browser ──
+    var _pdfjsReady = null;
+    function _loadPdfjs() {
+      if (_pdfjsReady) return _pdfjsReady;
+      _pdfjsReady = new Promise((res, rej) => {
+        const s = document.createElement('script');
+        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+        s.onload = () => {
+          try { window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; } catch (e) {}
+          res(window.pdfjsLib);
+        };
+        s.onerror = () => rej(new Error('Could not load pdf.js (check internet).'));
+        document.head.appendChild(s);
+      });
+      return _pdfjsReady;
+    }
+    function _dsCleanTitle(t) {
+      return String(t || '').replace(/\(\s*\d*\s*%?\s*\)?/g, '').replace(/\s+/g, ' ').trim().replace(/^[\-,.;]+|[\-,.;]+$/g, '').trim();
+    }
+    // Coordinate-based item-title extraction: read each text fragment's x/y, keep only
+    // the Items column (so price/HSN columns can't leak in), group rows, number = new item.
+    async function _extractTitles(file) {
+      const pdfjsLib = await _loadPdfjs();
+      const buf = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(buf) }).promise;
+      const titles = [];
+      for (let p = 1; p <= pdf.numPages; p++) {
+        const page = await pdf.getPage(p);
+        const tc = await page.getTextContent();
+        const its = tc.items.filter(i => i.str && i.str.trim())
+          .map(i => ({ s: i.str, x: i.transform[4], y: i.transform[5] }))
+          .sort((a, b) => (b.y - a.y) || (a.x - b.x));
+        if (!its.length) continue;
+        const rows = []; let cur = null;
+        for (const it of its) {
+          if (!cur || Math.abs(cur.y - it.y) > 4) { cur = { y: it.y, cells: [] }; rows.push(cur); }
+          cur.cells.push(it);
+        }
+        rows.forEach(r => r.cells.sort((a, b) => a.x - b.x));
+        const hIdx = rows.findIndex(r => { const t = r.cells.map(c => c.s).join(' '); return /Items/i.test(t) && /(HSN|Qty)/i.test(t); });
+        if (hIdx < 0) continue;
+        const header = rows[hIdx].cells;
+        const itemsCell = header.find(c => /Items/i.test(c.s));
+        if (!itemsCell) continue;
+        const itemsXstart = itemsCell.x - 2;
+        const right = header.filter(c => c.x > itemsCell.x + 1).sort((a, b) => a.x - b.x);
+        const itemsXend = right.length ? right[0].x - 2 : Infinity;
+        let endIdx = rows.findIndex((r, i) => i > hIdx && /SUBTOTAL/i.test(r.cells.map(c => c.s).join(' ')));
+        if (endIdx < 0) endIdx = rows.length;
+        for (let i = hIdx + 1; i < endIdx; i++) {
+          const cells = rows[i].cells;
+          const hasNo = cells.some(c => c.x < itemsXstart && /^\d+$/.test(c.s.trim()));
+          let title = _dsCleanTitle(cells.filter(c => c.x >= itemsXstart && c.x < itemsXend).map(c => c.s).join(' '));
+          if (!title) { if (hasNo) titles.push(''); continue; }
+          if (hasNo) { titles.push(title); }
+          else {
+            const m = title.match(/^(\d+)\s+(.+)/);   // No column merged into Items cell
+            if (m) titles.push(_dsCleanTitle(m[2]));
+            else if (titles.length) titles[titles.length - 1] = _dsCleanTitle(titles[titles.length - 1] + ' ' + title);
+            else titles.push(title);
+          }
+        }
+      }
+      return titles.filter(Boolean);
+    }
+
+    async function dsBulkLoadFolder(input) {
+      const files = [...(input.files || [])];
+      const statusEl = document.getElementById('dsbulk-status');
+      const prev = document.getElementById('dsbulk-preview');
+      statusEl.style.color = '#f87171';
+      if (!files.length) { statusEl.textContent = 'No folder selected.'; return; }
+      const salesperson = ((files[0].webkitRelativePath || files[0].name).split('/')[0] || 'Sales').trim();
+      const csvs = files.filter(f => /\.csv$/i.test(f.name));
+      const pdfs = files.filter(f => /\.pdf$/i.test(f.name));
+      if (!csvs.length) { statusEl.textContent = 'No sales-summary CSV found in that folder.'; return; }
+      document.getElementById('dsbulk-file-name').textContent = `📁 ${salesperson} — ${csvs.length} CSV, ${pdfs.length} PDF`;
+
+      // Pick the BillBook summary CSV (prefer one that also has customer/created-by columns)
+      let orderRows = null;
+      for (const c of csvs) {
+        const t = await c.text();
+        const r = _dsParseOrderCsv(t, '');
+        if (r && r.length) { orderRows = r; document.getElementById('dsbulk-csv').value = t.replace(/^﻿/, ''); if (/contact name|created by|transaction type/i.test(t)) break; }
+      }
+      if (!orderRows || !orderRows.length) { statusEl.textContent = 'No usable summary CSV (need Invoice + Amount columns).'; return; }
+
+      statusEl.style.color = 'var(--muted)';
+      const titlesByInv = {};
+      let done = 0, failed = 0;
+      for (const pf of pdfs) {
+        const inv = ((pf.name.match(/YFB\d+/i) || [])[0] || '').toUpperCase();
+        statusEl.textContent = `Parsing ${salesperson} PDFs… ${++done}/${pdfs.length}`;
+        if (!inv) { failed++; continue; }
+        try { titlesByInv[inv] = await _extractTitles(pf); }
+        catch (e) { failed++; }
+      }
+
+      for (const r of orderRows) {
+        const ts = titlesByInv[(r.invoice || '').toUpperCase()] || [];
+        if (ts.length) {
+          r.qty   = ts.length;
+          r.title = ts.length === 1 ? ts[0] : `${ts[0]} +${ts.length - 1} more`;
+          r.notes = `Books: ${ts.join('; ')} | via ${salesperson}`;
+        } else {
+          r.title = '';
+          r.notes = `via ${salesperson}`;
+        }
+      }
+      document.getElementById('dsbulk-creator').value = salesperson;
+      await _dsBulkFinalize(orderRows, statusEl, prev);
+      const matched = orderRows.filter(r => r.title).length;
+      statusEl.textContent += pdfs.length
+        ? ` · titles matched for ${matched}/${orderRows.length}${failed ? ` · ${failed} PDF(s) unread` : ''}`
+        : ` · no PDFs in folder (order-level only)`;
+    }
+    async function dsBulkImport() {
+      const email = (document.getElementById('dsbulk-email').value || '').trim();
+      const st    = document.getElementById('dsbulk-import-status');
+      st.style.color = '#f87171';
+      if (!email) { st.textContent = 'Enter the author / account email first.'; return; }
+      const idxs = [...document.querySelectorAll('.dsbulk-cb')].filter(x => x.checked && !x.disabled).map(x => parseInt(x.dataset.idx));
+      if (!idxs.length) { st.textContent = 'Nothing selected to import.'; return; }
+
+      let ok = 0, fail = 0;
+      for (let n = 0; n < idxs.length; n++) {
+        const r = _dsBulkRows[idxs[n]];
+        st.style.color = 'var(--muted)'; st.textContent = `Importing ${n + 1}/${idxs.length}…`;
+        if (r.rawDate && !r.date) { fail++; continue; }      // unparseable date
+        try {
+          const d = await adminPost('admin-direct-sales', {
+            action: 'add', author_email: email,
+            book_title: r.title || r.customer || ('Order ' + r.invoice),
+            quantity:   r.qty || 1,
+            amount: r.amount, sale_date: r.date, order_number: r.invoice || null,
+            payment_status: r.status,
+            notes: r.notes || (r.customer ? `${r.customer} — offline sale` : 'Offline sale')
+          });
+          if (d.success) ok++; else fail++;
+        } catch (e) { fail++; }
+      }
+      st.style.color = fail ? '#f59e0b' : '#34d399';
+      st.textContent = `✓ Imported ${ok}${fail ? ` · ${fail} failed/skipped` : ''}. Refreshing list…`;
+      adminLoadDirectSales();
     }
 
     // ── Submissions ──
@@ -11899,26 +12286,44 @@ Questions? We're always here!
       const s = status || _adminOrdersFilter || 'any';
       _adminOrdersIsCustomer = s === 'member' || s === 'author';
       const apiStatus = _adminOrdersIsCustomer ? 'any' : s;
-      const params = { status: apiStatus, limit: 50 };
+      const params = { status: apiStatus, limit: 250 };   // match Total Sales window so figures reconcile
       if (_adminOrdersIsCustomer) params.customer_type = s;
       try {
         const data = await adminPost('admin-orders', params);
         if (!data.success) { adminError(body, data.error); return; }
         _allOrders = data.orders || [];
-        const total = _allOrders.reduce((sum,o)=>sum+parseFloat(o.total_price||0),0);
-        const paid  = _allOrders.filter(o=>o.financial_status==='paid').length;
-        stats.innerHTML = `
-          <div class="admin-stat-card"><div class="admin-stat-num">${_allOrders.length}</div><div class="admin-stat-label">Orders</div></div>
-          <div class="admin-stat-card"><div class="admin-stat-num">₹${Math.round(total).toLocaleString('en-IN')}</div><div class="admin-stat-label">Total Value</div></div>
-          <div class="admin-stat-card"><div class="admin-stat-num">${paid}</div><div class="admin-stat-label">Paid</div></div>`;
         filterEl.style.display = _allOrders.length ? 'flex' : 'none';
         filterEl.querySelectorAll('input,select').forEach(el => el.value = '');
-        adminApplyOrderFilters();
+        const mr = _monthRange();                          // default view = current month
+        const _df = document.getElementById('aof-date-from'), _dt = document.getElementById('aof-date-to');
+        if (_df) _df.value = mr.from;
+        if (_dt) _dt.value = mr.to;
+        adminApplyOrderFilters();                          // computes stats + table over the month set
       } catch(e) { filterEl.style.display='none'; adminError(body, e.message); }
+    }
+    function _monthRange() {                              // 1st of current month → today (yyyy-mm-dd)
+      const n = new Date(); const p = x => String(x).padStart(2, '0');
+      return { from: `${n.getFullYear()}-${p(n.getMonth()+1)}-01`, to: `${n.getFullYear()}-${p(n.getMonth()+1)}-${p(n.getDate())}` };
+    }
+    function _adminOrdersStats(list) {
+      const stats = document.getElementById('admin-orders-stats');
+      if (!stats) return;
+      const netOf = o => o.cancelled_at ? 0 : parseFloat(o.current_total_price ?? o.total_price ?? 0);
+      const booked      = list.reduce((s,o)=>s+netOf(o),0);   // total sales (paid+unpaid), net, excl cancelled
+      const collected   = list.reduce((s,o)=>s+((!o.cancelled_at && ['paid','partially_refunded'].includes(o.financial_status)) ? netOf(o) : 0),0);
+      const outstanding = list.reduce((s,o)=>s+((!o.cancelled_at && ['pending','authorized','partially_paid'].includes(o.financial_status)) ? netOf(o) : 0),0);
+      const returned    = list.reduce((s,o)=>s+(parseFloat(o.total_price||0)-netOf(o)),0);
+      stats.innerHTML = `
+        <div class="admin-stat-card"><div class="admin-stat-num">₹${Math.round(booked).toLocaleString('en-IN')}</div><div class="admin-stat-label">Total Sales · ${list.length}</div></div>
+        <div class="admin-stat-card"><div class="admin-stat-num" style="color:#34d399">₹${Math.round(collected).toLocaleString('en-IN')}</div><div class="admin-stat-label">Collected</div></div>
+        <div class="admin-stat-card"><div class="admin-stat-num" style="color:#fbbf24">₹${Math.round(outstanding).toLocaleString('en-IN')}</div><div class="admin-stat-label">Outstanding</div></div>
+        <div class="admin-stat-card"><div class="admin-stat-num" style="color:#f87171">₹${Math.round(returned).toLocaleString('en-IN')}</div><div class="admin-stat-label">Refunded / Cancelled</div></div>`;
     }
     function adminApplyOrderFilters() {
       const body = document.getElementById('admin-orders-body');
-      _renderAdminOrdersTable(_filterOrders(_allOrders, 'aof-'), body, !_adminOrdersIsCustomer);
+      const filtered = _filterOrders(_allOrders, 'aof-');
+      _adminOrdersStats(filtered);                         // stats reflect the active filters (incl. date range)
+      _renderAdminOrdersTable(filtered, body, !_adminOrdersIsCustomer);
     }
     function adminClearOrderFilters() {
       document.getElementById('admin-orders-filters').querySelectorAll('input,select').forEach(el => el.value='');
@@ -11926,9 +12331,115 @@ Questions? We're always here!
     }
     function adminFilterOrders(filter, btn) {
       _adminOrdersFilter = filter;
-      document.querySelectorAll('#admin-section-orders .admin-filter-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('#otab-online .admin-filter-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       adminLoadOrders(filter);
+    }
+
+    // ── Orders tabs: Online Orders · Direct Sales · Total Sales ──
+    function adminOrdersTab(tab, el) {
+      document.querySelectorAll('#orders-tabbar .admin-filter-btn').forEach(b => b.classList.remove('active'));
+      (el || document.querySelector(`#orders-tabbar [data-tab="${tab}"]`))?.classList.add('active');
+      ['online','direct','total'].forEach(t => {
+        const p = document.getElementById('otab-' + t);
+        if (p) p.style.display = (t === tab) ? '' : 'none';
+      });
+      if (tab === 'online')      adminLoadOrders();
+      else if (tab === 'direct') adminLoadDirectSales();
+      else if (tab === 'total')  adminLoadTotalSales();
+    }
+
+    // ── Total Sales: read-only combined view of Online + Direct sales ──
+    var _tsRows = [];
+    async function adminLoadTotalSales() {
+      const body = document.getElementById('ts-body');
+      adminLoading(body);
+      try {
+        const [ordRes, dsRes] = await Promise.all([
+          adminPost('admin-orders', { status: 'any', limit: 250 }),
+          adminPost('admin-direct-sales', { action: 'list' })
+        ]);
+        const online = (ordRes.orders || []).map(o => {
+          const cancelled = !!o.cancelled_at;
+          const gross = parseFloat(o.total_price || 0);
+          return {
+            source: 'Online',
+            date:   (o.created_at || '').slice(0, 10),
+            ref:    o.name || '',
+            who:    o.customer || o.email || '—',
+            item:   (o.items || []).map(i => `${i.title} ×${i.quantity}`).join(', '),
+            gross,
+            amount: cancelled ? 0 : parseFloat(o.current_total_price ?? o.total_price ?? 0),  // net of refunds
+            cancelled,
+            paid:   ['paid','partially_refunded'].includes(o.financial_status) && !cancelled
+          };
+        });
+        const direct = (dsRes.sales || []).map(d => {
+          const cancelled = (d.payment_status || '') === 'cancelled';
+          const gross = parseFloat(d.amount || 0);
+          return {
+            source: 'Direct',
+            date:   (d.sale_date || '').slice(0, 10),
+            ref:    d.order_number || '',
+            who:    d.author_email || '—',
+            item:   d.book_title || '',
+            gross,
+            amount: cancelled ? 0 : gross,
+            cancelled,
+            paid:   (d.payment_status || 'paid') === 'paid'
+          };
+        });
+        _tsRows = online.concat(direct).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+        const _f = document.getElementById('ts-date-from'), _t = document.getElementById('ts-date-to');
+        if (!_f.value && !_t.value) { const mr = _monthRange(); _f.value = mr.from; _t.value = mr.to; }
+        adminRenderTotalSales();
+      } catch (e) { adminError(body, e.message); }
+    }
+    function adminRenderTotalSales() {
+      const body = document.getElementById('ts-body');
+      const q    = (document.getElementById('ts-search').value || '').trim().toLowerCase();
+      const src  = document.getElementById('ts-source').value;
+      const pay  = document.getElementById('ts-payment').value;
+      const from = document.getElementById('ts-date-from').value;
+      const to   = document.getElementById('ts-date-to').value;
+      const rows = _tsRows.filter(r => {
+        if (src && r.source !== src) return false;
+        if (pay === 'paid'      && (!r.paid || r.cancelled)) return false;
+        if (pay === 'unpaid'    && (r.paid  || r.cancelled)) return false;
+        if (pay === 'cancelled' && !r.cancelled) return false;
+        if (from && r.date && r.date < from) return false;
+        if (to   && r.date && r.date > to)   return false;
+        if (q && !(`${r.ref} ${r.who} ${r.item}`.toLowerCase().includes(q))) return false;
+        return true;
+      });
+      const stats = document.getElementById('ts-stats');
+      const active = r => !r.cancelled;
+      const booked    = rows.filter(active).reduce((s, r) => s + r.amount, 0);            // total sales (paid + unpaid)
+      const onl       = rows.filter(r => r.source === 'Online' && active(r)).reduce((s, r) => s + r.amount, 0);
+      const dir       = rows.filter(r => r.source === 'Direct' && active(r)).reduce((s, r) => s + r.amount, 0);
+      const collected = rows.filter(r => r.paid && active(r)).reduce((s, r) => s + r.amount, 0);
+      const unpaid    = rows.filter(r => !r.paid && active(r)).reduce((s, r) => s + r.amount, 0);
+      const lost      = rows.reduce((s, r) => s + (r.gross - r.amount), 0);               // refunded + cancelled
+      stats.innerHTML = `
+        <div class="admin-stat-card"><div class="admin-stat-num">₹${Math.round(booked).toLocaleString('en-IN')}</div><div class="admin-stat-label">Total Sales · ${rows.length}</div></div>
+        <div class="admin-stat-card"><div class="admin-stat-num">₹${Math.round(onl).toLocaleString('en-IN')}</div><div class="admin-stat-label">🌐 Online</div></div>
+        <div class="admin-stat-card"><div class="admin-stat-num">₹${Math.round(dir).toLocaleString('en-IN')}</div><div class="admin-stat-label">🤝 Direct</div></div>
+        <div class="admin-stat-card"><div class="admin-stat-num" style="color:#34d399">₹${Math.round(collected).toLocaleString('en-IN')}</div><div class="admin-stat-label">Collected</div></div>
+        <div class="admin-stat-card"><div class="admin-stat-num" style="color:#fbbf24">₹${Math.round(unpaid).toLocaleString('en-IN')}</div><div class="admin-stat-label">Outstanding</div></div>
+        <div class="admin-stat-card"><div class="admin-stat-num" style="color:#f87171">₹${Math.round(lost).toLocaleString('en-IN')}</div><div class="admin-stat-label">Refunded / Cancelled</div></div>`;
+      if (!rows.length) { body.innerHTML = '<p class="admin-empty">No sales match the current filters.</p>'; return; }
+      body.innerHTML = `<div class="admin-table-wrap"><table class="admin-table">
+        <thead><tr><th>Source</th><th>Date</th><th>Ref</th><th>Customer / Account</th><th>Item(s)</th><th>Amount</th><th>Payment</th></tr></thead>
+        <tbody>${rows.map(r => `<tr style="${r.cancelled ? 'opacity:0.5;' : ''}">
+          <td>${r.source === 'Online' ? '🌐 Online' : '🤝 Direct'}</td>
+          <td class="muted" style="white-space:nowrap">${_stkEsc(r.date) || '—'}</td>
+          <td>${_stkEsc(r.ref) || '—'}</td>
+          <td>${_stkEsc(r.who)}</td>
+          <td class="muted">${_stkEsc(r.item) || '—'}</td>
+          <td style="white-space:nowrap">${r.cancelled ? `<s class="muted">₹${r.gross.toLocaleString('en-IN')}</s>` : `₹${r.amount.toLocaleString('en-IN')}`}</td>
+          <td>${r.cancelled ? '<span class="abadge" style="background:rgba(248,113,113,0.15);color:#f87171;">cancelled</span>' : (r.paid ? '<span class="abadge abadge-paid">paid</span>' : '<span class="abadge abadge-pending">unpaid</span>')}</td>
+        </tr>`).join('')}</tbody>
+      </table></div>`;
     }
 
     // ── Book Requests ──

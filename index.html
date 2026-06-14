@@ -13202,13 +13202,15 @@ Questions? We're always here!
     // Three isolated cart buckets — guest / member / author — so they never bleed.
     function _cartKey() {
       if (document.body.classList.contains('author-mode')) return 'yfb_author_cart_id';
-      return (readerToken || isBookClubMember) ? 'yfb_member_cart_id' : 'yfb_guest_cart_id';
+      return readerEmail ? 'yfb_member_cart_id' : 'yfb_guest_cart_id';
     }
     function _saveCartId(id) {
       if (id) localStorage.setItem(_cartKey(), id);
       else localStorage.removeItem(_cartKey());
-      // Cross-device sync: persist to server when member is logged in (fire-and-forget)
-      if ((readerToken || isBookClubMember) && readerEmail) {
+      // Cross-device sync: persist to server whenever a member is logged in (by
+      // email — don't require readerToken/isBookClubMember, which may be unset
+      // this session). Fire-and-forget.
+      if (readerEmail) {
         fetch('/.netlify/functions/save-member-session', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -13294,6 +13296,9 @@ Questions? We're always here!
             _saveCartId(_cartId);
           }
         }
+        // Persist to the shared member session on every add (also covers the
+        // add-to-existing-cart path, which previously skipped the save).
+        _saveCartId(_cartId);
         if (btn) { btn.textContent = '✓ Added'; btn.classList.add('added'); }
         fetchAndRenderCart();
         refreshCartCount();
@@ -13506,7 +13511,7 @@ Questions? We're always here!
     // Re-read the shared cart_id from member_sessions so items added on the mobile
     // app (or another device) appear here too. Members only; guests skip.
     async function _syncMemberCart() {
-      if (!readerEmail || !(readerToken || isBookClubMember)) return;
+      if (!readerEmail) return;
       try {
         const r = await fetch('/.netlify/functions/get-member-session', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },

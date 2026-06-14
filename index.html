@@ -13503,8 +13503,29 @@ Questions? We're always here!
       cost { totalAmount { amount currencyCode } }
     `;
 
+    // Re-read the shared cart_id from member_sessions so items added on the mobile
+    // app (or another device) appear here too. Members only; guests skip.
+    async function _syncMemberCart() {
+      if (!readerEmail || !(readerToken || isBookClubMember)) return;
+      try {
+        const r = await fetch('/.netlify/functions/get-member-session', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: readerEmail })
+        });
+        const s = await r.json();
+        if (s && s.cart_id && s.cart_id !== _cartId) {
+          _cartId = s.cart_id;
+          localStorage.setItem('yfb_member_cart_id', _cartId);
+        } else if (s && !s.cart_id && _cartId) {
+          _cartId = null;
+          localStorage.removeItem('yfb_member_cart_id');
+        }
+      } catch(e){}
+    }
+
     async function fetchAndRenderCart() {
       const container = document.getElementById('cart-container');
+      await _syncMemberCart();
       if (!_cartId) { renderEmptyCart(container); return; }
       container.innerHTML = '<div style="color:var(--muted);padding:3rem;text-align:center;">Loading cart…</div>';
       try {

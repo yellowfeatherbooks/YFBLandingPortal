@@ -15475,6 +15475,27 @@ Questions? We're always here!
     }
 
     function _ncoShowSuccess(orderName){
+      // Empty the SHARED Shopify cart + member session so the mobile app (same
+      // cart) clears too. The native checkout completes a draft order, so the
+      // underlying cart is not auto-emptied.
+      (async function(){
+        try {
+          const sharedId = _cartId;
+          if (sharedId) {
+            const j = await sfFetch('query($id:ID!){ cart(id:$id){ lines(first:50){ edges{ node{ id } } } } }', { id: sharedId });
+            const ids = (j?.data?.cart?.lines?.edges || []).map(function(e){ return e.node.id; });
+            if (ids.length) {
+              await sfFetch('mutation($id:ID!,$ids:[ID!]!){ cartLinesRemove(cartId:$id,lineIds:$ids){ cart{ id } } }', { id: sharedId, ids: ids });
+            }
+          }
+          if (readerEmail) {
+            fetch('/.netlify/functions/save-member-session', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email: readerEmail, cart_id: null })
+            }).catch(function(){});
+          }
+        } catch(e){}
+      })();
       // Clear the cart locally
       try {
         _cartId = null;

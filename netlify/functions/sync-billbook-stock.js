@@ -95,12 +95,22 @@ async function loadAllProducts() {
 
   while (true) {
     _productPages++;
-    const qs  = `limit=250&fields=id,title,variants,status&since_id=${sinceId}`;
-    const res  = await fetch(`${BASE}?${qs}`, { headers: REST_HEADERS });
-    const data = await res.json();
-    const products = data?.products || [];
+    // published_status=any → include products NOT published to the Online Store
+    // (e.g. Headless-only) — the old default silently dropped ~half the catalog.
+    const qs = `limit=250&published_status=any&fields=id,title,variants,status&since_id=${sinceId}`;
+    let products = null;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const res = await fetch(`${BASE}?${qs}`, { headers: REST_HEADERS });
+      if (res.status === 429 || res.status >= 500) {          // rate-limited / transient
+        await new Promise(r => setTimeout(r, 1200 * (attempt + 1)));
+        continue;                                              // back off and retry this page
+      }
+      const data = await res.json();
+      products = data?.products || [];
+      break;
+    }
 
-    if (!products.length) break; // no more products
+    if (!products || !products.length) break; // genuine end of catalog
 
     for (const p of products) {
       _productCache[normalize(p.title)]           = p;
@@ -109,7 +119,7 @@ async function loadAllProducts() {
 
     sinceId = products[products.length - 1].id; // advance cursor to last ID on this page
 
-    if (products.length < 250 || _productPages >= 25) break; // last page or safety cap
+    if (products.length < 250 || _productPages >= 50) break; // last page or safety cap
   }
   return _productCache;
 }
@@ -228,13 +238,13 @@ exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: cors, body: '' };
   if (event.httpMethod !== 'POST')    return json({ error: 'Method Not Allowed' }, 405);
 
-  // Reset caches on every request so preview always reflects current Shopify state.
-  // Netlify may reuse warm function instances, causing stale cached data after a sync.
-  _productCache   = null;
-  _inventoryCache = null;
-
   try {
-    const { adminEmail, adminKey, action, rows } = JSON.parse(event.body || '{}');
+    const { adminEmail, adminKey, action, rows, refreshCache } = JSON.parse(event.body || '{}');
+
+    // Reload the Shopify catalog only when the client asks (first batch of a run).
+    // Previously every 50-row batch reset + re-downloaded ~1230 products, which
+    // hammered the REST API into 429s and left a partial cache (false "not found").
+    if (refreshCache) { _productCache = null; _inventoryCache = null; }
 
     if (!adminEmail || !adminKey || !await verifyAdmin(adminEmail, adminKey))
       return json({ error: 'Unauthorized' }, 401);

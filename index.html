@@ -10431,10 +10431,11 @@ Questions? We're always here!
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
             body:    JSON.stringify({
-              adminEmail: _adminSession.email,
-              adminKey:   _adminSession.adminKey,
-              action:     'preview',
-              rows:       batch
+              adminEmail:   _adminSession.email,
+              adminKey:     _adminSession.adminKey,
+              action:       'preview',
+              rows:         batch,
+              refreshCache: i === 0
             })
           });
           const data = await res.json();
@@ -10517,9 +10518,10 @@ Questions? We're always here!
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
             body:    JSON.stringify({
-              adminEmail: _adminSession.email,
-              adminKey:   _adminSession.adminKey,
-              action:     'sync',
+              adminEmail:   _adminSession.email,
+              adminKey:     _adminSession.adminKey,
+              action:       'sync',
+              refreshCache: i === 0,
               rows:       batch.map(r => ({
                 name:         r.name,
                 sellingPrice: r.sellingPrice,

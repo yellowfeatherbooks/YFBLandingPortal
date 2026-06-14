@@ -17,6 +17,7 @@ exports.handler = async (event) => {
 
   try {
     const { email, cart_id, wishlist } = JSON.parse(event.body || '{}');
+    console.log('[ms] SAVE email=', email, 'cart_id=', cart_id, 'ua=', (event.headers['user-agent']||'').slice(0,40));
     if (!email) return {
       statusCode: 400,
       headers: { ...cors, 'Content-Type': 'application/json' },

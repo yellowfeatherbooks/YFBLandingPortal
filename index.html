@@ -13513,12 +13513,12 @@ Questions? We're always here!
           body: JSON.stringify({ email: readerEmail })
         });
         const s = await r.json();
+        // Only ADOPT a newer shared cart. Never clear on a null read — a
+        // fire-and-forget save may not have landed yet, and clearing would
+        // wipe a cart that was just added on this device.
         if (s && s.cart_id && s.cart_id !== _cartId) {
           _cartId = s.cart_id;
           localStorage.setItem('yfb_member_cart_id', _cartId);
-        } else if (s && !s.cart_id && _cartId) {
-          _cartId = null;
-          localStorage.removeItem('yfb_member_cart_id');
         }
       } catch(e){}
     }

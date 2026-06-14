@@ -71,6 +71,7 @@ function fixEncoding(str) {
 function normalize(str) {
   return fixEncoding(str || '')
     .toLowerCase()
+    .replace(/[ ​‌‍﻿]/g, ' ')  // nbsp + zero-width chars (\s doesn't match these)
     .replace(/[''"".,\-–—:;!?()\[\]]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();

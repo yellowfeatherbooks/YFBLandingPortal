@@ -5650,6 +5650,9 @@
       <button class="admin-nav-item" data-section="stock-sync" onclick="adminNav('stock-sync',this)">
         <span class="admin-nav-icon">🔄</span> Stock Sync
       </button>
+      <button class="admin-nav-item" data-section="stock-summary" onclick="adminNav('stock-summary',this)">
+        <span class="admin-nav-icon">📚</span> Stock Summary
+      </button>
       <button class="admin-nav-item" data-section="wa-campaign" onclick="adminNav('wa-campaign',this)">
         <span class="admin-nav-icon">📣</span> WA Campaign
       </button>
@@ -6544,7 +6547,34 @@
         <div id="admin-sales-team-body"></div>
       </div><!-- /admin-section-sales-team -->
 
+      <!-- ── Stock Summary ── -->
+      <div id="admin-section-stock-summary" class="admin-section">
+        <div class="admin-section-header"><h2>📚 Stock Summary</h2></div>
+        <div id="stk-stats" style="display:flex;gap:0.6rem;flex-wrap:wrap;margin-bottom:0.9rem;"></div>
+        <div style="display:flex;gap:0.6rem;align-items:center;flex-wrap:wrap;margin-bottom:0.9rem;">
+          <input id="stk-search" type="text" placeholder="🔍 Search title or author…" oninput="stkRender()"
+            style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:0.4rem 0.8rem;color:#e5e7eb;font-size:0.85rem;width:260px;outline:none;" />
+          <select id="stk-filter" onchange="stkRender()" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:0.4rem 0.6rem;color:#e5e7eb;font-size:0.82rem;outline:none;">
+            <option value="all">All statuses</option>
+            <option value="active">Active</option>
+            <option value="draft">Draft</option>
+            <option value="oos">Out of stock</option>
+            <option value="digital">Digital (no shipping ⚠️)</option>
+          </select>
+          <button class="admin-filter-btn" onclick="adminLoadStockSummary()" style="background:rgba(212,175,55,0.1);border-color:var(--gold);color:var(--gold);">🔄 Refresh</button>
+          <button class="admin-filter-btn" id="stk-fix-digital" onclick="stkFixAllDigital()" style="background:rgba(248,113,113,0.1);border-color:#f87171;color:#f87171;">🚚 Fix digital → Physical</button>
+          <button class="admin-filter-btn" id="stk-clean-titles" onclick="stkCleanAllTitles()" style="background:rgba(96,165,250,0.1);border-color:#60a5fa;color:#60a5fa;">🧹 Clean titles</button>
+          <span id="stk-count" style="font-size:0.8rem;color:var(--muted);"></span>
+        </div>
+        <div id="stk-body"></div>
+      </div><!-- /admin-section-stock-summary -->
+
     </main>
+
+    <!-- Stock edit modal -->
+    <div class="modal-overlay" id="stk-edit-modal" style="z-index:3200;">
+      <div class="modal-card" id="stk-edit-card" style="max-width:520px;max-height:92vh;overflow-y:auto;"></div>
+    </div>
 
     <!-- Mobile tab bar -->
     <div id="admin-mobile-tabs">
@@ -10724,6 +10754,7 @@ Questions? We're always here!
       if (section === 'flash')           adminLoadFlashSale();
       if (section === 'wa-campaign')      wacInit();
       if (section === 'abandoned-carts') adminLoadAbandonedCarts();
+      if (section === 'stock-summary')   adminLoadStockSummary();
       if (section === 'intelligence')    intelInit();
       if (section === 'add-book')    { abBuildTagGrid(); abLoadMetafields(); }
       if (section === 'sales-team')  adminLoadSalesTeam();
@@ -10750,6 +10781,235 @@ Questions? We're always here!
     }
     function adminLoading(el, msg) {
       el.innerHTML = `<div style="padding:2rem;text-align:center;color:var(--muted);font-size:0.85rem;">⏳ ${msg || 'Loading…'}</div>`;
+    }
+
+    // ── Stock Summary ──────────────────────────────────────────────────────
+    var _stkProducts = [];
+    var _stkCollections = [];
+    function _stkEsc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+    // Normalize a title for clean Shopify ↔ BillBook matching: drop non-breaking /
+    // zero-width spaces, collapse runs of whitespace, trim ends.
+    function _stkCleanTitle(t){ return String(t==null?'':t).replace(/[ ​‌‍﻿]/g,' ').replace(/\s+/g,' ').trim(); }
+    function stkCleanTitleField(){
+      const el = document.getElementById('stk-e-title');
+      const cleaned = _stkCleanTitle(el.value);
+      const changed = cleaned !== el.value;
+      el.value = cleaned;
+      const hint = document.getElementById('stk-e-title-hint');
+      if (hint) hint.textContent = changed ? '✓ Removed extra/invisible spaces' : 'Already clean — no extra spaces found';
+    }
+
+    async function adminLoadStockSummary() {
+      const body = document.getElementById('stk-body');
+      adminLoading(body, 'Loading catalog…');
+      try {
+        const data = await adminPost('admin-products', { action: 'list' });
+        if (!data.success) { body.innerHTML = '<div style="padding:2rem;color:#f87171;">' + _stkEsc(data.error || 'Failed to load') + '</div>'; return; }
+        _stkProducts    = data.products || [];
+        _stkCollections = data.collections || [];
+        stkRender();
+      } catch(e) {
+        body.innerHTML = '<div style="padding:2rem;color:#f87171;">' + _stkEsc(e.message) + '</div>';
+      }
+    }
+
+    function stkStatFilter(f){ const sel = document.getElementById('stk-filter'); if (sel) sel.value = f; stkRender(); }
+    function stkRenderStats() {
+      const el = document.getElementById('stk-stats');
+      if (!el) return;
+      const total   = _stkProducts.length;
+      const active  = _stkProducts.filter(function(p){ return p.status === 'ACTIVE'; }).length;
+      const draft   = _stkProducts.filter(function(p){ return p.status === 'DRAFT'; }).length;
+      const oos     = _stkProducts.filter(function(p){ return (p.stock||0) <= 0; }).length;
+      const digital = _stkProducts.filter(function(p){ return !p.requiresShipping; }).length;
+      function card(label, val, color, filter){
+        return '<button onclick="stkStatFilter(\'' + filter + '\')" style="flex:1;min-width:108px;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px;padding:0.6rem 0.9rem;text-align:left;cursor:pointer;">' +
+          '<div style="font-size:1.45rem;font-weight:700;color:' + color + ';">' + val + '</div>' +
+          '<div style="font-size:0.72rem;color:var(--muted);">' + label + '</div></button>';
+      }
+      el.innerHTML = card('Total Books', total, 'var(--gold)', 'all') +
+                     card('Active', active, '#4ade80', 'active') +
+                     card('Draft', draft, '#fbbf24', 'draft') +
+                     card('Out of Stock', oos, '#f87171', 'oos') +
+                     card('Digital ⚠️', digital, '#f87171', 'digital');
+    }
+
+    function stkRender() {
+      stkRenderStats();
+      const body = document.getElementById('stk-body');
+      const q = (document.getElementById('stk-search').value || '').toLowerCase().trim();
+      const filter = document.getElementById('stk-filter').value;
+      const rows = _stkProducts.filter(function(p){
+        if (q && !((p.title||'').toLowerCase().includes(q) || (p.author||'').toLowerCase().includes(q))) return false;
+        if (filter === 'active' && p.status !== 'ACTIVE') return false;
+        if (filter === 'draft'  && p.status !== 'DRAFT')  return false;
+        if (filter === 'oos'    && (p.stock||0) > 0)      return false;
+        if (filter === 'digital' && p.requiresShipping)   return false;
+        return true;
+      });
+      document.getElementById('stk-count').textContent = rows.length + ' of ' + _stkProducts.length + ' books';
+      if (!rows.length) { body.innerHTML = '<div style="padding:2rem;text-align:center;color:var(--muted);">No matching books.</div>'; return; }
+      const h = ['<div class="admin-table-wrap"><table class="admin-table"><thead><tr>',
+        '<th>Book</th><th>Author</th><th>Stock</th><th>MRP</th><th>Sale</th><th>Type</th><th>Status</th><th>Collections</th><th></th>',
+        '</tr></thead><tbody>'];
+      rows.forEach(function(p){
+        const idx = _stkProducts.indexOf(p);
+        const sb  = (p.stock||0) <= 0 ? 'no-stock' : ((p.stock||0) <= 3 ? 'low-stock' : 'in-stock');
+        const stCls = p.status === 'ACTIVE' ? 'abadge-active' : (p.status === 'DRAFT' ? 'abadge-pending' : 'abadge-rejected');
+        const cols = (p.collections||[]).map(function(c){ return '<span style="display:inline-block;background:rgba(212,175,55,0.12);color:var(--gold);border-radius:4px;padding:0.05rem 0.4rem;font-size:0.68rem;margin:0.1rem;">' + _stkEsc(c.title) + '</span>'; }).join('') || '<span class="muted">—</span>';
+        h.push('<tr>',
+          '<td><div style="display:flex;align-items:center;gap:0.5rem;min-width:200px;">' + (p.image ? '<img src="' + _stkEsc(p.image) + '" style="width:30px;height:42px;object-fit:cover;border-radius:3px;flex-shrink:0;" />' : '') + '<span>' + _stkEsc(p.title) + '</span></div></td>',
+          '<td>' + _stkEsc(p.author || '—') + '</td>',
+          '<td><span class="stock-badge ' + sb + '">' + (p.stock||0) + '</span></td>',
+          '<td class="muted">' + (p.compareAtPrice ? '₹' + p.compareAtPrice : '—') + '</td>',
+          '<td>' + (p.price ? '₹' + p.price : '—') + '</td>',
+          '<td>' + (p.requiresShipping ? '<span class="muted">Physical</span>' : '<span class="stock-badge no-stock">Digital ⚠️</span>') + '</td>',
+          '<td><span class="abadge ' + stCls + '">' + _stkEsc(p.status || '—') + '</span></td>',
+          '<td>' + cols + '</td>',
+          '<td><button class="admin-filter-btn" style="padding:0.25rem 0.6rem;white-space:nowrap;" onclick="openStockEdit(' + idx + ')">✏️ Edit</button></td>',
+          '</tr>');
+      });
+      h.push('</tbody></table></div>');
+      body.innerHTML = h.join('');
+    }
+
+    // Bulk: set requires_shipping = true on every product currently marked Digital
+    async function stkFixAllDigital() {
+      const digital = _stkProducts.filter(function(p){ return !p.requiresShipping; });
+      if (!digital.length) { alert('No digital products — all are physical. ✓'); return; }
+      if (!confirm('Mark ' + digital.length + ' digital product(s) as Physical (so shipping is charged)?')) return;
+      const btn = document.getElementById('stk-fix-digital');
+      const orig = btn.textContent; btn.disabled = true;
+      let done = 0, failed = 0;
+      for (const p of digital) {
+        btn.textContent = 'Fixing ' + (done + failed + 1) + '/' + digital.length + '…';
+        try {
+          const res = await adminPost('admin-products', { action: 'update', productId: p.id, variantId: p.variantId, requiresShipping: true });
+          if (res.success) { p.requiresShipping = true; done++; } else { failed++; }
+        } catch(e) { failed++; }
+      }
+      btn.textContent = orig; btn.disabled = false;
+      stkRender();
+      alert('Done. ' + done + ' set to Physical' + (failed ? ', ' + failed + ' failed' : '') + '.');
+    }
+
+    // Bulk: strip extra/invisible spaces from titles so BillBook ↔ Shopify match
+    async function stkCleanAllTitles() {
+      const dirty = _stkProducts.filter(function(p){ return _stkCleanTitle(p.title) !== p.title; });
+      if (!dirty.length) { alert('All titles are already clean — no extra/invisible spaces found.'); return; }
+      if (!confirm('Found ' + dirty.length + ' title(s) with extra/invisible spaces. Clean and save them to Shopify?')) return;
+      const btn = document.getElementById('stk-clean-titles');
+      const orig = btn.textContent; btn.disabled = true;
+      let done = 0, failed = 0;
+      for (const p of dirty) {
+        btn.textContent = 'Cleaning ' + (done + failed + 1) + '/' + dirty.length + '…';
+        const cleaned = _stkCleanTitle(p.title);
+        try {
+          const res = await adminPost('admin-products', { action: 'update', productId: p.id, title: cleaned });
+          if (res.success) { p.title = cleaned; done++; } else { failed++; }
+        } catch(e) { failed++; }
+      }
+      btn.textContent = orig; btn.disabled = false;
+      stkRender();
+      alert('Done. ' + done + ' title(s) cleaned' + (failed ? ', ' + failed + ' failed' : '') + '.');
+    }
+
+    function openStockEdit(idx) {
+      const p = _stkProducts[idx];
+      if (!p) return;
+      const inCol = {}; (p.collections||[]).forEach(function(c){ inCol[c.id] = true; });
+      const colChecks = _stkCollections.map(function(c){
+        const dis = c.isSmart ? ' disabled' : '';
+        const tag = c.isSmart ? ' <span class="muted" style="font-size:0.68rem;">(auto · rule-based)</span>' : '';
+        return '<label style="display:flex;align-items:center;gap:0.4rem;font-size:0.8rem;padding:0.15rem 0;' + (c.isSmart ? 'opacity:0.55;' : '') + '"><input type="checkbox" class="stk-col-chk" data-smart="' + (c.isSmart ? '1' : '0') + '" value="' + _stkEsc(c.id) + '" ' + (inCol[c.id] ? 'checked' : '') + dis + ' /> ' + _stkEsc(c.title) + tag + '</label>';
+      }).join('');
+      const card = document.getElementById('stk-edit-card');
+      card.dataset.idx = idx;
+      card.innerHTML =
+        '<h2 style="font-size:1.05rem;margin-bottom:0.2rem;">Edit — ' + _stkEsc(p.title) + '</h2>' +
+        '<p style="margin-bottom:1rem;">' + _stkEsc(p.author || '') + '</p>' +
+        '<div style="margin-bottom:0.8rem;"><label class="sf-label">Title</label><div style="display:flex;gap:0.4rem;"><input id="stk-e-title" class="sf-input" style="flex:1;" value="' + _stkEsc(p.title || '') + '" /><button class="admin-filter-btn" type="button" onclick="stkCleanTitleField()" title="Strip extra/invisible spaces" style="white-space:nowrap;">✨ Clean</button></div><div id="stk-e-title-hint" class="muted" style="font-size:0.7rem;margin-top:0.2rem;"></div></div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.7rem;">' +
+          '<div><label class="sf-label">Sale Price (₹)</label><input id="stk-e-price" type="number" class="sf-input" value="' + _stkEsc(p.price || '') + '" /></div>' +
+          '<div><label class="sf-label">MRP (₹)</label><input id="stk-e-mrp" type="number" class="sf-input" value="' + _stkEsc(p.compareAtPrice || '') + '" /></div>' +
+          '<div><label class="sf-label">Stock</label><input id="stk-e-stock" type="number" class="sf-input" value="' + (p.stock||0) + '" /></div>' +
+        '</div>' +
+        '<div style="margin-top:0.7rem;"><label class="sf-label">Status</label><select id="stk-e-status" class="sf-input"><option value="ACTIVE"' + (p.status==='ACTIVE'?' selected':'') + '>Active</option><option value="DRAFT"' + (p.status==='DRAFT'?' selected':'') + '>Draft</option></select></div>' +
+        '<label style="display:flex;align-items:center;gap:0.5rem;margin-top:0.8rem;font-size:0.85rem;color:var(--cream);"><input type="checkbox" id="stk-e-ship" ' + (p.requiresShipping ? 'checked' : '') + ' /> Physical product (requires shipping)</label>' +
+        '<div style="margin-top:0.8rem;"><label class="sf-label">Collections</label><div style="max-height:170px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:0.5rem 0.7rem;">' + (colChecks || '<span class="muted">No collections</span>') + '</div></div>' +
+        '<div id="stk-e-err" style="display:none;color:#f87171;font-size:0.8rem;margin-top:0.6rem;"></div>' +
+        '<div style="display:flex;gap:0.6rem;margin-top:1.1rem;">' +
+          '<button class="admin-filter-btn" style="flex:1;" onclick="closeStockEdit()">Cancel</button>' +
+          '<button class="admin-filter-btn" id="stk-e-save" style="flex:1;background:var(--gold);border-color:var(--gold);color:#1a1530;font-weight:700;" onclick="saveStockEdit()">Save</button>' +
+        '</div>';
+      document.getElementById('stk-edit-modal').classList.add('active');
+    }
+
+    function closeStockEdit() { document.getElementById('stk-edit-modal').classList.remove('active'); }
+
+    async function saveStockEdit() {
+      const card = document.getElementById('stk-edit-card');
+      const idx = parseInt(card.dataset.idx, 10);
+      const p = _stkProducts[idx];
+      if (!p) return;
+      const err = document.getElementById('stk-e-err');
+      const btn = document.getElementById('stk-e-save');
+      err.style.display = 'none';
+
+      const price  = document.getElementById('stk-e-price').value.trim();
+      const mrp    = document.getElementById('stk-e-mrp').value.trim();
+      const stock  = document.getElementById('stk-e-stock').value.trim();
+      const status = document.getElementById('stk-e-status').value;
+      const reqShip = document.getElementById('stk-e-ship').checked;
+      const titleVal = document.getElementById('stk-e-title').value;
+      const smartIds = {};
+      document.querySelectorAll('.stk-col-chk[data-smart="1"]').forEach(function(c){ smartIds[c.value] = true; });
+      const checked = {};
+      document.querySelectorAll('.stk-col-chk:checked').forEach(function(c){ checked[c.value] = true; });
+      const before = {}; (p.collections||[]).forEach(function(c){ before[c.id] = true; });
+      // Only manual collections can be added/removed — smart ones are rule-based.
+      const addCollectionIds    = Object.keys(checked).filter(function(id){ return !before[id] && !smartIds[id]; });
+      const removeCollectionIds = Object.keys(before).filter(function(id){ return !checked[id] && !smartIds[id]; });
+
+      const payload = { action: 'update', productId: p.id, variantId: p.variantId, inventoryItemId: p.inventoryItemId };
+      if (price !== '' && parseFloat(price) !== parseFloat(p.price || 0)) payload.salePrice = price;
+      const curMrp = p.compareAtPrice ? parseFloat(p.compareAtPrice) : null;
+      if (mrp === '' && curMrp !== null) payload.mrp = '';
+      else if (mrp !== '' && parseFloat(mrp) !== curMrp) payload.mrp = mrp;
+      if (stock !== '' && parseInt(stock, 10) !== (p.stock || 0)) payload.stock = stock;
+      if (status !== p.status) payload.status = status;
+      if (reqShip !== p.requiresShipping) payload.requiresShipping = reqShip;
+      if (titleVal.trim() && titleVal.trim() !== (p.title || '')) payload.title = titleVal.trim();
+      if (addCollectionIds.length)    payload.addCollectionIds = addCollectionIds;
+      if (removeCollectionIds.length) payload.removeCollectionIds = removeCollectionIds;
+
+      const nothing = !('salePrice' in payload) && !('mrp' in payload) && !('stock' in payload) &&
+                      !('status' in payload) && !('requiresShipping' in payload) && !('title' in payload) &&
+                      !addCollectionIds.length && !removeCollectionIds.length;
+      if (nothing) { closeStockEdit(); return; }
+
+      btn.textContent = 'Saving…'; btn.disabled = true;
+      try {
+        const res = await adminPost('admin-products', payload);
+        if (!res.success) {
+          err.textContent = (res.errors && res.errors.join('; ')) || res.error || 'Update failed';
+          err.style.display = 'block'; btn.textContent = 'Save'; btn.disabled = false; return;
+        }
+        if ('salePrice' in payload)   p.price          = payload.salePrice;
+        if ('mrp' in payload)         p.compareAtPrice = payload.mrp;
+        if ('stock' in payload)       p.stock          = parseInt(payload.stock, 10);
+        if ('productType' in payload) p.productType    = payload.productType;
+        if ('status' in payload)      p.status         = payload.status;
+        if ('requiresShipping' in payload) p.requiresShipping = payload.requiresShipping;
+        if ('title' in payload)       p.title          = payload.title;
+        if (addCollectionIds.length || removeCollectionIds.length) {
+          p.collections = _stkCollections.filter(function(c){ return checked[c.id]; }).map(function(c){ return { id: c.id, title: c.title, handle: c.handle }; });
+        }
+        closeStockEdit();
+        stkRender();
+      } catch(e) {
+        err.textContent = e.message; err.style.display = 'block'; btn.textContent = 'Save'; btn.disabled = false;
+      }
     }
     function adminError(el, msg) {
       el.innerHTML = `<div style="padding:2rem;text-align:center;color:#f87171;font-size:0.85rem;">⚠️ ${msg}</div>`;

@@ -13208,13 +13208,13 @@ Questions? We're always here!
       if (id) localStorage.setItem(_cartKey(), id);
       else localStorage.removeItem(_cartKey());
       // Cross-device sync: persist to server whenever a member is logged in (by
-      // email — don't require readerToken/isBookClubMember, which may be unset
-      // this session). Fire-and-forget.
-      if (readerEmail) {
+      // email). Never write null — that would wipe the cart on the other device;
+      // clearing happens by emptying the cart's lines instead. Fire-and-forget.
+      if (readerEmail && id) {
         fetch('/.netlify/functions/save-member-session', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: readerEmail, cart_id: id || null })
+          body: JSON.stringify({ email: readerEmail, cart_id: id })
         }).catch(() => {});
       }
     }
@@ -13524,6 +13524,9 @@ Questions? We're always here!
         if (s && s.cart_id && s.cart_id !== _cartId) {
           _cartId = s.cart_id;
           localStorage.setItem('yfb_member_cart_id', _cartId);
+        } else if (s && !s.cart_id && _cartId) {
+          // Shared session empty but we have a local cart → claim it (push up).
+          _saveCartId(_cartId);
         }
       } catch(e){}
     }
@@ -15514,12 +15517,8 @@ Questions? We're always here!
               await sfFetch('mutation($id:ID!,$ids:[ID!]!){ cartLinesRemove(cartId:$id,lineIds:$ids){ cart{ id } } }', { id: sharedId, ids: ids });
             }
           }
-          if (readerEmail) {
-            fetch('/.netlify/functions/save-member-session', {
-              method: 'POST', headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ email: readerEmail, cart_id: null })
-            }).catch(function(){});
-          }
+          // Note: we do NOT write cart_id:null here — emptying the shared cart's
+          // lines (above) clears it on every device without nulling the pointer.
         } catch(e){}
       })();
       // Clear the cart locally

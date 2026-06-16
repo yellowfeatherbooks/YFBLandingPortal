@@ -4140,6 +4140,7 @@
       <button onclick="closeMobileDrawer();showMobilePanel('browse',document.querySelector('[data-panel=browse]'))">📚&nbsp; Browse Genres</button>
       <div class="drawer-section-label">Discover</div>
       <button class="find-book" onclick="closeMobileDrawer();showFindABook();">✨&nbsp; AI Book Search</button>
+      <button onclick="closeMobileDrawer();openGlobalCatalog();">🌐&nbsp; Search Global Catalog</button>
       <button onclick="closeMobileDrawer();openSearch();">🔍&nbsp; Search Store</button>
       <div class="drawer-section-label">Account</div>
       <button onclick="closeMobileDrawer();openCart();">🛒&nbsp; My Cart</button>
@@ -4171,6 +4172,7 @@
       <div class="ds-section-label">Discover</div>
       <button class="ds-nav-link" onclick="closeGuestCart();closeIframePanel();closeAuthorLogin();closeBcLoginPanel();openSearch()">🔍&nbsp; Search Books</button>
       <a href="#" class="ds-nav-link highlight" onclick="event.preventDefault();closeGuestCart();closeIframePanel();closeAuthorLogin();closeBcLoginPanel();showFindABook();">✨&nbsp; AI Book Search</a>
+      <button class="ds-nav-link" onclick="closeSearch();closeFindABook();closeGuestCart();closeIframePanel();closeAuthorLogin();closeBcLoginPanel();openGlobalCatalog()">🌐&nbsp; Search Global Catalog</button>
       <div class="ds-section-label">Account</div>
       <button class="ds-nav-link" onclick="closeSearch();closeFindABook();closeIframePanel();closeAuthorLogin();closeBcLoginPanel();openCart()">🛒&nbsp; My Cart</button>
       <button class="ds-nav-link" onclick="closeSearch();closeFindABook();closeGuestCart();closeIframePanel();closeAuthorLogin();closeBcLoginPanel();(readerToken||isBookClubMember)?openOrdersPanel():openLoginModal()">🙋&nbsp; My Account</button>
@@ -5111,6 +5113,94 @@
   </div><!-- /#page-content -->
 
   <!-- ══ AI BOOK SEARCH — fixed overlay, works in any view ══ -->
+  <!-- ══ GLOBAL CATALOG SEARCH (publisher catalog RAG) ══ -->
+  <div id="gc-modal" onclick="if(event.target===this)closeGlobalCatalog()"
+       style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:6000;align-items:flex-start;justify-content:center;padding:5vh 1rem;overflow:auto;">
+    <div style="background:#FDF8F0;max-width:620px;width:100%;border-radius:16px;padding:1.4rem 1.4rem 1.6rem;box-shadow:0 20px 60px rgba(0,0,0,.3);font-family:Inter,system-ui,sans-serif;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.3rem;">
+        <h2 style="margin:0;color:#3a2a1c;font-size:1.2rem;">🌐 Search the Global Catalog</h2>
+        <button onclick="closeGlobalCatalog()" style="background:transparent;border:none;font-size:1.4rem;cursor:pointer;color:#7a6a58;line-height:1;">✕</button>
+      </div>
+      <p style="margin:.2rem 0 1rem;color:#7a6a58;font-size:.85rem;">Books from our partner publishers — not in our store yet. Find any title and request it; we'll source it for you.</p>
+      <input id="gc-email" type="email" placeholder="Your email (for the request)"
+        style="width:100%;box-sizing:border-box;padding:.6rem .8rem;border:1px solid #d9c9b0;border-radius:9px;font-size:.9rem;color:#3a2a1c;background:#fff;">
+      <div id="gc-email-hint" style="display:none;color:#c0392b;font-size:.75rem;margin-top:.3rem;">Please enter a valid email to place a request.</div>
+      <div style="display:flex;gap:.5rem;margin:.7rem 0 1rem;">
+        <input id="gc-query" type="text" placeholder="Describe the book or topic… e.g. Malayalam poetry" onkeydown="if(event.key==='Enter')gcSearch()"
+          style="flex:1;padding:.6rem .8rem;border:1px solid #d9c9b0;border-radius:9px;font-size:.9rem;color:#3a2a1c;background:#fff;">
+        <button onclick="gcSearch()" style="background:#72513C;color:#fff;border:none;border-radius:9px;padding:.6rem 1.1rem;font-size:.9rem;cursor:pointer;white-space:nowrap;">Search</button>
+      </div>
+      <div id="gc-results"></div>
+    </div>
+  </div>
+  <script>
+    function gcEsc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+    function openGlobalCatalog(){
+      const m = document.getElementById('gc-modal'); m.style.display = 'flex';
+      const e = document.getElementById('gc-email'); if (!e.value && window.readerEmail) e.value = window.readerEmail;
+      document.getElementById('gc-query').focus();
+    }
+    function closeGlobalCatalog(){ document.getElementById('gc-modal').style.display = 'none'; }
+    async function gcSearch(){
+      const q = document.getElementById('gc-query').value.trim();
+      const out = document.getElementById('gc-results');
+      if (!q){ out.innerHTML = ''; return; }
+      out.innerHTML = '<div style="padding:1rem;color:#9a8a76;font-size:.88rem;">Searching the global catalog…</div>';
+      try {
+        const r = await fetch('/.netlify/functions/search-global-catalog', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ query: q }) });
+        const d = await r.json();
+        if (d.error){ out.innerHTML = '<div style="padding:1rem;color:#c0392b;font-size:.88rem;">Search is temporarily unavailable. Please try again shortly.</div>'; return; }
+        window._gcResults = d.matches || [];
+        if (!window._gcResults.length){
+          out.innerHTML = '<div style="padding:1rem;color:#7a6a58;font-size:.88rem;">No close match in our partner catalog yet — but you can still <a href="#" onclick="gcRequestFreeform();return false;" style="color:#72513C;font-weight:600;">request this title</a> and we\'ll try to source it.</div>';
+          return;
+        }
+        out.innerHTML = window._gcResults.map((b, i) => `
+          <div style="display:flex;gap:.75rem;align-items:center;border:1px solid #eadfce;border-radius:10px;padding:.7rem .9rem;margin-bottom:.6rem;background:#fff;">
+            <div style="flex:1;min-width:0;">
+              <div style="font-weight:700;color:#3a2a1c;">${gcEsc(b.title)}</div>
+              <div style="font-size:.8rem;color:#7a6a58;">${b.author ? gcEsc(b.author) + ' · ' : ''}${b.publisher ? gcEsc(b.publisher) : ''}${b.price ? ' · ₹' + b.price : ''}</div>
+            </div>
+            ${(window._gcRequested || new Set()).has(b.title)
+              ? `<button disabled style="background:#2e7d32;color:#fff;border:none;border-radius:8px;padding:.5rem .9rem;font-size:.8rem;white-space:nowrap;">✓ Requested</button>`
+              : `<button id="gc-req-${i}" onclick="gcRequest(${i})" style="background:#72513C;color:#fff;border:none;border-radius:8px;padding:.5rem .9rem;font-size:.8rem;cursor:pointer;white-space:nowrap;">Request</button>`}
+          </div>`).join('');
+      } catch(e){
+        out.innerHTML = '<div style="padding:1rem;color:#c0392b;font-size:.88rem;">Search failed. Please try again.</div>';
+      }
+    }
+    function gcValidEmail(){
+      const email = (document.getElementById('gc-email').value || window.readerEmail || '').trim();
+      if (!email || !email.includes('@')){ document.getElementById('gc-email-hint').style.display = 'block'; document.getElementById('gc-email').focus(); return null; }
+      document.getElementById('gc-email-hint').style.display = 'none';
+      return email;
+    }
+    async function gcRequest(i){
+      const book = window._gcResults[i]; if (!book) return;
+      const email = gcValidEmail(); if (!email) return;
+      const btn = document.getElementById('gc-req-' + i); btn.disabled = true; btn.textContent = 'Requesting…';
+      try {
+        const r = await fetch('/.netlify/functions/request-book', { method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ email, book_title: book.title, author_name: book.author || '', publisher: book.publisher || '', notes: 'Requested via Global Catalog search' }) });
+        const d = await r.json();
+        if (d.success){ btn.textContent = '✓ Requested'; btn.style.background = '#2e7d32'; (window._gcRequested = window._gcRequested || new Set()).add(book.title); }
+        else { btn.disabled = false; btn.textContent = 'Request'; alert(d.error || 'Could not submit request.'); }
+      } catch(e){ btn.disabled = false; btn.textContent = 'Request'; alert('Network error. Please try again.'); }
+    }
+    async function gcRequestFreeform(){
+      const email = gcValidEmail(); if (!email) return;
+      const title = document.getElementById('gc-query').value.trim(); if (!title) return;
+      try {
+        const r = await fetch('/.netlify/functions/request-book', { method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ email, book_title: title, notes: 'Free-text request via Global Catalog search' }) });
+        const d = await r.json();
+        document.getElementById('gc-results').innerHTML = d.success
+          ? '<div style="padding:1rem;color:#2e7d32;font-size:.9rem;">✓ Request received — we\'ll try to source it and get back to you.</div>'
+          : '<div style="padding:1rem;color:#c0392b;font-size:.88rem;">Could not submit the request. Please try again.</div>';
+      } catch(e){ /* leave UI as-is */ }
+    }
+  </script>
+
   <section id="find-a-book">
     <div class="fab-panel-bar">
       <span class="fab-panel-bar-title">✨ AI Book Search</span>

@@ -40,28 +40,23 @@ exports.handler = async (event) => {
       body: JSON.stringify({ error: 'Email and book title are required' })
     };
 
-    // Save to Supabase
-    if (SUPABASE_URL && SERVICE_KEY) {
-      const sbRes = await fetch(`${SUPABASE_URL}/rest/v1/book_requests`, {
-        method:  'POST',
-        headers: {
-          'apikey':        SERVICE_KEY,
-          'Authorization': `Bearer ${SERVICE_KEY}`,
-          'Content-Type':  'application/json',
-          'Prefer':        'return=minimal'
-        },
-        body: JSON.stringify({ name, email, phone, book_title, author_name, publisher, year, notes, status: 'pending' })
-      });
-      if (!sbRes.ok) console.error('Supabase book-request insert failed:', sbRes.status, await sbRes.text());
-    }
-
-    // Notify via n8n
+    // n8n owns the write AND the notification: its "Save to Supabase" node inserts
+    // the book_requests row, and it emails the store team. We only trigger it here.
+    // (This function previously ALSO inserted directly → two rows per request.)
     if (N8N_BOOK_REQUEST_URL) {
       await fetch(N8N_BOOK_REQUEST_URL, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ name, email, phone, book_title, author_name, publisher, year, notes })
-      }).catch(e => console.error('n8n book-request notify failed:', e.message));
+      }).catch(e => console.error('n8n book-request trigger failed:', e.message));
+    } else if (SUPABASE_URL && SERVICE_KEY) {
+      // Fallback only when n8n isn't configured — so a request is never lost.
+      const sbRes = await fetch(`${SUPABASE_URL}/rest/v1/book_requests`, {
+        method:  'POST',
+        headers: { 'apikey': SERVICE_KEY, 'Authorization': `Bearer ${SERVICE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+        body:    JSON.stringify({ name, email, phone, book_title, author_name, publisher, year, notes, status: 'pending' })
+      });
+      if (!sbRes.ok) console.error('Supabase fallback insert failed:', sbRes.status, await sbRes.text());
     }
 
     return {

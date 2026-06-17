@@ -1,6 +1,8 @@
 // Admin-cancels an author's subscription.
-// Cancels at Razorpay FIRST (immediately), then marks the DB 'cancelled' — and only
-// if Razorpay confirms — so the DB and Razorpay can never drift out of sync.
+// Cancels at Razorpay FIRST (at cycle end, like the customer flow), then sets the DB
+// to 'cancelling' with access_until — and only if Razorpay confirms — so the DB and
+// Razorpay can never drift out of sync. (Becomes 'cancelled' once the paid period
+// ends, via check-subscription.)
 // POST { adminEmail, adminKey, email }
 
 const crypto       = require('crypto');
@@ -41,14 +43,15 @@ async function cancelAtRazorpay(subscriptionId) {
   if (!RZP_KEY_ID || !RZP_SECRET) return { ok: false, error: 'Razorpay keys not configured' };
   const auth = Buffer.from(`${RZP_KEY_ID}:${RZP_SECRET}`).toString('base64');
 
-  // Immediate cancel (admin force-cancel) — stops all future billing now.
+  // Cancel at end of the current paid cycle (consistent with the customer flow) —
+  // the author keeps the access they already paid for, and billing stops after.
   const res  = await fetch(`https://api.razorpay.com/v1/subscriptions/${subscriptionId}/cancel`, {
     method:  'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Basic ${auth}` },
-    body:    JSON.stringify({ cancel_at_cycle_end: 0 })
+    body:    JSON.stringify({ cancel_at_cycle_end: 1 })
   });
   const data = await res.json();
-  if (res.ok && data.id) return { ok: true };
+  if (res.ok && data.id) return { ok: true, currentEnd: data.current_end || null };
 
   // Cancel failed — maybe it's already inactive at Razorpay. Verify before deciding,
   // so we don't desync (the whole point of this fix).
@@ -82,6 +85,10 @@ exports.handler = async (event) => {
 
     // 2. Cancel at Razorpay first. Only skip if there's no subscription_id on file
     //    (nothing to cancel there) — otherwise REQUIRE Razorpay to confirm.
+    //    Default to 'cancelling' (keep paid access until cycle end); 'cancelled' only
+    //    when there's nothing active to cancel at Razorpay.
+    let newStatus   = 'cancelled';
+    let accessUntil = null;
     if (sub && sub.subscription_id) {
       const rzp = await cancelAtRazorpay(sub.subscription_id);
       if (!rzp.ok) {
@@ -89,9 +96,15 @@ exports.handler = async (event) => {
         // exact drift bug we're fixing. Surface the error so the admin can retry.
         return json({ success: false, error: `Could not cancel at Razorpay: ${rzp.error}. Subscription left unchanged to avoid billing drift.` });
       }
+      if (rzp.alreadyInactive) {
+        newStatus = 'cancelled';   // already gone at Razorpay
+      } else {
+        newStatus   = 'cancelling'; // cancels at cycle end; keep access until then
+        accessUntil = rzp.currentEnd ? new Date(rzp.currentEnd * 1000).toISOString() : null;
+      }
     }
 
-    // 3. Razorpay confirmed (or nothing to cancel) → mark the DB cancelled.
+    // 3. Razorpay confirmed (or nothing to cancel) → update the DB to match.
     const res = await fetch(
       `${AUTH_SB_URL}/rest/v1/subscriptions?email=eq.${encodeURIComponent(email)}`,
       {
@@ -101,14 +114,14 @@ exports.handler = async (event) => {
           'Authorization': `Bearer ${AUTH_SB_KEY}`,
           'Content-Type':  'application/json'
         },
-        body: JSON.stringify({ status: 'cancelled', access_until: null })
+        body: JSON.stringify({ status: newStatus, access_until: accessUntil })
       }
     );
     if (!res.ok) {
       const err = await res.text();
       return json({ success: false, error: `Razorpay cancelled but DB update failed: ${err}` });
     }
-    return json({ success: true, razorpay_cancelled: !!(sub && sub.subscription_id) });
+    return json({ success: true, status: newStatus, access_until: accessUntil });
   } catch (err) {
     return json({ success: false, error: err.message }, 500);
   }

@@ -56,14 +56,16 @@ async function cancelAtRazorpay(subscriptionId) {
   // Cancel failed — maybe it's already inactive at Razorpay. Verify before deciding,
   // so we don't desync (the whole point of this fix).
   try {
-    const g = await fetch(`https://api.razorpay.com/v1/subscriptions/${subscriptionId}`, {
+    const g  = await fetch(`https://api.razorpay.com/v1/subscriptions/${subscriptionId}`, {
       headers: { 'Authorization': `Basic ${auth}` }
     });
     const gd = await g.json();
     if (gd.status && INACTIVE.includes(gd.status)) return { ok: true, alreadyInactive: true };
   } catch (_) { /* fall through to error */ }
 
-  return { ok: false, error: (data.error && (data.error.description || data.error)) || 'Razorpay cancellation failed' };
+  const code = (data.error && data.error.code) || '';
+  const desc = (data.error && (data.error.description || JSON.stringify(data.error))) || 'cancellation failed';
+  return { ok: false, error: `Razorpay: ${desc}${code ? ' (' + code + ')' : ''}` };
 }
 
 exports.handler = async (event) => {

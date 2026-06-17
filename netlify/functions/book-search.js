@@ -250,13 +250,20 @@ Rules:
           }
           console.log(`Shopify keyword:"${searchQuery}" results: ${kwNodes.length}`);
 
-          // 3. Merge: tag results first (most relevant), then keyword results, deduplicated
-          const seenHandles = new Set(tagNodes.map(n => n.handle));
-          const merged = [
-            ...tagNodes,
-            ...kwNodes.filter(n => !seenHandles.has(n.handle))
-          ];
-          shopifyBooks = merged.map(shopifyNodeToBook).sort((a, b) => (b.inStore ? 1 : 0) - (a.inStore ? 1 : 0));
+          // 3. Merge: KEYWORD/title matches are genuinely relevant to the query →
+          //    keep them first. TAG matches are generic genre fillers (the store's
+          //    whole "fiction"/"historic" shelf) — they're often unrelated to a
+          //    specific query, so flag them `tagOnly` and demote them to the bottom
+          //    in the cross-source merge below.
+          const kwHandles = new Set(kwNodes.map(n => n.handle));
+          const byStock   = (a, b) => (b.inStore ? 1 : 0) - (a.inStore ? 1 : 0);
+          const kwBooks   = kwNodes.map(shopifyNodeToBook).sort(byStock);
+          const tagBooks  = tagNodes
+            .filter(n => !kwHandles.has(n.handle))
+            .map(shopifyNodeToBook)
+            .map(b => ({ ...b, tagOnly: true }))
+            .sort(byStock);
+          shopifyBooks = [...kwBooks, ...tagBooks];
         }
       } catch(e) { console.error('Shopify search error:', e.message); }
     }
@@ -311,11 +318,19 @@ Rank these by relevance to the user's query. Respond ONLY with a JSON array of 1
       catalogBooks = await catalogSearch(searchQuery || prompt);
     }
 
-    // ── 5. Merge: Shopify first (in-stock sorted), then catalog (deduped by title) ──
-    const shopifyTitles = new Set(shopifyBooks.map(b => b.title.toLowerCase().trim()));
+    // ── 5. Merge by relevance, not just by source:
+    //    1) relevant Shopify (keyword/title/author matches — buyable AND on-topic)
+    //    2) catalog semantic matches (on-topic, requestable)
+    //    3) generic tag-only Shopify books last (genre shelf; often unrelated to a
+    //       specific query, so they must never bury the relevant results).
+    const shopifyTitles    = new Set(shopifyBooks.map(b => b.title.toLowerCase().trim()));
+    const relevantShopify  = shopifyBooks.filter(b => !b.tagOnly);
+    const tagOnlyShopify    = shopifyBooks.filter(b => b.tagOnly);
+    const catalogDeduped   = catalogBooks.filter(b => !shopifyTitles.has(b.title.toLowerCase().trim()));
     const books = [
-      ...shopifyBooks,
-      ...catalogBooks.filter(b => !shopifyTitles.has(b.title.toLowerCase().trim()))
+      ...relevantShopify,
+      ...catalogDeduped,
+      ...tagOnlyShopify
     ];
     const noMatch = books.length === 0;
 

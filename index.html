@@ -5122,28 +5122,56 @@
         <button onclick="closeGlobalCatalog()" style="background:transparent;border:none;font-size:1.4rem;cursor:pointer;color:#7a6a58;line-height:1;">✕</button>
       </div>
       <p style="margin:.2rem 0 1rem;color:#7a6a58;font-size:.85rem;">Books from our partner publishers — not in our store yet. Find any title and request it; we'll source it for you.</p>
-      <input id="gc-email" type="email" placeholder="Your email (for the request)"
-        style="width:100%;box-sizing:border-box;padding:.6rem .8rem;border:1px solid #d9c9b0;border-radius:9px;font-size:.9rem;color:#3a2a1c;background:#fff;">
-      <div id="gc-email-hint" style="display:none;color:#c0392b;font-size:.75rem;margin-top:.3rem;">Please enter a valid email to place a request.</div>
-      <div style="display:flex;gap:.5rem;margin:.7rem 0 1rem;">
+      <div style="display:flex;gap:.5rem;margin:.2rem 0 1rem;">
         <input id="gc-query" type="text" placeholder="Describe the book or topic… e.g. Malayalam poetry" onkeydown="if(event.key==='Enter')gcSearch()"
           style="flex:1;padding:.6rem .8rem;border:1px solid #d9c9b0;border-radius:9px;font-size:.9rem;color:#3a2a1c;background:#fff;">
         <button onclick="gcSearch()" style="background:#72513C;color:#fff;border:none;border-radius:9px;padding:.6rem 1.1rem;font-size:.9rem;cursor:pointer;white-space:nowrap;">Search</button>
       </div>
       <div id="gc-results"></div>
+      <div id="gc-bar" style="display:none;position:sticky;bottom:0;background:#FDF8F0;padding:.7rem 0 .1rem;margin-top:.4rem;border-top:1px solid #eadfce;">
+        <button onclick="gcRequestSelected()" style="width:100%;background:#72513C;color:#fff;border:none;border-radius:9px;padding:.7rem 1rem;font-size:.92rem;font-weight:600;cursor:pointer;">Request <span id="gc-bar-n">0</span> selected book(s) →</button>
+      </div>
     </div>
   </div>
+
+  <!-- Shared "your details" popup — shown only when requesting one or more books -->
+  <div id="gc-details" onclick="if(event.target===this)gcCloseDetails()"
+       style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:6100;align-items:flex-start;justify-content:center;padding:6vh 1rem;overflow:auto;">
+    <div style="background:#FDF8F0;max-width:460px;width:100%;border-radius:16px;padding:1.4rem;box-shadow:0 20px 60px rgba(0,0,0,.3);font-family:Inter,system-ui,sans-serif;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.3rem;">
+        <h2 style="margin:0;color:#3a2a1c;font-size:1.12rem;">Your details</h2>
+        <button onclick="gcCloseDetails()" style="background:transparent;border:none;font-size:1.4rem;cursor:pointer;color:#7a6a58;line-height:1;">✕</button>
+      </div>
+      <p id="gc-d-sub" style="margin:.2rem 0 1rem;color:#7a6a58;font-size:.85rem;">Tell us where to reach you and we'll source these titles for you.</p>
+      <div id="gc-d-form">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:.6rem;">
+          <div><label style="display:block;font-size:.78rem;color:#7a6a58;margin-bottom:.25rem;">Your Name</label><input id="gc-d-name" type="text" placeholder="Full name" style="width:100%;box-sizing:border-box;padding:.55rem .7rem;border:1px solid #d9c9b0;border-radius:9px;font-size:.88rem;color:#3a2a1c;background:#fff;"></div>
+          <div><label style="display:block;font-size:.78rem;color:#7a6a58;margin-bottom:.25rem;">Phone</label><input id="gc-d-phone" type="tel" placeholder="+91 98765 43210" style="width:100%;box-sizing:border-box;padding:.55rem .7rem;border:1px solid #d9c9b0;border-radius:9px;font-size:.88rem;color:#3a2a1c;background:#fff;"></div>
+        </div>
+        <div style="margin-bottom:.6rem;"><label style="display:block;font-size:.78rem;color:#7a6a58;margin-bottom:.25rem;">Email Address <span style="color:#c0392b;">*</span></label><input id="gc-d-email" type="email" placeholder="you@example.com" style="width:100%;box-sizing:border-box;padding:.55rem .7rem;border:1px solid #d9c9b0;border-radius:9px;font-size:.88rem;color:#3a2a1c;background:#fff;"></div>
+        <input id="gc-d-website" type="text" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px;" aria-hidden="true">
+        <div id="gc-d-err" style="display:none;color:#c0392b;font-size:.78rem;margin-bottom:.5rem;"></div>
+        <button id="gc-d-submit" onclick="gcSubmitDetails()" style="width:100%;background:#72513C;color:#fff;border:none;border-radius:9px;padding:.7rem 1rem;font-size:.92rem;font-weight:600;cursor:pointer;">Send Request →</button>
+      </div>
+      <div id="gc-d-success" style="display:none;text-align:center;padding:.6rem 0;">
+        <div style="font-size:2rem;">✓</div>
+        <p id="gc-d-success-msg" style="color:#2e7d32;font-size:.92rem;margin:.4rem 0 1rem;"></p>
+        <button onclick="gcCloseDetails()" style="background:#72513C;color:#fff;border:none;border-radius:9px;padding:.55rem 1.4rem;font-size:.88rem;cursor:pointer;">Done</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     function gcEsc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
     function openGlobalCatalog(){
-      const m = document.getElementById('gc-modal'); m.style.display = 'flex';
-      const e = document.getElementById('gc-email'); if (!e.value && window.readerEmail) e.value = window.readerEmail;
+      document.getElementById('gc-modal').style.display = 'flex';
       document.getElementById('gc-query').focus();
     }
     function closeGlobalCatalog(){ document.getElementById('gc-modal').style.display = 'none'; }
     async function gcSearch(){
       const q = document.getElementById('gc-query').value.trim();
       const out = document.getElementById('gc-results');
+      document.getElementById('gc-bar').style.display = 'none';
       if (!q){ out.innerHTML = ''; return; }
       out.innerHTML = '<div style="padding:1rem;color:#9a8a76;font-size:.88rem;">Searching the global catalog…</div>';
       try {
@@ -5151,53 +5179,106 @@
         const d = await r.json();
         if (d.error){ out.innerHTML = '<div style="padding:1rem;color:#c0392b;font-size:.88rem;">Search is temporarily unavailable. Please try again shortly.</div>'; return; }
         window._gcResults = d.matches || [];
-        if (!window._gcResults.length){
-          out.innerHTML = '<div style="padding:1rem;color:#7a6a58;font-size:.88rem;">No close match in our partner catalog yet — but you can still <a href="#" onclick="gcRequestFreeform();return false;" style="color:#72513C;font-weight:600;">request this title</a> and we\'ll try to source it.</div>';
-          return;
-        }
-        out.innerHTML = window._gcResults.map((b, i) => `
-          <div style="display:flex;gap:.75rem;align-items:center;border:1px solid #eadfce;border-radius:10px;padding:.7rem .9rem;margin-bottom:.6rem;background:#fff;">
-            <div style="flex:1;min-width:0;">
-              <div style="font-weight:700;color:#3a2a1c;">${gcEsc(b.title)}</div>
-              <div style="font-size:.8rem;color:#7a6a58;">${b.author ? gcEsc(b.author) + ' · ' : ''}${b.publisher ? gcEsc(b.publisher) : ''}${b.price ? ' · ₹' + b.price : ''}</div>
-            </div>
-            ${(window._gcRequested || new Set()).has(b.title)
-              ? `<button disabled style="background:#2e7d32;color:#fff;border:none;border-radius:8px;padding:.5rem .9rem;font-size:.8rem;white-space:nowrap;">✓ Requested</button>`
-              : `<button id="gc-req-${i}" onclick="gcRequest(${i})" style="background:#72513C;color:#fff;border:none;border-radius:8px;padding:.5rem .9rem;font-size:.8rem;cursor:pointer;white-space:nowrap;">Request</button>`}
-          </div>`).join('');
+        gcRenderResults();
       } catch(e){
         out.innerHTML = '<div style="padding:1rem;color:#c0392b;font-size:.88rem;">Search failed. Please try again.</div>';
       }
     }
-    function gcValidEmail(){
-      const email = (document.getElementById('gc-email').value || window.readerEmail || '').trim();
-      if (!email || !email.includes('@')){ document.getElementById('gc-email-hint').style.display = 'block'; document.getElementById('gc-email').focus(); return null; }
-      document.getElementById('gc-email-hint').style.display = 'none';
-      return email;
+    function gcRenderResults(){
+      const out = document.getElementById('gc-results');
+      document.getElementById('gc-bar').style.display = 'none';
+      const results = window._gcResults || [];
+      if (!results.length){
+        out.innerHTML = '<div style="padding:1rem;color:#7a6a58;font-size:.88rem;">No close match in our partner catalog yet — but you can still <a href="#" onclick="gcRequestFreeform();return false;" style="color:#72513C;font-weight:600;">request this title</a> and we\'ll try to source it.</div>';
+        return;
+      }
+      out.innerHTML = results.map((b, i) => {
+        const requested = (window._gcRequested || new Set()).has(b.title);
+        const meta = `${b.author ? gcEsc(b.author) + ' · ' : ''}${b.publisher ? gcEsc(b.publisher) : ''}${b.price ? ' · ₹' + b.price : ''}`;
+        return `
+        <label style="display:flex;gap:.7rem;align-items:center;border:1px solid #eadfce;border-radius:10px;padding:.7rem .9rem;margin-bottom:.6rem;background:#fff;${requested?'opacity:.7;':'cursor:pointer;'}">
+          ${requested
+            ? `<span style="color:#2e7d32;font-size:.78rem;font-weight:700;white-space:nowrap;">✓ Requested</span>`
+            : `<input type="checkbox" class="gc-pick" data-i="${i}" onchange="gcUpdateBar()" style="width:18px;height:18px;flex:none;accent-color:#72513C;cursor:pointer;">`}
+          <span style="flex:1;min-width:0;">
+            <span style="display:block;font-weight:700;color:#3a2a1c;">${gcEsc(b.title)}</span>
+            <span style="display:block;font-size:.8rem;color:#7a6a58;">${meta}</span>
+          </span>
+        </label>`;
+      }).join('');
+      gcUpdateBar();
     }
-    async function gcRequest(i){
-      const book = window._gcResults[i]; if (!book) return;
-      const email = gcValidEmail(); if (!email) return;
-      const btn = document.getElementById('gc-req-' + i); btn.disabled = true; btn.textContent = 'Requesting…';
-      try {
-        const r = await fetch('/.netlify/functions/request-book', { method:'POST', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ email, book_title: book.title, author_name: book.author || '', publisher: book.publisher || '', notes: 'Requested via Global Catalog search' }) });
-        const d = await r.json();
-        if (d.success){ btn.textContent = '✓ Requested'; btn.style.background = '#2e7d32'; (window._gcRequested = window._gcRequested || new Set()).add(book.title); }
-        else { btn.disabled = false; btn.textContent = 'Request'; alert(d.error || 'Could not submit request.'); }
-      } catch(e){ btn.disabled = false; btn.textContent = 'Request'; alert('Network error. Please try again.'); }
+    function gcSelectedIndexes(){
+      return Array.from(document.querySelectorAll('.gc-pick:checked')).map(c => parseInt(c.dataset.i, 10));
     }
-    async function gcRequestFreeform(){
-      const email = gcValidEmail(); if (!email) return;
+    function gcUpdateBar(){
+      const n = gcSelectedIndexes().length;
+      const bar = document.getElementById('gc-bar');
+      document.getElementById('gc-bar-n').textContent = n;
+      bar.style.display = n ? 'block' : 'none';
+    }
+    // ── Details popup: opened with the books to request (single or many) ──────────
+    function gcOpenDetails(books){
+      if (!books || !books.length) return;
+      window._gcPending = books;
+      document.getElementById('gc-d-form').style.display    = '';
+      document.getElementById('gc-d-success').style.display = 'none';
+      document.getElementById('gc-d-err').style.display     = 'none';
+      document.getElementById('gc-d-sub').textContent = books.length > 1
+        ? `We'll source these ${books.length} titles for you. Tell us where to reach you.`
+        : `We'll source "${books[0].title}" for you. Tell us where to reach you.`;
+      // Autopopulate for members / logged-in readers
+      const nameEl = document.getElementById('gc-d-name'), emailEl = document.getElementById('gc-d-email');
+      if (!nameEl.value && typeof bookClubMemberName !== 'undefined' && bookClubMemberName) nameEl.value = bookClubMemberName;
+      if (!emailEl.value && window.readerEmail) emailEl.value = window.readerEmail;
+      document.getElementById('gc-details').style.display = 'flex';
+      (emailEl.value ? document.getElementById('gc-d-name') : emailEl).focus();
+    }
+    function gcCloseDetails(){ document.getElementById('gc-details').style.display = 'none'; }
+    function gcRequestSelected(){
+      const books = gcSelectedIndexes().map(i => window._gcResults[i]).filter(Boolean);
+      gcOpenDetails(books);
+    }
+    function gcRequestFreeform(){
       const title = document.getElementById('gc-query').value.trim(); if (!title) return;
-      try {
-        const r = await fetch('/.netlify/functions/request-book', { method:'POST', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ email, book_title: title, notes: 'Free-text request via Global Catalog search' }) });
-        const d = await r.json();
-        document.getElementById('gc-results').innerHTML = d.success
-          ? '<div style="padding:1rem;color:#2e7d32;font-size:.9rem;">✓ Request received — we\'ll try to source it and get back to you.</div>'
-          : '<div style="padding:1rem;color:#c0392b;font-size:.88rem;">Could not submit the request. Please try again.</div>';
-      } catch(e){ /* leave UI as-is */ }
+      gcOpenDetails([{ title, _freeform: true }]);
+    }
+    async function gcSubmitDetails(){
+      const name  = document.getElementById('gc-d-name').value.trim();
+      const email = document.getElementById('gc-d-email').value.trim();
+      const phone = document.getElementById('gc-d-phone').value.trim();
+      const errEl = document.getElementById('gc-d-err');
+      errEl.style.display = 'none';
+      if (!email || !email.includes('@')){ errEl.textContent = 'Please enter a valid email address.'; errEl.style.display = ''; document.getElementById('gc-d-email').focus(); return; }
+      const books = window._gcPending || []; if (!books.length) return;
+      const btn = document.getElementById('gc-d-submit'); btn.disabled = true; btn.textContent = 'Sending…';
+      const website = document.getElementById('gc-d-website').value; // honeypot
+      let ok = 0, fail = 0;
+      for (const book of books){
+        try {
+          const r = await fetch('/.netlify/functions/request-book', { method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ name, email, phone, website,
+              book_title: book.title, author_name: book.author || '', publisher: book.publisher || '',
+              notes: book._freeform ? 'Free-text request via Global Catalog search' : 'Requested via Global Catalog search' }) });
+          const d = await r.json();
+          if (d.success){ ok++; (window._gcRequested = window._gcRequested || new Set()).add(book.title); }
+          else fail++;
+        } catch(e){ fail++; }
+      }
+      btn.disabled = false; btn.textContent = 'Send Request →';
+      if (ok && !fail){
+        document.getElementById('gc-d-form').style.display = 'none';
+        document.getElementById('gc-d-success-msg').textContent = ok > 1
+          ? `We've received your request for ${ok} titles. Our team will reach out once we source them.`
+          : `We've received your request for "${books[0].title}". Our team will reach out once we source it.`;
+        document.getElementById('gc-d-success').style.display = '';
+        gcRenderResults(); // refresh so requested books show "✓ Requested"
+      } else if (ok && fail){
+        errEl.textContent = `${ok} request(s) sent, but ${fail} failed. Please try the rest again.`; errEl.style.display = '';
+        gcRenderResults();
+      } else {
+        errEl.textContent = 'Could not submit your request. Please try again.'; errEl.style.display = '';
+      }
     }
   </script>
 

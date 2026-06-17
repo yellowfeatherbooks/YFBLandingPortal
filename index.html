@@ -5149,7 +5149,6 @@
           <div><label style="display:block;font-size:.78rem;color:#7a6a58;margin-bottom:.25rem;">Phone</label><input id="gc-d-phone" type="tel" placeholder="+91 98765 43210" style="width:100%;box-sizing:border-box;padding:.55rem .7rem;border:1px solid #d9c9b0;border-radius:9px;font-size:.88rem;color:#3a2a1c;background:#fff;"></div>
         </div>
         <div style="margin-bottom:.6rem;"><label style="display:block;font-size:.78rem;color:#7a6a58;margin-bottom:.25rem;">Email Address <span style="color:#c0392b;">*</span></label><input id="gc-d-email" type="email" placeholder="you@example.com" style="width:100%;box-sizing:border-box;padding:.55rem .7rem;border:1px solid #d9c9b0;border-radius:9px;font-size:.88rem;color:#3a2a1c;background:#fff;"></div>
-        <input id="gc-d-website" type="text" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px;" aria-hidden="true">
         <div id="gc-d-err" style="display:none;color:#c0392b;font-size:.78rem;margin-bottom:.5rem;"></div>
         <button id="gc-d-submit" onclick="gcSubmitDetails()" style="width:100%;background:#72513C;color:#fff;border:none;border-radius:9px;padding:.7rem 1rem;font-size:.92rem;font-weight:600;cursor:pointer;">Send Request →</button>
       </div>
@@ -5252,7 +5251,7 @@
       if (!email || !email.includes('@')){ errEl.textContent = 'Please enter a valid email address.'; errEl.style.display = ''; document.getElementById('gc-d-email').focus(); return; }
       const books = window._gcPending || []; if (!books.length) return;
       const btn = document.getElementById('gc-d-submit'); btn.disabled = true; btn.textContent = 'Sending…';
-      const website = document.getElementById('gc-d-website').value; // honeypot
+      const website = ''; // honeypot kept empty (matches the member request form; a real input gets autofilled and silently dropped server-side)
       let ok = 0, fail = 0;
       for (const book of books){
         try {

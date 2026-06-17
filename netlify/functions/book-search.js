@@ -321,17 +321,19 @@ Rank these by relevance to the user's query. Respond ONLY with a JSON array of 1
     // ── 5. Merge by relevance, not just by source:
     //    1) relevant Shopify (keyword/title/author matches — buyable AND on-topic)
     //    2) catalog semantic matches (on-topic, requestable)
-    //    3) generic tag-only Shopify books last (genre shelf; often unrelated to a
-    //       specific query, so they must never bury the relevant results).
+    //    3) generic tag-only Shopify books are a GENRE-SHELF FALLBACK. Some store
+    //       books are over-tagged (e.g. fiction+historic), so tag:<tag> surfaces the
+    //       same handful for unrelated queries. Only include them when we don't
+    //       already have enough genuinely-relevant results; otherwise drop them.
+    const RELEVANT_MIN     = 3;
     const shopifyTitles    = new Set(shopifyBooks.map(b => b.title.toLowerCase().trim()));
     const relevantShopify  = shopifyBooks.filter(b => !b.tagOnly);
     const tagOnlyShopify    = shopifyBooks.filter(b => b.tagOnly);
     const catalogDeduped   = catalogBooks.filter(b => !shopifyTitles.has(b.title.toLowerCase().trim()));
-    const books = [
-      ...relevantShopify,
-      ...catalogDeduped,
-      ...tagOnlyShopify
-    ];
+    const enoughRelevant   = (relevantShopify.length + catalogDeduped.length) >= RELEVANT_MIN;
+    const books = enoughRelevant
+      ? [...relevantShopify, ...catalogDeduped]                      // drop generic genre fillers
+      : [...relevantShopify, ...catalogDeduped, ...tagOnlyShopify];  // sparse → keep as fallback
     const noMatch = books.length === 0;
 
     // ── 6. Log to Supabase (fire-and-forget) ──────────────────────────────

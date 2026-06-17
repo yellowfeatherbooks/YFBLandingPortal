@@ -68,7 +68,7 @@ exports.handler = async (event) => {
     const cutoff   = Math.max(FLOOR, topScore - GAP);
     const matches  = rows
       .filter(r => (r.similarity ?? 0) >= cutoff)
-      .map(r => ({ title: r.title, author: r.author, price: r.price, publisher: r.publisher }));
+      .map(r => ({ title: r.title, title_ml: r.title_ml || '', author: r.author, price: r.price, publisher: r.publisher }));
 
     return json(event, { matches });
   } catch (err) {

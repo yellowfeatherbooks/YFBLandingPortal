@@ -4139,8 +4139,8 @@
       <button onclick="closeMobileDrawer();showMobilePanel('bestsellers',document.querySelector('[data-panel=bestsellers]'))">⭐&nbsp; Best Sellers</button>
       <button onclick="closeMobileDrawer();showMobilePanel('browse',document.querySelector('[data-panel=browse]'))">📚&nbsp; Browse Genres</button>
       <div class="drawer-section-label">Discover</div>
-      <button class="find-book" onclick="closeMobileDrawer();showFindABook();">✨&nbsp; AI Book Search</button>
-      <button onclick="closeMobileDrawer();openGlobalCatalog();">🌐&nbsp; Search Global Catalog</button>
+      <button class="find-book" onclick="closeMobileDrawer();showFindABook();">✨&nbsp; Global Book Search</button>
+      <button onclick="closeMobileDrawer();openTrendsNews();">📰&nbsp; Trends &amp; News</button>
       <button onclick="closeMobileDrawer();openSearch();">🔍&nbsp; Search Store</button>
       <div class="drawer-section-label">Account</div>
       <button onclick="closeMobileDrawer();openCart();">🛒&nbsp; My Cart</button>
@@ -4171,8 +4171,8 @@
       <a href="#genres"      class="ds-nav-link" onclick="closeSearch();closeFindABook();closeGuestCart();closeIframePanel();closeAuthorLogin();closeBcLoginPanel();if(!_isMobile())showGuestSection('genres');">📚&nbsp; Browse Genres</a>
       <div class="ds-section-label">Discover</div>
       <button class="ds-nav-link" onclick="closeGuestCart();closeIframePanel();closeAuthorLogin();closeBcLoginPanel();openSearch()">🔍&nbsp; Search Books</button>
-      <a href="#" class="ds-nav-link highlight" onclick="event.preventDefault();closeGuestCart();closeIframePanel();closeAuthorLogin();closeBcLoginPanel();showFindABook();">✨&nbsp; AI Book Search</a>
-      <button class="ds-nav-link" onclick="closeSearch();closeFindABook();closeGuestCart();closeIframePanel();closeAuthorLogin();closeBcLoginPanel();openGlobalCatalog()">🌐&nbsp; Search Global Catalog</button>
+      <a href="#" class="ds-nav-link highlight" onclick="event.preventDefault();closeGuestCart();closeIframePanel();closeAuthorLogin();closeBcLoginPanel();showFindABook();">✨&nbsp; Global Book Search</a>
+      <button class="ds-nav-link" onclick="closeSearch();closeFindABook();closeGuestCart();closeIframePanel();closeAuthorLogin();closeBcLoginPanel();openTrendsNews()">📰&nbsp; Trends &amp; News</button>
       <div class="ds-section-label">Account</div>
       <button class="ds-nav-link" onclick="closeSearch();closeFindABook();closeIframePanel();closeAuthorLogin();closeBcLoginPanel();openCart()">🛒&nbsp; My Cart</button>
       <button class="ds-nav-link" onclick="closeSearch();closeFindABook();closeGuestCart();closeIframePanel();closeAuthorLogin();closeBcLoginPanel();(readerToken||isBookClubMember)?openOrdersPanel():openLoginModal()">🙋&nbsp; My Account</button>
@@ -5201,6 +5201,7 @@
             : `<input type="checkbox" class="gc-pick" data-i="${i}" onchange="gcUpdateBar()" style="width:18px;height:18px;flex:none;accent-color:#72513C;cursor:pointer;">`}
           <span style="flex:1;min-width:0;">
             <span style="display:block;font-weight:700;color:#3a2a1c;">${gcEsc(b.title)}</span>
+            ${b.title_ml && /[ഀ-ൿ]/.test(b.title_ml) ? `<span style="display:block;font-size:.85rem;color:#5a4a38;">${gcEsc(b.title_ml)}</span>` : ''}
             <span style="display:block;font-size:.8rem;color:#7a6a58;">${meta}</span>
           </span>
         </label>`;
@@ -5281,9 +5282,59 @@
     }
   </script>
 
+  <!-- Trends & News — web discovery (publisher news, reviews, new releases) -->
+  <div id="tn-modal" onclick="if(event.target===this)closeTrendsNews()"
+       style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:6000;align-items:flex-start;justify-content:center;padding:5vh 1rem;overflow:auto;">
+    <div style="background:#FDF8F0;max-width:640px;width:100%;border-radius:16px;padding:1.4rem 1.4rem 1.6rem;box-shadow:0 20px 60px rgba(0,0,0,.3);font-family:Inter,system-ui,sans-serif;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.3rem;">
+        <h2 style="margin:0;color:#3a2a1c;font-size:1.2rem;">📰 Trends &amp; News</h2>
+        <button onclick="closeTrendsNews()" style="background:transparent;border:none;font-size:1.4rem;cursor:pointer;color:#7a6a58;line-height:1;">✕</button>
+      </div>
+      <p style="margin:.2rem 0 1rem;color:#7a6a58;font-size:.85rem;">Latest Malayalam book news, reviews and new releases from across the web. Search a topic or author, or browse what's trending.</p>
+      <div style="display:flex;gap:.5rem;margin:.2rem 0 1rem;">
+        <input id="tn-query" type="text" placeholder="Topic or author… e.g. Benyamin, new releases" onkeydown="if(event.key==='Enter')tnSearch()"
+          style="flex:1;padding:.6rem .8rem;border:1px solid #d9c9b0;border-radius:9px;font-size:.9rem;color:#3a2a1c;background:#fff;">
+        <button onclick="tnSearch()" style="background:#72513C;color:#fff;border:none;border-radius:9px;padding:.6rem 1.1rem;font-size:.9rem;cursor:pointer;white-space:nowrap;">Search</button>
+      </div>
+      <div id="tn-results"></div>
+    </div>
+  </div>
+  <script>
+    function tnEsc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+    function openTrendsNews(){
+      document.getElementById('tn-modal').style.display = 'flex';
+      document.getElementById('tn-query').focus();
+      if (!window._tnLoaded){ window._tnLoaded = true; tnSearch(); } // load a default feed on first open
+    }
+    function closeTrendsNews(){ document.getElementById('tn-modal').style.display = 'none'; }
+    async function tnSearch(){
+      const q = document.getElementById('tn-query').value.trim();
+      const out = document.getElementById('tn-results');
+      out.innerHTML = '<div style="padding:1rem;color:#9a8a76;font-size:.88rem;">Fetching the latest…</div>';
+      try {
+        const r = await fetch('/.netlify/functions/book-news', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ query: q }) });
+        const d = await r.json();
+        if (d.error){ out.innerHTML = '<div style="padding:1rem;color:#c0392b;font-size:.88rem;">News is temporarily unavailable. Please try again shortly.</div>'; return; }
+        const items = d.articles || [];
+        if (!items.length){ out.innerHTML = '<div style="padding:1rem;color:#7a6a58;font-size:.88rem;">Nothing found — try a different topic or author.</div>'; return; }
+        out.innerHTML = items.map(a => `
+          <a href="${tnEsc(a.link)}" target="_blank" rel="noopener noreferrer" style="display:flex;gap:.75rem;align-items:flex-start;border:1px solid #eadfce;border-radius:10px;padding:.7rem .9rem;margin-bottom:.6rem;background:#fff;text-decoration:none;">
+            ${a.imageUrl ? `<img src="${tnEsc(a.imageUrl)}" alt="" loading="lazy" onerror="this.style.display='none'" style="width:56px;height:56px;object-fit:cover;border-radius:7px;flex:none;">` : ''}
+            <span style="flex:1;min-width:0;">
+              <span style="display:block;font-weight:700;color:#3a2a1c;line-height:1.3;">${tnEsc(a.title)}</span>
+              ${a.snippet ? `<span style="display:block;font-size:.8rem;color:#7a6a58;margin-top:.2rem;">${tnEsc(a.snippet)}</span>` : ''}
+              ${a.source ? `<span style="display:block;font-size:.72rem;color:#9a8a76;margin-top:.3rem;">${tnEsc(a.source)} ↗</span>` : ''}
+            </span>
+          </a>`).join('');
+      } catch(e){
+        out.innerHTML = '<div style="padding:1rem;color:#c0392b;font-size:.88rem;">Could not load news. Please try again.</div>';
+      }
+    }
+  </script>
+
   <section id="find-a-book">
     <div class="fab-panel-bar">
-      <span class="fab-panel-bar-title">✨ AI Book Search</span>
+      <span class="fab-panel-bar-title">✨ Global Book Search</span>
     </div>
     <div class="fab-hero">
       <div class="fab-hero-content">
@@ -5345,7 +5396,6 @@
         </div>
         <div class="fab-form-group"><label>Email Address *</label><input type="email" id="fab-req-email" class="fab-form-input" placeholder="you@example.com"/></div>
         <div class="fab-form-group"><label>Notes (optional)</label><textarea id="fab-req-notes" class="fab-form-input" placeholder="Any specific edition or details…"></textarea></div>
-        <div style="display:none;" aria-hidden="true"><input type="text" id="fab-req-website" name="website" tabindex="-1" autocomplete="off" value=""/></div>
         <div class="fab-modal-actions">
           <button class="fab-btn-modal-cancel" onclick="fabCloseModal()">Cancel</button>
           <button class="fab-btn-modal-submit" id="fab-submit-req-btn" onclick="fabSubmitRequest()">Send Request</button>
@@ -7392,7 +7442,7 @@
           <button class="bc-copy-btn" onclick="copyClubCode()">Copy Code</button>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-top:1rem;">
-          <button onclick="closeBookClubModal();showFindABook();" style="background:linear-gradient(135deg,#1a1a4e,#2a2a6e);border:1px solid rgba(201,146,42,0.4);color:#F5B800;font-family:Inter,sans-serif;padding:0.75rem 0.5rem;border-radius:10px;cursor:pointer;font-size:0.82rem;font-weight:600;line-height:1.3;">✨<br/>AI Book Search</button>
+          <button onclick="closeBookClubModal();showFindABook();" style="background:linear-gradient(135deg,#1a1a4e,#2a2a6e);border:1px solid rgba(201,146,42,0.4);color:#F5B800;font-family:Inter,sans-serif;padding:0.75rem 0.5rem;border-radius:10px;cursor:pointer;font-size:0.82rem;font-weight:600;line-height:1.3;">✨<br/>Global Book Search</button>
           <button onclick="closeBookClubModal();fabOpenRequest({title:'',author:'',publisher:'',source:''});" style="background:linear-gradient(135deg,#1a1a4e,#2a2a6e);border:1px solid rgba(201,146,42,0.4);color:#F5B800;font-family:Inter,sans-serif;padding:0.75rem 0.5rem;border-radius:10px;cursor:pointer;font-size:0.82rem;font-weight:600;line-height:1.3;">📬<br/>Request a Book</button>
         </div>
         <button onclick="closeBookClubModal()" style="width:100%;background:none;border:1px solid var(--border);color:var(--muted);font-family:Inter,sans-serif;padding:0.7rem;border-radius:10px;cursor:pointer;font-size:0.85rem;margin-top:0.5rem;">
@@ -7420,7 +7470,7 @@
       <button class="msb-item" id="msb-btn-browse"   onclick="msbNav('browse')">   <span class="msb-item-icon">📚</span> Browse Books</button>
       <button class="msb-item" id="msb-btn-curated"  onclick="msbNav('curated')"  style="display:none;"><span class="msb-item-icon">✨</span> Curated Picks</button>
       <button class="msb-item" id="msb-btn-prebook"  onclick="msbNav('prebook')"  style="display:none;"><span class="msb-item-icon">✍️</span> Pre-Book Signed</button>
-      <button class="msb-item" id="msb-btn-ai-search" onclick="msbNav('ai-search')"><span class="msb-item-icon">✨</span> AI Book Search</button>
+      <button class="msb-item" id="msb-btn-ai-search" onclick="msbNav('ai-search')"><span class="msb-item-icon">✨</span> Global Book Search</button>
       <button class="msb-item" id="msb-btn-req-book" onclick="msbNav('req-book')"> <span class="msb-item-icon">📬</span> Request a Book</button>
     </div>
     <div class="msb-bottom">
@@ -7461,7 +7511,7 @@
       <button class="orders-tab"        id="tab-btn-browse"    onclick="switchOrdersTab('browse')">📚 Browse Books</button>
       <button class="orders-tab"        id="tab-btn-curated"   onclick="switchOrdersTab('curated')"  style="display:none;">✨ Curated Picks</button>
       <button class="orders-tab"        id="tab-btn-prebook"   onclick="switchOrdersTab('prebook')"  style="display:none;">✍️ Pre-Book Signed</button>
-      <button class="orders-tab"        id="tab-btn-ai-search" onclick="switchOrdersTab('ai-search');">✨ AI Book Search</button>
+      <button class="orders-tab"        id="tab-btn-ai-search" onclick="switchOrdersTab('ai-search');">✨ Global Book Search</button>
       <button class="orders-tab"        id="tab-btn-req-book"  onclick="switchOrdersTab('req-book');">📬 Request a Book</button>
     </div>
 
@@ -16757,7 +16807,7 @@ Questions? We're always here!
       btn.disabled = true; btnT.textContent = 'Searching…';
       fabShowLoading();
       try {
-        const body = { prompt };
+        const body = { prompt, includeCatalog: true }; // web portal can action catalog books (Request flow); mobile omits this
         if (cursor)     body.cursor     = cursor;
         if (searchMeta) body.searchMeta = searchMeta;
         const res  = await fetch('/.netlify/functions/book-search', {
@@ -16815,8 +16865,7 @@ Questions? We're always here!
         document.getElementById('fab-ai-explanation').style.display = 'flex';
       }
       if (!books || books.length === 0) {
-        const dbg = data.debug ? `<p style="font-size:0.75rem;color:#e63946;margin-top:0.5rem;">${fabEscHtml(data.debug)}</p>` : '';
-        document.getElementById('fab-books-container').innerHTML = `<div class="fab-state-box"><div class="state-icon">📭</div><h3>No books found</h3><p>Try a different search — describe a theme, character, or author you enjoy.</p>${dbg}</div>`;
+        document.getElementById('fab-books-container').innerHTML = `<div class="fab-state-box"><div class="state-icon">📭</div><h3>No match yet</h3><p>We couldn't find this in our store or our partner catalog — but we can try to source it for you. Tell us the title and we'll reach out.</p><button class="fab-btn-request" style="margin-top:0.9rem;" onclick="fabOpenRequest({})">Request a book →</button></div>`;
         return;
       }
       const cards = books.map(book => {
@@ -16832,7 +16881,7 @@ Questions? We're always here!
           ? `<button class="fab-btn-buy card-cart-btn" data-vgid="${book.variantGid || ''}" onclick="fabAddToCart(this.dataset.vgid,this)">🛒 Add to Cart${book.price ? ' · '+book.price : ''}</button>`
           : `<button class="fab-btn-request" data-book='${JSON.stringify(book).replace(/'/g,"&#39;")}' onclick="fabOpenRequest(JSON.parse(this.dataset.book))">Request from Us</button>`;
         const ext  = book.shopLink ? `<a href="${book.shopLink}" target="_blank" class="fab-btn-view-source">View on ${fabEscHtml(book.source||'Site')} →</a>` : '';
-        return `<div class="fab-book-card"><div class="fab-book-cover" onclick="${covClick}">${cov}</div><div class="fab-book-info"><div class="fab-book-title">${fabEscHtml(book.title)}</div>${book.author?`<div class="fab-book-author">${fabEscHtml(book.author)}</div>`:''} ${book.source?`<div class="fab-book-meta">${fabEscHtml(book.source)}${book.year?' · '+book.year:''}</div>`:''} ${book.description?`<div class="fab-book-desc">${fabEscHtml(book.description)}</div>`:''}<div style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-top:0.4rem;">${src}${yfb}</div><div class="fab-book-btns">${act}${ext}</div></div></div>`;
+        return `<div class="fab-book-card"><div class="fab-book-cover" onclick="${covClick}">${cov}</div><div class="fab-book-info"><div class="fab-book-title">${fabEscHtml(book.title)}</div>${book.title_ml && /[ഀ-ൿ]/.test(book.title_ml)?`<div class="fab-book-title-ml" style="font-size:0.92rem;color:var(--cream);opacity:0.75;margin-top:0.1rem;font-weight:500;">${fabEscHtml(book.title_ml)}</div>`:''}${book.author?`<div class="fab-book-author">${fabEscHtml(book.author)}</div>`:''} ${book.source?`<div class="fab-book-meta">${fabEscHtml(book.source)}${book.year?' · '+book.year:''}</div>`:''} ${book.description?`<div class="fab-book-desc">${fabEscHtml(book.description)}</div>`:''}<div style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-top:0.4rem;">${src}${yfb}</div><div class="fab-book-btns">${act}${ext}</div></div></div>`;
       }).join('');
       const pagination = (hasPrev || hasNext) ? `
         <div style="display:flex;align-items:center;justify-content:center;gap:1rem;margin-top:2rem;padding:1rem 0;">
@@ -16904,7 +16953,7 @@ Questions? We're always here!
       const email       = document.getElementById('fab-req-email').value.trim();
       const phone       = document.getElementById('fab-req-phone').value.trim();
       const notes       = document.getElementById('fab-req-notes').value.trim();
-      const website     = document.getElementById('fab-req-website').value.trim();
+      const website     = ''; // honeypot kept empty (a real input gets autofilled and silently dropped server-side)
       if (!email) { alert('Please enter your email address.'); return; }
       if (!book_title) { alert('Please enter the book title.'); return; }
       const btn = document.getElementById('fab-submit-req-btn');

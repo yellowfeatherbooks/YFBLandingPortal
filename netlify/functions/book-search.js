@@ -16,90 +16,63 @@ function getCors(event) {
 }
 
 const CLAUDE_KEY    = (process.env.ANTHROPIC_API_KEY || '').trim();
-const SERPER_KEY    = (process.env.SERPER_API_KEY    || '').trim();
 const SHOPIFY_STORE = 'zgqk4e-1m.myshopify.com';
 const SHOPIFY_TOKEN = process.env.SHOPIFY_STOREFRONT_TOKEN;
 const SUPABASE_URL  = (process.env.SUPABASE_URL  || '').trim();
 const SUPABASE_KEY  = (process.env.SUPABASE_KEY  || '').trim();
+const SERVICE_KEY   = (process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_KEY || '').trim();
+const OPENAI_KEY    = (process.env.OPENAI_API_KEY || '').trim();
 
-const SOURCE_MAP = {
-  'dcbooks.com':          'DC Books',
-  'mathrubhumibooks.com': 'Mathrubhumi Books',
-  'olivebooks.in':        'Olive Books',
-  'greenbooks.in':        'Green Books',
-  'currentbooks.in':      'Current Books',
-  'sahyadribooks.com':    'Sahyadri Books',
-  'manoramaonline.com':   'Manorama Books',
-};
+// Global-catalog semantic search — same model + adaptive thresholds as search-global-catalog.js
+const EMBED_MODEL = 'text-embedding-3-small';
+const CAT_FLOOR   = 0.28;   // noise floor
+const CAT_GAP     = 0.10;   // keep matches within this of the top score
 
-function getSourceName(link) {
+// ── Global catalog semantic search (Supabase pgvector) ─────────────────────
+// Books from our partner catalog that are NOT in Shopify → shown with a "Request"
+// action (no external shopLink, so we never bounce the shopper to another store).
+async function catalogSearch(queryText) {
+  if (!OPENAI_KEY || !SUPABASE_URL || !SERVICE_KEY || !queryText) return [];
   try {
-    const host = new URL(link).hostname.replace('www.', '');
-    for (const [domain, name] of Object.entries(SOURCE_MAP)) {
-      if (host.includes(domain)) return name;
-    }
-    return host;
-  } catch(e) { return ''; }
-}
-
-function cleanTitle(title) {
-  return title
-    .replace(/\s*[-|–|:]\s*(DC Books|Mathrubhumi|Olive Books|Green Books|Current Books|Sahyadri|Manorama|Buy|Shop|Online).*$/i, '')
-    .trim();
-}
-
-async function searchSerper(query) {
-  if (!SERPER_KEY) {
-    console.error('Serper: missing SERPER_API_KEY env variable');
-    return { books: [], error: 'Search engine not configured' };
-  }
-  async function serperFetch(q, n = 10) {
-    const res  = await fetch('https://google.serper.dev/search', {
+    const er = await fetch('https://api.openai.com/v1/embeddings', {
       method:  'POST',
-      headers: { 'X-API-KEY': SERPER_KEY, 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ q, num: n })
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${OPENAI_KEY}` },
+      body:    JSON.stringify({ model: EMBED_MODEL, input: queryText })
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || res.status);
-    return data.organic || [];
-  }
+    const ed   = await er.json();
+    const qEmb = ed?.data?.[0]?.embedding;
+    if (!qEmb) return [];
 
-  try {
-    const sites      = '(site:dcbooks.com OR site:mathrubhumibooks.com OR site:olivebooks.in OR site:greenbooks.in OR site:currentbooks.in OR site:sahyadribooks.com OR site:manoramaonline.com)';
-    const siteQuery  = `${query} ${sites}`;
-    console.log('Serper query (sites):', siteQuery);
-    let organic = await serperFetch(siteQuery);
-    console.log('Serper results count (sites):', organic.length);
+    const rr = await fetch(`${SUPABASE_URL}/rest/v1/rpc/match_catalog_books`, {
+      method:  'POST',
+      headers: { 'apikey': SERVICE_KEY, 'Authorization': `Bearer ${SERVICE_KEY}`, 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ query_embedding: qEmb, match_count: 10 })
+    });
+    if (!rr.ok) { console.error('catalog rpc failed:', rr.status); return []; }
+    const rows = await rr.json();
+    if (!Array.isArray(rows) || rows.length === 0) return [];
 
-    if (organic.length === 0) {
-      const broadQuery = `${query} malayalam book`;
-      console.log('Serper fallback query:', broadQuery);
-      organic = await serperFetch(broadQuery);
-      console.log('Serper results count (fallback):', organic.length);
-    }
-
-    const data = { organic };
-
-    return {
-      books: (data.organic || []).map(item => {
-        const source = getSourceName(item.link);
-        return {
-          title:       cleanTitle(item.title),
-          author:      '',
-          publisher:   source,
-          description: (item.snippet || '').substring(0, 280).trim(),
-          coverUrl:    item.imageUrl || '',
-          year:        '',
-          source,
-          shopLink:    item.link,
-          inStore:     false
-        };
-      }).filter(b => b.title && b.shopLink),
-      error: null
-    };
+    const topScore = rows[0].similarity ?? 0;
+    const cutoff   = Math.max(CAT_FLOOR, topScore - CAT_GAP);
+    return rows
+      .filter(r => (r.similarity ?? 0) >= cutoff)
+      .map(r => ({
+        title:       r.title,
+        title_ml:    r.title_ml || '',
+        author:      r.author || '',
+        publisher:   r.publisher || '',
+        description: (r.description || '').substring(0, 280),
+        coverUrl:    '',
+        year:        '',
+        source:      r.publisher || 'Partner Catalog',
+        shopLink:    '',          // no external link → renders as "Request from Us"
+        inStore:     false,
+        catalog:     true,
+        price:       r.price ? `₹${parseFloat(r.price).toFixed(0)}` : null
+      }));
   } catch(e) {
-    console.error('Serper error:', e.message);
-    return { books: [], error: e.message };
+    console.error('catalogSearch error:', e.message);
+    return [];
   }
 }
 
@@ -156,7 +129,10 @@ exports.handler = async (event) => {
   if (event.httpMethod !== 'POST')    return { statusCode: 405, headers: getCors(event), body: 'Method Not Allowed' };
 
   try {
-    const { prompt, cursor = null, searchMeta = null } = JSON.parse(event.body || '{}');
+    // includeCatalog: only the web portal sends this. The mobile app calls the same
+    // function but has no "Request" flow, so it must get Shopify-only results (no
+    // un-actionable catalog cards). Mobile omits the flag → catalog leg is skipped.
+    const { prompt, cursor = null, searchMeta = null, includeCatalog = false } = JSON.parse(event.body || '{}');
     if (!prompt) return {
       statusCode: 400,
       headers: { ...getCors(event), 'Content-Type': 'application/json' },
@@ -329,30 +305,25 @@ Rank these by relevance to the user's query. Respond ONLY with a JSON array of 1
       } catch(e) { /* keep original order */ }
     }
 
-    // ── 4. Serper: only on first page ─────────────────────────────────────
-    let serperBooks = [];
-    let cseError    = null;
-    const skipSerper = isPageTwo || (searchType === 'author' && shopifyBooks.length >= 3);
-    if (!skipSerper) {
-      const cseResult = await searchSerper(searchQuery);
-      serperBooks = cseResult.books;
-      cseError    = cseResult.error;
+    // ── 4. Global catalog semantic search (page 1 only; Shopify drives paging) ──
+    let catalogBooks = [];
+    if (!isPageTwo && includeCatalog) {
+      catalogBooks = await catalogSearch(searchQuery || prompt);
     }
 
-    // ── 5. Merge: Shopify first, then Serper (deduplicated by title) ───────
-    const shopifyTitles = new Set(shopifyBooks.map(b => b.title.toLowerCase()));
+    // ── 5. Merge: Shopify first (in-stock sorted), then catalog (deduped by title) ──
+    const shopifyTitles = new Set(shopifyBooks.map(b => b.title.toLowerCase().trim()));
     const books = [
       ...shopifyBooks,
-      ...serperBooks.filter(b => !shopifyTitles.has(b.title.toLowerCase()))
+      ...catalogBooks.filter(b => !shopifyTitles.has(b.title.toLowerCase().trim()))
     ];
+    const noMatch = books.length === 0;
 
     // ── 6. Log to Supabase (fire-and-forget) ──────────────────────────────
-    const serperCalls   = skipSerper ? 0 : (serperBooks.length === 0 ? 2 : 1);
     const totalClaudeIn = claudeInputTokens  + correlateTokens.input;
     const totalClaudeOut= claudeOutputTokens + correlateTokens.output;
     const claudeCostUsd = (totalClaudeIn / 1_000_000 * 0.80) + (totalClaudeOut / 1_000_000 * 4.00);
-    const serperCostUsd = serperCalls * 0.001;
-    const totalCostUsd  = claudeCostUsd + serperCostUsd;
+    const totalCostUsd  = claudeCostUsd;
 
     if (SUPABASE_URL && SUPABASE_KEY) {
       fetch(`${SUPABASE_URL}/rest/v1/search_logs`, {
@@ -373,8 +344,8 @@ Rank these by relevance to the user's query. Respond ONLY with a JSON array of 1
           claude_input_tokens:  totalClaudeIn,
           claude_output_tokens: totalClaudeOut,
           claude_cost_usd:      claudeCostUsd.toFixed(6),
-          serper_calls:         serperCalls,
-          serper_cost_usd:      serperCostUsd.toFixed(6),
+          serper_calls:         0,
+          serper_cost_usd:      '0.000000',
           total_cost_usd:       totalCostUsd.toFixed(6)
         })
       }).catch(e => console.error('search_logs insert failed:', e.message));
@@ -386,9 +357,9 @@ Rank these by relevance to the user's query. Respond ONLY with a JSON array of 1
       body: JSON.stringify({
         books, explanation, searchType,
         total: books.length,
+        noMatch,
         pageInfo: shopifyPageInfo,
-        searchMeta: { searchType, authorName, bookTitle, searchQuery, shopifyTag, explanation },
-        debug: cseError || null
+        searchMeta: { searchType, authorName, bookTitle, searchQuery, shopifyTag, explanation }
       })
     };
 

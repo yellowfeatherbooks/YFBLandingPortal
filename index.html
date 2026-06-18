@@ -17813,7 +17813,8 @@ Questions? We're always here!
             var compare    = parseFloat(book.comparePrice);
             var shopifyPct = Math.round((1 - parseFloat(book.price) / compare) * 100);
             var totalPct   = shopifyPct + FLASH_EXTRA_PCT;
-            var flashPrice = Math.round(compare * (1 - totalPct / 100));
+            // Flash discount applies to the SALE price (not MRP) — matches the app + checkout (FLASH5 = 5% off sale price).
+            var flashPrice = Math.round(parseFloat(book.price) * (1 - FLASH_EXTRA_PCT / 100));
             document.getElementById('flash-price').textContent = '₹' + flashPrice;
             compareEl.textContent   = '₹' + book.comparePrice;
             compareEl.style.display = '';

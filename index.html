@@ -5967,13 +5967,14 @@
         <div class="ab-form-wrap">
           <div id="ab-error"   class="ab-msg ab-msg-error"   style="display:none;"></div>
           <div id="ab-success" class="ab-msg ab-msg-success" style="display:none;"></div>
+          <div id="ab-enrich-note" style="display:none;margin-bottom:0.75rem;padding:0.5rem 0.75rem;border-radius:6px;font-size:0.8rem;line-height:1.4;border:1px solid;"></div>
 
           <!-- ── Book Info ── -->
           <div class="ab-section-label">Book Information</div>
           <div class="ab-row">
             <div class="ab-field">
               <label class="ab-label">Book Title *</label>
-              <input id="ab-book" type="text" class="ab-input" placeholder="Full title of the book" />
+              <input id="ab-book" type="text" class="ab-input" placeholder="Full title of the book" onblur="abAutoEnrich()" />
             </div>
             <div class="ab-field">
               <label class="ab-label">Author Name *</label>
@@ -6057,8 +6058,8 @@
           <div class="ab-section-label">Description &amp; Cover</div>
           <div class="ab-field">
             <label class="ab-label">Short Description</label>
-            <textarea id="ab-desc" class="ab-textarea" placeholder="Brief description of the book (max 500 characters)…" maxlength="500" oninput="document.getElementById('ab-char-count').textContent=(this.value.length)+' / 500'"></textarea>
-            <div class="ab-hint" id="ab-char-count">0 / 500</div>
+            <textarea id="ab-desc" class="ab-textarea" placeholder="Brief description of the book (max 740 characters)…" maxlength="740" oninput="document.getElementById('ab-char-count').textContent=(this.value.length)+' / 740'"></textarea>
+            <div class="ab-hint" id="ab-char-count">0 / 740</div>
           </div>
           <div class="ab-field">
             <label class="ab-label">Cover Image</label>
@@ -6082,6 +6083,9 @@
             <div class="ab-field">
               <label class="ab-label">Barcode / ISBN *</label>
               <input id="ab-barcode" type="text" class="ab-input" placeholder="13-digit barcode" />
+              <button type="button" id="ab-web-btn" onclick="abWebLookup()"
+                style="margin-top:0.35rem;background:rgba(96,165,250,0.12);border:1px solid #60a5fa;color:#60a5fa;border-radius:5px;padding:0.2rem 0.6rem;font-size:0.72rem;cursor:pointer;"
+                onmouseover="this.style.background='rgba(96,165,250,0.25)'" onmouseout="this.style.background='rgba(96,165,250,0.12)'">🌐 Fetch ISBN &amp; description from web</button>
             </div>
             <div class="ab-field">
               <label class="ab-label">Initial Stock Qty *</label>
@@ -10559,6 +10563,248 @@ Questions? We're always here!
       ssUpdateSyncBtn();
     }
 
+    // Clear the Add Book form so re-clicking a different Not Found row starts fresh.
+    function ssResetAddBookForm() {
+      ['ab-book','ab-author','ab-publisher-other','ab-mrp','ab-discount','ab-desc','ab-barcode']
+        .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+      const pub = document.getElementById('ab-publisher'); if (pub) pub.value = '';
+      abToggleOtherPublisher('');
+      const gen = document.getElementById('ab-genre'); if (gen) gen.value = '';
+      const stock = document.getElementById('ab-stock'); if (stock) stock.value = '1';
+      // Reset sale-price preview + char count.
+      const salePrev = document.getElementById('ab-sale-preview');
+      if (salePrev) salePrev.textContent = 'Optional — leave blank to sell at MRP';
+      const charCount = document.getElementById('ab-char-count');
+      if (charCount) charCount.textContent = '0 / 740';
+      // Clear cover, metafield chips, tag chips, and any prior status messages.
+      if (typeof abRemoveCover === 'function') { try { abRemoveCover(new Event('x')); } catch(e){} }
+      document.querySelectorAll('#ab-metafields-wrap .ab-mf-chip.active, #ab-tags-grid .ab-tag-chip.active')
+        .forEach(c => c.classList.remove('active'));
+      ['ab-error','ab-success','ab-enrich-note'].forEach(id => {
+        const el = document.getElementById(id); if (el) el.style.display = 'none';
+      });
+      _abLastEnriched = '';
+    }
+
+    // Jump to the Add Book → Shopify form, pre-filled from a Not Found row.
+    function ssListOnShopify(name) {
+      const r = _ssPreview.find(x => x.name === name);
+      if (!r) return;
+      // Switch to the Add Book admin section (also lazy-loads its tag/metafield chips).
+      adminNav('add-book', document.querySelector('.admin-nav-item[data-section="add-book"]'));
+
+      // Always start from a clean form so switching rows fully refreshes the data.
+      ssResetAddBookForm();
+
+      const mrp  = parseFloat(r.mrp)         || 0;
+      const sell = parseFloat(r.sellingPrice) || 0;
+
+      // Title (what MyBillBook calls the book).
+      const bookEl = document.getElementById('ab-book');
+      if (bookEl) bookEl.value = r.name || '';
+
+      // MRP.
+      const mrpEl = document.getElementById('ab-mrp');
+      if (mrpEl && mrp > 0) mrpEl.value = mrp;
+
+      // Derive discount % from MyBillBook's selling price (it's the already-discounted price).
+      const discEl = document.getElementById('ab-discount');
+      if (discEl && mrp > 0 && sell > 0 && sell < mrp) {
+        discEl.value = Math.round((1 - sell / mrp) * 100);
+        discEl.dispatchEvent(new Event('input')); // refresh the "Sale price: ₹…" preview
+      }
+
+      // Opening stock.
+      const stockEl = document.getElementById('ab-stock');
+      if (stockEl && r.stockQty != null) stockEl.value = Math.max(1, parseInt(r.stockQty) || 1);
+
+      // Fill Author/Publisher/Genre/ISBN from the catalog IF the exact title exists there.
+      ssEnrichFromCatalog(r.name);
+
+      // Nudge the user toward what still needs manual entry (Author / Publisher / Genre / Barcode).
+      if (bookEl) bookEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      const authorEl = document.getElementById('ab-author');
+      if (authorEl) authorEl.focus();
+    }
+
+    // Pick the matching <option> in a <select> by case-insensitive exact-or-contains text.
+    function ssMatchSelectOption(selectId, value) {
+      const sel = document.getElementById(selectId);
+      if (!sel || !value) return false;
+      const v = value.toLowerCase().trim();
+      let opt = Array.from(sel.options).find(o => o.text.toLowerCase().trim() === v);
+      if (!opt) opt = Array.from(sel.options).find(o => {
+        const t = o.text.toLowerCase().trim();
+        return t && t !== 'other' && (t.includes(v) || v.includes(t));
+      });
+      if (opt) { sel.value = opt.value; return true; }
+      return false;
+    }
+
+    // EXACT-title catalog lookup — pre-fills the manual fields only when the same book
+    // is in our global catalog. No fuzzy/semantic guessing.
+    function ssEnrichNote(html, color) {
+      const noteEl = document.getElementById('ab-enrich-note');
+      if (!noteEl) return;
+      const palettes = {
+        green: ['rgba(74,222,128,0.5)','rgba(74,222,128,0.08)','#4ade80'],
+        amber: ['rgba(250,204,21,0.5)','rgba(250,204,21,0.08)','#facc15'],
+        grey:  ['rgba(148,163,184,0.4)','rgba(148,163,184,0.08)','#94a3b8'],
+      };
+      const palette = palettes[color] || palettes.grey;
+      noteEl.style.borderColor = palette[0];
+      noteEl.style.background  = palette[1];
+      noteEl.style.color       = palette[2];
+      noteEl.innerHTML = html;
+      noteEl.style.display = 'block';
+    }
+
+    // Fetch book details from the web (keralabookstore.com first). Fills Author /
+    // Publisher / Genre (web is authoritative → overrides the catalog's fuzzy guess),
+    // plus Barcode/ISBN and Description (only empty unless `overwrite`). Returns { msg, got[] }.
+    async function ssWebFill(title, author, overwrite) {
+      try {
+        const res = await fetch('/.netlify/functions/web-book-lookup', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ adminEmail: _adminSession.email, adminKey: _adminSession.adminKey, title, author: author || '' })
+        });
+        const d = await res.json();
+        if (!d.found) return { msg: '', got: [] };
+
+        const got = [];
+
+        // Author — bookstore data is authoritative, so override.
+        const authorEl = document.getElementById('ab-author');
+        if (authorEl && d.author && authorEl.value.trim() !== d.author) { authorEl.value = d.author; got.push('Author'); }
+
+        // Publisher — match the dropdown, else "Other" + free text.
+        if (d.publisher) {
+          if (ssMatchSelectOption('ab-publisher', d.publisher)) {
+            abToggleOtherPublisher(document.getElementById('ab-publisher').value);
+          } else {
+            document.getElementById('ab-publisher').value = 'Other';
+            abToggleOtherPublisher('Other');
+            const other = document.getElementById('ab-publisher-other');
+            if (other) other.value = d.publisher;
+          }
+          got.push('Publisher');
+        }
+
+        // Genre — only if it maps to a dropdown option (skips Malayalam category labels).
+        if (d.genre && ssMatchSelectOption('ab-genre', d.genre)) got.push('Genre');
+
+        const barcodeEl = document.getElementById('ab-barcode');
+        if (barcodeEl && d.isbn && (overwrite || !barcodeEl.value.trim())) { barcodeEl.value = d.isbn; got.push(d.isAsin ? 'ASIN' : 'ISBN'); }
+
+        const descEl = document.getElementById('ab-desc');
+        if (descEl && d.description && (overwrite || !descEl.value.trim())) {
+          descEl.value = d.description;
+          descEl.dispatchEvent(new Event('input')); // refresh the char counter
+          got.push('Description');
+        }
+        return { msg: got.length ? `🌐 From ${d.source}: ${got.join(' + ')} (verify).` : '', got, data: d };
+      } catch (e) {
+        return { msg: '', got: [] };
+      }
+    }
+
+    // Manual "fetch from web" button on the Add Book form — overwrites on click.
+    async function abWebLookup() {
+      const title = (document.getElementById('ab-book')?.value || '').trim();
+      if (!title) { alert('Enter the book title first.'); return; }
+      const author = (document.getElementById('ab-author')?.value || '').trim();
+      const btn = document.getElementById('ab-web-btn');
+      if (btn) { btn.disabled = true; btn.textContent = '⏳ Searching…'; }
+      const web = await ssWebFill(title, author, true);
+      if (btn) { btn.disabled = false; btn.textContent = '🌐 Fetch ISBN & description from web'; }
+      ssEnrichNote(web.msg || 'ℹ️ Nothing found online for this title — enter ISBN/description manually.',
+                   (web.got && web.got.length) ? 'green' : 'grey');
+    }
+
+    // Auto-enrich when the admin types a title and leaves the field (manual Add Book flow).
+    var _abLastEnriched = '';
+    function abAutoEnrich() {
+      const title = (document.getElementById('ab-book')?.value || '').trim();
+      if (!title || title === _abLastEnriched) return;  // skip empty / already-looked-up
+      ssEnrichFromCatalog(title);
+    }
+
+    // Clear only the lookup-derived fields (so switching titles never leaves stale data).
+    function ssClearEnrichFields() {
+      const author = document.getElementById('ab-author');  if (author) author.value = '';
+      const pub = document.getElementById('ab-publisher');  if (pub) pub.value = '';
+      const pubOther = document.getElementById('ab-publisher-other'); if (pubOther) pubOther.value = '';
+      abToggleOtherPublisher('');
+      const gen = document.getElementById('ab-genre');      if (gen) gen.value = '';
+      const barcode = document.getElementById('ab-barcode'); if (barcode) barcode.value = '';
+      const desc = document.getElementById('ab-desc');      if (desc) { desc.value = ''; desc.dispatchEvent(new Event('input')); }
+    }
+
+    async function ssEnrichFromCatalog(title) {
+      _abLastEnriched = title;
+      ssClearEnrichFields();   // reset previous book's author/publisher/genre/ISBN/description
+      let catMsg = '', color = 'grey', author = '';
+
+      // 1) Catalog enrichment (Author / Publisher / Genre / ISBN).
+      try {
+        const res = await fetch('/.netlify/functions/catalog-enrich', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ adminEmail: _adminSession.email, adminKey: _adminSession.adminKey, title })
+        });
+        const d = await res.json();
+
+        if (!d.found) {
+          catMsg = 'ℹ️ Not in the global catalog — enter Author, Publisher &amp; Genre manually.';
+          color  = 'grey';
+        } else {
+          const filled = [];
+          const authorEl = document.getElementById('ab-author');
+          if (authorEl && d.author) { authorEl.value = d.author; filled.push('Author'); author = d.author; }
+
+          if (d.publisher) {
+            if (ssMatchSelectOption('ab-publisher', d.publisher)) {
+              abToggleOtherPublisher(document.getElementById('ab-publisher').value);
+            } else {
+              document.getElementById('ab-publisher').value = 'Other';
+              abToggleOtherPublisher('Other');
+              const other = document.getElementById('ab-publisher-other');
+              if (other) other.value = d.publisher;
+            }
+            filled.push('Publisher');
+          }
+
+          if (d.genre && ssMatchSelectOption('ab-genre', d.genre)) filled.push('Genre');
+
+          const barcodeEl = document.getElementById('ab-barcode');
+          if (barcodeEl && d.isbn) { barcodeEl.value = d.isbn; filled.push('ISBN'); }
+
+          const pct   = d.score != null ? Math.round(d.score * 100) : null;
+          const exact = pct === 100;
+          color = (pct == null || pct >= 60) ? 'green' : 'amber';
+          catMsg =
+            `${exact ? '✨ Exact catalog match' : `✨ Catalog match: <strong>“${d.matchedTitle}”</strong>${pct != null ? ` (${pct}%)` : ''}`}. ` +
+            (filled.length ? `Auto-filled: ${filled.join(', ')}. ` : '') +
+            (exact ? '' : 'Please verify it\'s the same book. ');
+        }
+      } catch (e) {
+        catMsg = 'ℹ️ Catalog lookup unavailable. ';
+        color  = 'grey';
+      }
+
+      // 2) Web lookup for anything still missing (ISBN + description).
+      ssEnrichNote(catMsg + ' 🌐 Searching the web for ISBN &amp; description…', color);
+      if (!author) author = (document.getElementById('ab-author')?.value || '').trim();
+      const web = await ssWebFill(title, author, false);
+      const barcodeEl = document.getElementById('ab-barcode');
+      const stillNoIsbn = barcodeEl && !barcodeEl.value.trim();
+      ssEnrichNote(
+        catMsg + ' ' + (web.msg || (stillNoIsbn ? '🌐 No ISBN found online — enter the barcode manually.' : '')),
+        color
+      );
+    }
+
     function ssToggleAll(checked) {
       // Select/deselect all currently visible matched rows
       document.querySelectorAll('.ss-row-cb').forEach(cb => {
@@ -10717,7 +10963,10 @@ Questions? We're always here!
               : r.normalizedName ? `<span style="color:#6b7280;" title="Lookup key: ${r.normalizedName}">🔑 ${r.normalizedName}</span>`
               : ''}
           </td>
-          <td style="padding:0.4rem 0.3rem;text-align:center;">
+          <td style="padding:0.4rem 0.3rem;text-align:center;white-space:nowrap;">
+            ${isNotFound ? `<button onclick="ssListOnShopify('${escapedName}')" title="List this book on Shopify — opens the Add Book form pre-filled"
+              style="background:rgba(74,222,128,0.12);border:1px solid #4ade80;cursor:pointer;color:#4ade80;font-size:0.7rem;font-weight:600;border-radius:5px;padding:0.15rem 0.45rem;line-height:1.2;margin-right:0.3rem;"
+              onmouseover="this.style.background='rgba(74,222,128,0.25)'" onmouseout="this.style.background='rgba(74,222,128,0.12)'">➕ List</button>` : ''}
             <button onclick="ssDeleteRow('${escapedName}')" title="Remove from preview"
               style="background:none;border:none;cursor:pointer;color:#6b7280;font-size:0.9rem;padding:0 0.2rem;line-height:1;"
               onmouseover="this.style.color='#f87171'" onmouseout="this.style.color='#6b7280'">🗑</button>
@@ -11115,7 +11364,7 @@ Questions? We're always here!
       if (section === 'abandoned-carts') adminLoadAbandonedCarts();
       if (section === 'stock-summary')   adminLoadStockSummary();
       if (section === 'intelligence')    intelInit();
-      if (section === 'add-book')    { abBuildTagGrid(); abLoadMetafields(); }
+      if (section === 'add-book')    { ssResetAddBookForm(); abBuildTagGrid(); abLoadMetafields(); }
       if (section === 'sales-team')  adminLoadSalesTeam();
       // direct-sales and tag sections: user initiates load via button
     }

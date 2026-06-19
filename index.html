@@ -5332,6 +5332,44 @@
     }
   </script>
 
+  <!-- SKU Generator (shared tool — opened from admin + sales sidebars) -->
+  <div id="sku-gen-modal" onclick="if(event.target===this)closeSkuGen()"
+       style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:7000;align-items:flex-start;justify-content:center;padding:8vh 1rem;overflow:auto;">
+    <div style="background:#171d2e;border:1px solid #2a3350;border-radius:16px;padding:1.5rem;max-width:460px;width:100%;font-family:Inter,system-ui,sans-serif;box-shadow:0 20px 60px rgba(0,0,0,.4);">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.3rem;">
+        <h2 style="margin:0;font-size:1.1rem;color:#f0c060;">🏷️ SKU Generator</h2>
+        <button onclick="closeSkuGen()" style="background:transparent;border:none;font-size:1.4rem;cursor:pointer;color:#9aa6c0;line-height:1;">✕</button>
+      </div>
+      <p style="margin:.2rem 0 1rem;color:#9aa6c0;font-size:.82rem;">Type the book title → get its SKU. Use the <b>same code</b> in MyBillBook (Item code) and Shopify (Variant SKU). Same title = same SKU, every time.</p>
+      <input id="skugen-title" type="text" placeholder="e.g. Randamoozham" autocomplete="off" oninput="skugenCompute()"
+        style="width:100%;box-sizing:border-box;padding:.6rem .8rem;border:1px solid #2a3350;border-radius:9px;background:#0e1320;color:#fff;font-size:1rem;">
+      <div style="display:flex;align-items:center;gap:.6rem;margin-top:1rem;">
+        <div id="skugen-sku" style="flex:1;text-align:center;font-family:ui-monospace,Consolas,monospace;font-size:1.5rem;letter-spacing:1px;color:#5ee0a0;background:#0e1320;border:1px dashed #2a3350;border-radius:9px;padding:.5rem;">—</div>
+        <button onclick="skugenCopy()" style="background:#f0c060;border:none;border-radius:9px;padding:.55rem 1rem;font-weight:700;cursor:pointer;color:#1a1a1a;">Copy</button>
+      </div>
+      <div id="skugen-msg" style="height:1em;margin-top:.5rem;font-size:.78rem;color:#5ee0a0;"></div>
+      <div id="skugen-norm" style="font-size:.72rem;color:#6b7694;"></div>
+    </div>
+  </div>
+  <script>
+    function openSkuGen(){ var m=document.getElementById('sku-gen-modal'); m.style.display='flex'; var i=document.getElementById('skugen-title'); i.value=''; document.getElementById('skugen-sku').textContent='—'; document.getElementById('skugen-msg').textContent=''; document.getElementById('skugen-norm').textContent=''; setTimeout(function(){i.focus();},50); }
+    function closeSkuGen(){ document.getElementById('sku-gen-modal').style.display='none'; }
+    function skugenNorm(s){ return (s||'').toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,' ').trim().replace(/\s+/g,' '); }
+    async function skugenCompute(){
+      var CH='ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+      var n=skugenNorm(document.getElementById('skugen-title').value);
+      var skuEl=document.getElementById('skugen-sku'), normEl=document.getElementById('skugen-norm'), msg=document.getElementById('skugen-msg');
+      msg.textContent='';
+      if(!n){ skuEl.textContent='—'; normEl.textContent=''; return; }
+      var buf=await crypto.subtle.digest('SHA-256', new TextEncoder().encode(n));
+      var b=new Uint8Array(buf), s='';
+      for(var i=0;i<10;i++) s+=CH[b[i]%36];
+      skuEl.textContent=s.slice(0,2)+'-'+s.slice(2,6)+'-'+s.slice(6,10);
+      normEl.textContent='normalized: '+n;
+    }
+    function skugenCopy(){ var v=document.getElementById('skugen-sku').textContent; if(v&&v!=='—'){ navigator.clipboard.writeText(v); document.getElementById('skugen-msg').textContent='Copied '+v; } }
+  </script>
+
   <section id="find-a-book">
     <div class="fab-panel-bar">
       <span class="fab-panel-bar-title">✨ Global Book Search</span>
@@ -5492,6 +5530,9 @@
       </button>
       <button class="sales-nav-item" data-section="add-book" onclick="salesNav('add-book',this)">
         <span class="sales-nav-icon">➕</span> Add Book
+      </button>
+      <button class="sales-nav-item" onclick="openSkuGen()">
+        <span class="sales-nav-icon">🏷️</span> SKU Generator
       </button>
       <div class="sales-nav-bottom">
         <button class="sales-nav-item" onclick="salesLogout()" style="color:#f87171;">
@@ -5872,6 +5913,9 @@
       </button>
       <button class="admin-nav-item" data-section="stock-summary" onclick="adminNav('stock-summary',this)">
         <span class="admin-nav-icon">📚</span> Stock Summary
+      </button>
+      <button class="admin-nav-item" onclick="openSkuGen()">
+        <span class="admin-nav-icon">🏷️</span> SKU Generator
       </button>
       <button class="admin-nav-item" data-section="wa-campaign" onclick="adminNav('wa-campaign',this)">
         <span class="admin-nav-icon">📣</span> WA Campaign

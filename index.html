@@ -3063,6 +3063,20 @@
     .admin-nav-item.active { background: rgba(212,175,55,0.08); color: var(--gold); border-left-color: var(--gold); }
     .admin-nav-icon { font-size: 1rem; width: 1.2rem; text-align: center; }
     .admin-nav-bottom { margin-top: auto; padding: 0.5rem 0; border-top: 1px solid rgba(255,255,255,0.07); }
+    /* Collapsible nav groups (Odoo / Shopify) */
+    .admin-nav-group { display: flex; flex-direction: column; }
+    .admin-nav-group-hdr {
+      display: flex; align-items: center; gap: 0.6rem; width: 100%;
+      padding: 0.6rem 1.1rem; background: rgba(255,255,255,0.03); border: none;
+      border-left: 3px solid transparent; color: var(--muted); font-size: 0.82rem;
+      font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; cursor: pointer; text-align: left;
+    }
+    .admin-nav-group-hdr:hover { background: rgba(255,255,255,0.06); color: var(--text); }
+    .admin-nav-chev { margin-left: auto; font-size: 0.7rem; transition: transform 0.15s; }
+    .admin-nav-group.collapsed .admin-nav-chev { transform: rotate(-90deg); }
+    .admin-nav-group.collapsed .admin-nav-children { display: none; }
+    .admin-nav-children { display: flex; flex-direction: column; }
+    .admin-nav-children .admin-nav-item { padding-left: 2.1rem; font-size: 0.86rem; }
 
     /* Admin content */
     #admin-content { flex: 1; overflow-y: auto; padding: 1.5rem; }
@@ -3532,11 +3546,11 @@
     #book-tag-status { font-size: 0.78rem; margin-top: 0.6rem; min-height: 1.2rem; }
 
     /* Admin login panel */
-    #admin-login-panel, #sales-login-panel {
+    #admin-login-panel, #sales-login-panel, #staff-reset-panel {
       display: none; position: fixed; inset: 0; background: rgba(11,14,26,0.97);
       z-index: 200; align-items: center; justify-content: center; padding: 1rem;
     }
-    #admin-login-panel.open, #sales-login-panel.open { display: flex; }
+    #admin-login-panel.open, #sales-login-panel.open, #staff-reset-panel.open { display: flex; }
 
     /* ── Author subscription gate ── */
     #author-sub-gate {
@@ -5459,7 +5473,7 @@
         <input type="email" id="admin-email" class="alp-input" placeholder="admin@yellowfeatherbooks.com"
           autocomplete="username" onkeydown="if(event.key==='Enter') adminLoginSubmit()">
       </div>
-      <div class="alp-field">
+      <div class="alp-field" id="admin-pw-field">
         <label>Password</label>
         <div class="pw-wrap">
           <input type="password" id="admin-password" class="alp-input" placeholder="••••••••"
@@ -5467,9 +5481,20 @@
           <button type="button" class="pw-eye" onclick="togglePw('admin-password',this)" tabindex="-1" aria-label="Show password">👁</button>
         </div>
       </div>
+      <div class="alp-field" id="admin-otp-field" style="display:none;">
+        <label>One-Time Password</label>
+        <input type="text" inputmode="numeric" id="admin-otp" class="alp-input" placeholder="6-digit code"
+          autocomplete="one-time-code" onkeydown="if(event.key==='Enter') staffOtpVerify('admin')">
+      </div>
       <div class="alp-error" id="admin-login-error"></div>
+      <div id="admin-login-info" style="display:none;color:#86efac;font-size:0.78rem;margin-bottom:0.6rem;"></div>
       <button class="alp-btn" id="admin-login-btn" onclick="adminLoginSubmit()">Sign In</button>
-      <div class="alp-footer-note" style="margin-top:0.8rem;">
+      <button class="alp-btn" id="admin-otp-send-btn" onclick="staffOtpSend('admin')" style="display:none;">Send OTP</button>
+      <button class="alp-btn" id="admin-otp-verify-btn" onclick="staffOtpVerify('admin')" style="display:none;">Verify &amp; Sign In</button>
+      <div class="alp-footer-note" style="margin-top:0.8rem;display:flex;justify-content:center;gap:0.9rem;flex-wrap:wrap;">
+        <a href="#" id="admin-forgot-link" onclick="staffForgot('admin');return false;">Forgot password?</a>
+        <a href="#" id="admin-otp-link" onclick="staffOtpMode('admin',true);return false;">Sign in with OTP</a>
+        <a href="#" id="admin-pw-link" onclick="staffOtpMode('admin',false);return false;" style="display:none;">Use password</a>
         <a href="#" onclick="hideAdminLogin();return false;">← Cancel</a>
       </div>
     </div>
@@ -5487,7 +5512,7 @@
         <input type="email" id="sales-email" class="alp-input" placeholder="sales@yellowfeatherbooks.com"
           autocomplete="username" onkeydown="if(event.key==='Enter') salesLoginSubmit()">
       </div>
-      <div class="alp-field">
+      <div class="alp-field" id="sales-pw-field">
         <label>Password</label>
         <div class="pw-wrap">
           <input type="password" id="sales-password" class="alp-input" placeholder="••••••••"
@@ -5495,10 +5520,44 @@
           <button type="button" class="pw-eye" onclick="togglePw('sales-password',this)" tabindex="-1" aria-label="Show password">👁</button>
         </div>
       </div>
+      <div class="alp-field" id="sales-otp-field" style="display:none;">
+        <label>One-Time Password</label>
+        <input type="text" inputmode="numeric" id="sales-otp" class="alp-input" placeholder="6-digit code"
+          autocomplete="one-time-code" onkeydown="if(event.key==='Enter') staffOtpVerify('sales')">
+      </div>
       <div class="alp-error" id="sales-login-error"></div>
+      <div id="sales-login-info" style="display:none;color:#86efac;font-size:0.78rem;margin-bottom:0.6rem;"></div>
       <button class="alp-btn" id="sales-login-btn" onclick="salesLoginSubmit()" style="background:#38BDB2;">Sign In</button>
-      <div class="alp-footer-note" style="margin-top:0.8rem;">
+      <button class="alp-btn" id="sales-otp-send-btn" onclick="staffOtpSend('sales')" style="display:none;background:#38BDB2;">Send OTP</button>
+      <button class="alp-btn" id="sales-otp-verify-btn" onclick="staffOtpVerify('sales')" style="display:none;background:#38BDB2;">Verify &amp; Sign In</button>
+      <div class="alp-footer-note" style="margin-top:0.8rem;display:flex;justify-content:center;gap:0.9rem;flex-wrap:wrap;">
+        <a href="#" id="sales-forgot-link" onclick="staffForgot('sales');return false;">Forgot password?</a>
+        <a href="#" id="sales-otp-link" onclick="staffOtpMode('sales',true);return false;">Sign in with OTP</a>
+        <a href="#" id="sales-pw-link" onclick="staffOtpMode('sales',false);return false;" style="display:none;">Use password</a>
         <a href="#" onclick="hideSalesLogin();return false;">← Cancel</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ STAFF PASSWORD RESET PANEL (#staff-reset?token=…) ══ -->
+  <div id="staff-reset-panel">
+    <div class="alp-card" style="max-width:400px;width:100%;margin:auto;">
+      <div class="alp-logo"><span>🔑</span></div>
+      <div class="alp-title">Reset Password</div>
+      <div class="alp-sub">Yellow Feather Books — Set a new password</div>
+      <div class="alp-field">
+        <label>New Password</label>
+        <div class="pw-wrap">
+          <input type="password" id="staff-reset-pw" class="alp-input" placeholder="Min 8 characters"
+            autocomplete="new-password" onkeydown="if(event.key==='Enter') staffResetSubmit()">
+          <button type="button" class="pw-eye" onclick="togglePw('staff-reset-pw',this)" tabindex="-1" aria-label="Show password">👁</button>
+        </div>
+      </div>
+      <div class="alp-error" id="staff-reset-error"></div>
+      <div id="staff-reset-ok" style="display:none;color:#86efac;font-size:0.82rem;margin-bottom:0.6rem;"></div>
+      <button class="alp-btn" id="staff-reset-btn" onclick="staffResetSubmit()">Set New Password</button>
+      <div class="alp-footer-note" style="margin-top:0.8rem;">
+        <a href="#" onclick="hideStaffReset();return false;">← Back to login</a>
       </div>
     </div>
   </div>
@@ -5791,7 +5850,7 @@
             <div class="ab-field">
               <label class="ab-label">Discount %</label>
               <input id="sab-discount" type="number" class="ab-input" placeholder="e.g. 15" min="0" max="100"
-                oninput="const m=parseFloat(document.getElementById('sab-mrp').value)||0;const d=parseFloat(this.value)||0;document.getElementById('sab-sale-preview').textContent=d>0&&m>0?'Sale price: ₹'+(m*(1-d/100)).toFixed(2):'';" />
+                oninput="const m=parseFloat(document.getElementById('sab-mrp').value)||0;const d=parseFloat(this.value)||0;document.getElementById('sab-sale-preview').textContent=d>0&&m>0?'Sale price: ₹'+Math.round(m*(1-d/100)):'';" />
               <div class="ab-hint" id="sab-sale-preview" style="color:var(--gold);">Optional — leave blank to sell at MRP</div>
             </div>
           </div>
@@ -5893,44 +5952,95 @@
       <button class="admin-nav-item" data-section="submissions" onclick="adminNav('submissions',this)">
         <span class="admin-nav-icon">📋</span> Submissions
       </button>
-      <button class="admin-nav-item" data-section="add-book" onclick="adminNav('add-book',this)">
-        <span class="admin-nav-icon">➕</span> Add Book
-      </button>
       <button class="admin-nav-item" data-section="book-requests" onclick="adminNav('book-requests',this)">
         <span class="admin-nav-icon">📬</span> Book Requests
       </button>
       <button class="admin-nav-item" data-section="signed-requests" onclick="adminNav('signed-requests',this)">
         <span class="admin-nav-icon">✒️</span> Signed Copies
       </button>
-      <button class="admin-nav-item" data-section="tags" onclick="adminNav('tags',this)">
-        <span class="admin-nav-icon">🏷️</span> Tag Management
-      </button>
+
+      <!-- ── Shopify group (catalog/inventory only) ── -->
+      <div class="admin-nav-group">
+        <button class="admin-nav-group-hdr" onclick="adminNavGroup(this)">
+          <span class="admin-nav-icon">🛍️</span> Shopify <span class="admin-nav-chev">▾</span>
+        </button>
+        <div class="admin-nav-children">
+          <button class="admin-nav-item" data-section="add-book" onclick="adminNav('add-book',this)">
+            <span class="admin-nav-icon">➕</span> Add Book
+          </button>
+          <button class="admin-nav-item" data-section="tags" onclick="adminNav('tags',this)">
+            <span class="admin-nav-icon">🏷️</span> Tag Management
+          </button>
+          <button class="admin-nav-item" data-section="stock-sync" onclick="adminNav('stock-sync',this)">
+            <span class="admin-nav-icon">🔄</span> Stock Sync
+          </button>
+          <button class="admin-nav-item" data-section="stock-summary" onclick="adminNav('stock-summary',this)">
+            <span class="admin-nav-icon">📚</span> Stock Summary
+          </button>
+        </div>
+      </div>
+
+      <!-- Marketing / tools (not Shopify-specific) -->
       <button class="admin-nav-item" data-section="flash" onclick="adminNav('flash',this)">
         <span class="admin-nav-icon">⚡</span> Flash Sale
-      </button>
-      <button class="admin-nav-item" data-section="stock-sync" onclick="adminNav('stock-sync',this)">
-        <span class="admin-nav-icon">🔄</span> Stock Sync
-      </button>
-      <button class="admin-nav-item" data-section="stock-summary" onclick="adminNav('stock-summary',this)">
-        <span class="admin-nav-icon">📚</span> Stock Summary
-      </button>
-      <button class="admin-nav-item" onclick="openSkuGen()">
-        <span class="admin-nav-icon">🏷️</span> SKU Generator
-      </button>
-      <button class="admin-nav-item" data-section="wa-campaign" onclick="adminNav('wa-campaign',this)">
-        <span class="admin-nav-icon">📣</span> WA Campaign
       </button>
       <button class="admin-nav-item" data-section="abandoned-carts" onclick="adminNav('abandoned-carts',this)">
         <span class="admin-nav-icon">🛒</span> Abandoned Carts
       </button>
+      <button class="admin-nav-item" data-section="wa-campaign" onclick="adminNav('wa-campaign',this)">
+        <span class="admin-nav-icon">📣</span> WA Campaign
+      </button>
+      <button class="admin-nav-item" onclick="openSkuGen()">
+        <span class="admin-nav-icon">🔠</span> SKU Generator
+      </button>
       <button class="admin-nav-item" data-section="intelligence" onclick="adminNav('intelligence',this)">
         <span class="admin-nav-icon">📊</span> Intelligence
       </button>
-      <button class="admin-nav-item" data-section="direct-sales" onclick="adminNav('direct-sales',this)">
-        <span class="admin-nav-icon">🤝</span> Import Direct Sales
-      </button>
+
+      <!-- ── Odoo group ── -->
+      <div class="admin-nav-group">
+        <button class="admin-nav-group-hdr" onclick="adminNavGroup(this)">
+          <span class="admin-nav-icon">🟧</span> Odoo <span class="admin-nav-chev">▾</span>
+        </button>
+        <div class="admin-nav-children">
+          <button class="admin-nav-item" data-section="odoo-sync" onclick="adminNav('odoo-sync',this)">
+            <span class="admin-nav-icon">🔄</span> Odoo Sync
+          </button>
+          <button class="admin-nav-item" data-section="direct-sales" onclick="adminNav('direct-sales',this)">
+            <span class="admin-nav-icon">🤝</span> Import Direct Sales
+          </button>
+          <button class="admin-nav-item" data-section="odoo-reconcile" onclick="adminNav('odoo-reconcile',this)">
+            <span class="admin-nav-icon">↩️</span> Reconcile MyBillBook
+          </button>
+          <button class="admin-nav-item" data-section="odoo-reports" onclick="adminNav('odoo-reports',this)">
+            <span class="admin-nav-icon">📄</span> Quick Reports
+          </button>
+        </div>
+      </div>
+
+      <!-- ── Razorpay group ── -->
+      <div class="admin-nav-group">
+        <button class="admin-nav-group-hdr" onclick="adminNavGroup(this)">
+          <span class="admin-nav-icon">💳</span> Razorpay <span class="admin-nav-chev">▾</span>
+        </button>
+        <div class="admin-nav-children">
+          <button class="admin-nav-item" data-section="razorpay-payments" onclick="adminNav('razorpay-payments',this)">
+            <span class="admin-nav-icon">💰</span> Payments
+          </button>
+          <button class="admin-nav-item" data-section="razorpay-settlements" onclick="adminNav('razorpay-settlements',this)">
+            <span class="admin-nav-icon">🏦</span> Settlements
+          </button>
+          <button class="admin-nav-item" data-section="odoo-razorpay" onclick="adminNav('odoo-razorpay',this)">
+            <span class="admin-nav-icon">🧾</span> Backfill → Odoo
+          </button>
+        </div>
+      </div>
+
       <button class="admin-nav-item" data-section="sales-team" onclick="adminNav('sales-team',this)">
-        <span class="admin-nav-icon">📊</span> Sales Team
+        <span class="admin-nav-icon">👥</span> Sales Team
+      </button>
+      <button class="admin-nav-item" data-section="admin-users" onclick="adminNav('admin-users',this)">
+        <span class="admin-nav-icon">🛡️</span> Admin Users
       </button>
       <div class="admin-nav-bottom">
         <button class="admin-nav-item" onclick="adminLogout()" style="color:#f87171;">
@@ -6049,7 +6159,7 @@
             <div class="ab-field">
               <label class="ab-label">Discount %</label>
               <input id="ab-discount" type="number" class="ab-input" placeholder="e.g. 15" min="0" max="100"
-                oninput="const m=parseFloat(document.getElementById('ab-mrp').value)||0;const d=parseFloat(this.value)||0;document.getElementById('ab-sale-preview').textContent=d>0&&m>0?'Sale price: ₹'+(m*(1-d/100)).toFixed(2):'';" />
+                oninput="const m=parseFloat(document.getElementById('ab-mrp').value)||0;const d=parseFloat(this.value)||0;document.getElementById('ab-sale-preview').textContent=d>0&&m>0?'Sale price: ₹'+Math.round(m*(1-d/100)):'';" />
               <div class="ab-hint" id="ab-sale-preview" style="color:var(--gold);">Optional — leave blank to sell at MRP</div>
             </div>
           </div>
@@ -6185,7 +6295,7 @@
         <div class="admin-section-header">
           <div class="admin-filter-row" id="orders-tabbar">
             <button class="admin-filter-btn active" data-tab="online" onclick="adminOrdersTab('online',this)">🌐 Online Orders</button>
-            <button class="admin-filter-btn" data-tab="direct" onclick="adminOrdersTab('direct',this)">🤝 Direct Sales</button>
+            <button class="admin-filter-btn" data-tab="direct" onclick="adminOrdersTab('direct',this)">🤝 Sales by Author</button>
             <button class="admin-filter-btn" data-tab="total" onclick="adminOrdersTab('total',this)">📊 Total Sales</button>
           </div>
         </div>
@@ -6232,9 +6342,9 @@
           <div id="admin-orders-body"></div>
         </div>
 
-        <!-- ── Direct Sales (imported offline sales) ── -->
+        <!-- ── Sales by Author (offline/direct sales attributed to linked authors) ── -->
         <div id="otab-direct" style="display:none;">
-          <div class="admin-section-header"><h2>🤝 Direct Sales</h2></div>
+          <div class="admin-section-header"><h2>🤝 Sales by Author</h2></div>
           <div class="orders-filter-bar">
             <input  id="ds-search" class="orders-filter-input" type="text" placeholder="🔍 Invoice, customer, book or email…" oninput="adminRenderDirectSales()">
             <select id="ds-pay"    class="orders-filter-select" onchange="adminRenderDirectSales()">
@@ -6736,15 +6846,8 @@
           <h3>➕ Record Offline Sale</h3>
           <p style="font-size:0.84rem;color:var(--muted);margin-bottom:1rem;">Use this to log sales made directly by an author — e.g. book fairs, college events, personal sales.</p>
 
-          <!-- Book preview strip (shown after autocomplete selection) -->
-          <div id="ds-book-preview" style="display:none;align-items:center;gap:0.75rem;background:rgba(201,146,42,0.08);border:1px solid rgba(201,146,42,0.25);border-radius:8px;padding:0.6rem 0.85rem;margin-bottom:0.85rem;">
-            <img id="ds-book-cover" src="" alt="" style="width:42px;height:60px;object-fit:cover;border-radius:4px;flex-shrink:0;" />
-            <div>
-              <div id="ds-book-preview-title" style="font-size:0.88rem;font-weight:700;color:var(--text);"></div>
-              <div id="ds-book-preview-price" style="font-size:0.78rem;color:var(--gold);margin-top:0.15rem;"></div>
-            </div>
-            <button onclick="dsClearBookSelection()" title="Clear" style="margin-left:auto;background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem;line-height:1;">✕</button>
-          </div>
+          <!-- Selected books (multi-line) — search above adds rows here -->
+          <div id="ds-items-list" style="margin-bottom:0.85rem;"></div>
 
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:0.85rem;">
             <div style="display:flex;flex-direction:column;gap:0.3rem;">
@@ -6753,8 +6856,8 @@
                 style="font-size:0.83rem;padding:0.5rem 0.75rem;border-radius:6px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);color:var(--text);width:100%;box-sizing:border-box;" />
             </div>
             <div style="display:flex;flex-direction:column;gap:0.3rem;position:relative;">
-              <label style="font-size:0.77rem;color:var(--muted);font-weight:600;">Book Title *</label>
-              <input type="text" id="ds-book-title" placeholder="Start typing to search…" autocomplete="off"
+              <label style="font-size:0.77rem;color:var(--muted);font-weight:600;">Add Book(s) *</label>
+              <input type="text" id="ds-book-title" placeholder="Type to search, then pick to add…" autocomplete="off"
                 oninput="dsBookTitleInput(this.value)"
                 onkeydown="dsBookTitleKeydown(event)"
                 style="font-size:0.83rem;padding:0.5rem 0.75rem;border-radius:6px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);color:var(--text);width:100%;box-sizing:border-box;" />
@@ -6766,15 +6869,15 @@
               <input type="date" id="ds-sale-date"
                 style="font-size:0.83rem;padding:0.5rem 0.75rem;border-radius:6px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);color:var(--text);width:100%;box-sizing:border-box;color-scheme:dark;" />
             </div>
-            <div style="display:flex;flex-direction:column;gap:0.3rem;">
+            <div style="display:none;flex-direction:column;gap:0.3rem;">
               <label style="font-size:0.77rem;color:var(--muted);font-weight:600;">Quantity *</label>
               <input type="number" id="ds-quantity" value="1" min="1"
                 style="font-size:0.83rem;padding:0.5rem 0.75rem;border-radius:6px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);color:var(--text);width:100%;box-sizing:border-box;" />
             </div>
             <div style="display:flex;flex-direction:column;gap:0.3rem;">
-              <label style="font-size:0.77rem;color:var(--muted);font-weight:600;">Total Amount ₹ *</label>
-              <input type="number" id="ds-amount" placeholder="e.g. 299" min="0" step="0.01"
-                style="font-size:0.83rem;padding:0.5rem 0.75rem;border-radius:6px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);color:var(--text);width:100%;box-sizing:border-box;" />
+              <label style="font-size:0.77rem;color:var(--muted);font-weight:600;">Total Amount ₹ (auto)</label>
+              <input type="number" id="ds-total-display" placeholder="0.00" min="0" step="0.01" readonly
+                style="font-size:0.83rem;padding:0.5rem 0.75rem;border-radius:6px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.12);color:var(--text);width:100%;box-sizing:border-box;opacity:0.9;" />
             </div>
             <div style="display:flex;flex-direction:column;gap:0.3rem;">
               <label style="font-size:0.77rem;color:var(--muted);font-weight:600;">Order / Invoice # (optional)</label>
@@ -6801,31 +6904,24 @@
           </div>
         </div>
 
-        <!-- Bulk import from BillBook daybook -->
+        <!-- Bulk import (spreadsheet) — a day's offline sales -->
         <div class="tag-mgmt-card">
-          <h3>📥 Bulk import from BillBook</h3>
-          <p style="font-size:0.84rem;color:var(--muted);margin-bottom:1rem;"><strong>📁 Browse salesperson folder</strong> — pick a folder named after the salesperson containing their BillBook <em>sales summary CSV</em> + the <em>invoice PDFs</em>; book titles are parsed from the PDFs automatically and tagged to that salesperson. Or <strong>📂 Upload CSV</strong> / paste a summary for order-level only. One entry per invoice; paid/unpaid read from the file; columns auto-detected; already-imported invoice numbers are skipped.</p>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:0.75rem;">
-            <div style="display:flex;flex-direction:column;gap:0.3rem;">
-              <label style="font-size:0.77rem;color:var(--muted);font-weight:600;">Author / account email for all *</label>
-              <input type="email" id="dsbulk-email" placeholder="e.g. seeba@yellowfeatherbooks.in"
-                style="font-size:0.83rem;padding:0.5rem 0.75rem;border-radius:6px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);color:var(--text);width:100%;box-sizing:border-box;" />
-            </div>
-            <div style="display:flex;flex-direction:column;gap:0.3rem;">
-              <label style="font-size:0.77rem;color:var(--muted);font-weight:600;">Created By filter</label>
-              <input type="text" id="dsbulk-creator" value="Seeba"
-                style="font-size:0.83rem;padding:0.5rem 0.75rem;border-radius:6px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);color:var(--text);width:100%;box-sizing:border-box;" />
-            </div>
+          <h3>📥 Bulk import (Excel / CSV)</h3>
+          <p style="font-size:0.84rem;color:var(--muted);margin-bottom:1rem;">Log a whole day's <strong>offline sales</strong> at once (book fairs, college events, personal sales — anything not already in MyBillBook). <strong>Download the template</strong>, fill <em>one row per book sold</em>, save as CSV, then upload it (or paste below). Every row is tagged to the author/account email below. Columns are auto-detected; fill the optional <em>Ref</em> column and already-imported refs are skipped on re-upload.</p>
+          <div style="display:flex;flex-direction:column;gap:0.3rem;max-width:440px;margin-bottom:0.75rem;">
+            <label style="font-size:0.77rem;color:var(--muted);font-weight:600;">Author / account email for all *</label>
+            <input type="email" id="dsbulk-email" placeholder="e.g. seeba@yellowfeatherbooks.in"
+              style="font-size:0.83rem;padding:0.5rem 0.75rem;border-radius:6px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);color:var(--text);width:100%;box-sizing:border-box;" />
           </div>
+          <input type="hidden" id="dsbulk-creator" value="">
           <div style="margin-bottom:0.5rem;display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;">
-            <input type="file" id="dsbulk-folder" webkitdirectory directory multiple onchange="dsBulkLoadFolder(this)" style="display:none;" />
-            <button class="tag-sync-btn" type="button" onclick="document.getElementById('dsbulk-folder').click()">📁 Browse salesperson folder</button>
+            <button class="tag-sync-btn" type="button" onclick="dsDownloadTemplate()">⬇ Download sample template</button>
             <input type="file" id="dsbulk-file" accept=".csv,text/csv" onchange="dsBulkLoadFile(this)" style="display:none;" />
             <button class="tag-sync-btn" type="button" onclick="document.getElementById('dsbulk-file').click()">📂 Upload CSV file</button>
             <span id="dsbulk-file-name" style="font-size:0.8rem;color:var(--muted);"></span>
             <span style="font-size:0.78rem;color:var(--muted);">— or paste below</span>
           </div>
-          <textarea id="dsbulk-csv" rows="6" placeholder="Upload a CSV above, or paste it here (including the header row)…"
+          <textarea id="dsbulk-csv" rows="6" placeholder="Upload the filled template above, or paste CSV here (including the header row)…"
             style="font-size:0.78rem;font-family:monospace;padding:0.6rem 0.75rem;border-radius:6px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);color:var(--text);width:100%;box-sizing:border-box;resize:vertical;"></textarea>
           <div style="margin-top:0.6rem;display:flex;gap:0.8rem;align-items:center;flex-wrap:wrap;">
             <button class="tag-sync-btn" onclick="dsBulkParse()">🔍 Preview</button>
@@ -6833,7 +6929,7 @@
           </div>
           <div id="dsbulk-preview" style="margin-top:0.8rem;"></div>
         </div>
-        <p style="font-size:0.82rem;color:var(--muted);">📋 Imported entries are listed under <strong>Orders → Direct Sales</strong>.</p>
+        <p style="font-size:0.82rem;color:var(--muted);">📋 Each entry is recorded in <strong>Odoo first</strong> (inventory + accounting), then the <strong>Sales-by-Author</strong> dashboard — nothing is saved to the dashboard unless Odoo accepts it. Since these sales aren't in MyBillBook, they're listed under <strong>Quick Reports → ⚠️ Not in MyBillBook</strong> so staff can back-enter them into MyBillBook while it's still your book of record.</p>
 
       </div><!-- /admin-section-direct-sales -->
 
@@ -6891,6 +6987,60 @@
         <div id="admin-sales-team-body"></div>
       </div><!-- /admin-section-sales-team -->
 
+      <!-- ── Admin Users ── -->
+      <div id="admin-section-admin-users" class="admin-section">
+        <div class="admin-section-header">
+          <h2>🛡️ Admin Users</h2>
+          <button class="admin-filter-btn active" onclick="adminShowCreateAdmin()">➕ New Admin</button>
+        </div>
+
+        <!-- Create form -->
+        <div id="admin-admins-create-form" style="display:none;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:1.2rem;margin-bottom:1.2rem;max-width:500px;">
+          <div style="font-size:0.8rem;font-weight:700;color:var(--gold);margin-bottom:0.8rem;text-transform:uppercase;letter-spacing:0.05em;">Create Admin Account</div>
+          <div id="admin-admins-create-error" style="display:none;background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.3);color:#fca5a5;border-radius:7px;padding:0.5rem 0.7rem;font-size:0.78rem;margin-bottom:0.7rem;"></div>
+          <div id="admin-admins-create-ok"    style="display:none;background:rgba(74,222,128,0.1);border:1px solid rgba(74,222,128,0.3);color:#86efac;border-radius:7px;padding:0.5rem 0.7rem;font-size:0.78rem;margin-bottom:0.7rem;"></div>
+          <div style="display:flex;gap:0.7rem;flex-wrap:wrap;margin-bottom:0.7rem;">
+            <div style="flex:1;min-width:160px;">
+              <label class="ab-label">Full Name</label>
+              <input id="ac-name" type="text" class="ab-input" placeholder="e.g. Santhosh N" />
+            </div>
+            <div style="flex:1;min-width:180px;">
+              <label class="ab-label">Email *</label>
+              <input id="ac-email" type="email" class="ab-input" placeholder="admin@yellowfeatherbooks.com" />
+            </div>
+          </div>
+          <div style="display:flex;gap:0.7rem;flex-wrap:wrap;margin-bottom:0.9rem;">
+            <div style="flex:1;min-width:180px;">
+              <label class="ab-label">Password *</label>
+              <input id="ac-password" type="password" class="ab-input" placeholder="Min 8 characters" />
+            </div>
+          </div>
+          <div style="display:flex;gap:0.6rem;">
+            <button id="ac-save-btn" onclick="adminCreateAdmin()" class="admin-filter-btn active">Create Admin</button>
+            <button onclick="adminHideCreateAdmin()" class="admin-filter-btn">Cancel</button>
+          </div>
+        </div>
+
+        <!-- Reset password form -->
+        <div id="admin-admins-reset-form" style="display:none;background:rgba(255,255,255,0.03);border:1px solid rgba(201,146,42,0.2);border-radius:10px;padding:1.2rem;margin-bottom:1.2rem;max-width:500px;">
+          <div style="font-size:0.8rem;font-weight:700;color:var(--gold);margin-bottom:0.8rem;text-transform:uppercase;letter-spacing:0.05em;">Reset Password for <span id="ac-reset-email-label"></span></div>
+          <div id="admin-admins-reset-error" style="display:none;background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.3);color:#fca5a5;border-radius:7px;padding:0.5rem 0.7rem;font-size:0.78rem;margin-bottom:0.7rem;"></div>
+          <div id="admin-admins-reset-ok"    style="display:none;background:rgba(74,222,128,0.1);border:1px solid rgba(74,222,128,0.3);color:#86efac;border-radius:7px;padding:0.5rem 0.7rem;font-size:0.78rem;margin-bottom:0.7rem;"></div>
+          <div style="display:flex;gap:0.7rem;flex-wrap:wrap;margin-bottom:0.9rem;">
+            <div style="flex:1;min-width:200px;">
+              <label class="ab-label">New Password *</label>
+              <input id="ac-new-password" type="password" class="ab-input" placeholder="New password" />
+            </div>
+          </div>
+          <div style="display:flex;gap:0.6rem;">
+            <button id="ac-reset-btn" onclick="adminResetAdminPassword()" class="admin-filter-btn active">Reset Password</button>
+            <button onclick="adminHideResetAdmin()" class="admin-filter-btn">Cancel</button>
+          </div>
+        </div>
+
+        <div id="admin-admins-body"></div>
+      </div><!-- /admin-section-admin-users -->
+
       <!-- ── Stock Summary ── -->
       <div id="admin-section-stock-summary" class="admin-section">
         <div class="admin-section-header"><h2>📚 Stock Summary</h2></div>
@@ -6912,6 +7062,211 @@
         </div>
         <div id="stk-body"></div>
       </div><!-- /admin-section-stock-summary -->
+
+      <!-- ── Odoo Sync ── -->
+      <div id="admin-section-odoo-sync" class="admin-section">
+        <div class="admin-section-header">
+          <h2>🔄 Odoo Sync</h2>
+          <p style="font-size:0.8rem;color:var(--muted);margin:0;">
+            Sync MyBillBook exports into Odoo. Run the local <code>mbb_sync_prep.py</code> on your 15-day export folder, then upload the generated <code>odoo_sync_payload.json</code> here.
+          </p>
+        </div>
+
+        <!-- type tabs (sales live; PO/expenses later) -->
+        <div class="admin-filter-row" style="margin-bottom:0.8rem;">
+          <button class="admin-filter-btn active" id="osync-tab-sales" onclick="osyncTab('sales',this)">📕 Sale Orders</button>
+          <button class="admin-filter-btn" onclick="osyncTab('purchase',this)" title="Coming later">📦 Purchase Orders</button>
+          <button class="admin-filter-btn" onclick="osyncTab('expense',this)" title="Coming later">💸 Expenses</button>
+        </div>
+
+        <!-- connection status -->
+        <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.8rem;flex-wrap:wrap;">
+          <button class="admin-filter-btn" onclick="osyncCheck()" style="background:rgba(96,165,250,0.1);border-color:#60a5fa;color:#60a5fa;">🔌 Check Odoo connection</button>
+          <span id="osync-conn" style="font-size:0.82rem;color:var(--muted);">Odoo reachable only while the cloudflared tunnel is up (ODOO_* env set).</span>
+        </div>
+
+        <div id="osync-sales-pane">
+          <!-- file picker -->
+          <div style="border:1px dashed rgba(255,255,255,0.18);border-radius:10px;padding:1rem;margin-bottom:0.9rem;">
+            <input type="file" id="osync-file" accept="application/json,.json" onchange="osyncLoadFile(event)"
+                   onclick="this.value=null; osyncClearLoaded();"
+                   style="font-size:0.85rem;color:var(--text);">
+            <div id="osync-summary" style="margin-top:0.7rem;font-size:0.85rem;color:var(--muted);">No payload loaded.</div>
+            <label style="display:none;align-items:center;gap:0.4rem;margin-top:0.6rem;font-size:0.82rem;" id="osync-snap-wrap">
+              <input type="checkbox" id="osync-snap"> Also snapshot on-hand to the included stock summary <span style="color:var(--muted)">(backfill only — after the cutover leave OFF so sales decrement live)</span>
+            </label>
+            <label style="display:none;align-items:center;gap:0.4rem;margin-top:0.4rem;font-size:0.82rem;" id="osync-autocreate-wrap">
+              <input type="checkbox" id="osync-autocreate"> Auto-create missing books (mints a SKU + adds the book at its purchase cost) — instead of skipping unmatched lines
+            </label>
+            <label style="display:none;align-items:center;gap:0.4rem;margin-top:0.4rem;font-size:0.82rem;" id="osync-livestock-wrap">
+              <input type="checkbox" id="osync-livestock"> 🔴 Live mode — increment Odoo stock (purchases dated AFTER the snapshot cutover). Leave OFF for historical purchases already counted in the snapshot.
+            </label>
+            <label style="display:none;align-items:center;gap:0.4rem;margin-top:0.4rem;font-size:0.82rem;" id="osync-edits-wrap">
+              <input type="checkbox" id="osync-edits"> ✏️ Reconcile edited invoices — if an invoice's total changed since it was synced (books added/removed in MyBillBook), reverse the old Odoo sale and rebuild it from the new lines. Leave OFF for a normal sync (unchanged invoices are skipped either way).
+            </label>
+          </div>
+          <button class="admin-filter-btn" id="osync-run" onclick="osyncRun()" disabled
+                  style="background:rgba(212,175,55,0.12);border-color:var(--gold);color:var(--gold);font-weight:700;">
+            ▶ Sync to Odoo
+          </button>
+          <!-- progress + report -->
+          <div id="osync-progress-wrap" style="display:none;margin-top:1rem;">
+            <div style="height:8px;background:rgba(255,255,255,0.08);border-radius:6px;overflow:hidden;">
+              <div id="osync-bar" style="height:100%;width:0;background:var(--gold);transition:width 0.2s;"></div>
+            </div>
+            <div id="osync-progress-text" style="font-size:0.82rem;color:var(--muted);margin-top:0.4rem;"></div>
+          </div>
+          <div id="osync-report" style="margin-top:1rem;font-size:0.82rem;"></div>
+        </div>
+
+        <div id="osync-soon-pane" style="display:none;color:var(--muted);font-size:0.9rem;padding:1rem;">
+          This sync type isn't built yet — it'll reuse the same upload → batch-sync flow as Sale Orders.
+        </div>
+
+        <!-- Odoo → Supabase (author attribution) -->
+        <div class="tag-mgmt-card" style="margin-top:1.5rem;">
+          <h3>🔁 Refresh Author Sales (Odoo → dashboards)</h3>
+          <p style="font-size:0.84rem;color:var(--muted);margin-bottom:0.9rem;">Pulls shop sales from Odoo for a period and (re)writes them into the <strong>Sales by Author</strong> / <strong>Total Sales</strong> dashboards, tagging each book to its author via Shopify <code>submittedby:</code> tags. Run this <strong>after an Odoo Sync</strong> so the dashboards reflect the latest data. (Re-runnable — replaces the period's Odoo-sourced rows; manual direct entries untouched.)</p>
+          <div style="display:flex;gap:0.6rem;align-items:center;flex-wrap:wrap;">
+            <label style="color:var(--muted);font-size:0.82rem;">From</label>
+            <input type="date" id="ras-from" style="padding:0.45rem;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:var(--text);color-scheme:dark;">
+            <label style="color:var(--muted);font-size:0.82rem;">To</label>
+            <input type="date" id="ras-to" style="padding:0.45rem;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:var(--text);color-scheme:dark;">
+            <button class="tag-sync-btn" type="button" onclick="rasRun(true)">🔍 Preview</button>
+            <button class="btn-primary" type="button" style="border:none;cursor:pointer;padding:0.5rem 1rem;border-radius:8px;" onclick="rasRun(false)">🔁 Refresh dashboards</button>
+          </div>
+          <div id="ras-status" style="margin-top:0.7rem;font-size:0.85rem;"></div>
+        </div>
+      </div><!-- /admin-section-odoo-sync -->
+
+      <!-- ── Quick Reports (Odoo) ── -->
+      <div id="admin-section-odoo-reports" class="admin-section">
+        <div class="admin-section-header"><h2>📄 Quick Reports</h2></div>
+        <p style="color:var(--muted);font-size:0.85rem;margin:0 0 1rem;">Live from Odoo (reachable while the tunnel is up). Pick a report, set the inputs, and Run.</p>
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:1rem;">
+          <button class="admin-filter-btn active" data-rep="customer-statement" onclick="orPick('customer-statement',this)">👤 Customer Statement</button>
+          <button class="admin-filter-btn" data-rep="aged" onclick="orPick('aged',this)">⏳ Aged Receivables</button>
+          <button class="admin-filter-btn" data-rep="stock" onclick="orPick('stock',this)">📦 Stock on Hand</button>
+          <button class="admin-filter-btn" data-rep="unsynced" onclick="orPick('unsynced',this)">⚠️ Not in MyBillBook</button>
+          <button class="admin-filter-btn" data-rep="pl" onclick="orPick('pl',this)">📈 Profit &amp; Loss</button>
+          <button class="admin-filter-btn" data-rep="gstr1" onclick="orPick('gstr1',this)">🧾 GSTR-1</button>
+        </div>
+        <div style="display:flex;gap:0.6rem;align-items:center;flex-wrap:wrap;margin-bottom:1rem;">
+          <input id="or-name" placeholder="Customer name (e.g. Aman)…" style="padding:0.5rem 0.7rem;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:var(--text);min-width:220px;">
+          <span id="or-daterange" style="display:none;gap:0.4rem;align-items:center;">
+            <label style="color:var(--muted);font-size:0.82rem;">From</label>
+            <input type="date" id="or-from" style="padding:0.45rem;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:var(--text);">
+            <label style="color:var(--muted);font-size:0.82rem;">To</label>
+            <input type="date" id="or-to" style="padding:0.45rem;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:var(--text);">
+          </span>
+          <button class="btn-primary" style="border:none;cursor:pointer;padding:0.55rem 1.1rem;border-radius:8px;" onclick="orRun()">▶ Run</button>
+          <button id="or-csv-btn" style="display:none;cursor:pointer;padding:0.5rem 0.9rem;border-radius:8px;border:1px solid rgba(255,255,255,0.2);background:transparent;color:var(--text);" onclick="orExportCsv()">⬇ CSV</button>
+          <button id="or-pdf-btn" style="display:none;cursor:pointer;padding:0.5rem 0.9rem;border-radius:8px;border:1px solid rgba(255,255,255,0.2);background:transparent;color:var(--text);" onclick="orStatementPdf()">🖨️ PDF</button>
+        </div>
+        <div id="or-result" style="font-size:0.86rem;"></div>
+      </div><!-- /admin-section-odoo-reports -->
+
+      <!-- ── Reconcile with MyBillBook (cancellations / returns / rejections) ── -->
+      <div id="admin-section-odoo-reconcile" class="admin-section">
+        <div class="admin-section-header">
+          <h2>↩️ Reconcile with MyBillBook</h2>
+          <p style="font-size:0.8rem;color:var(--muted);margin:0;">
+            MyBillBook is the book of record. When staff <b>cancel / return / refuse</b> an order there, its invoice becomes ₹0
+            (<code>Sales Invoice - Cancelled</code>) and stock is restored — but Odoo still holds the original sale.
+            Upload the latest <b>daybook CSV</b>; this finds invoices Odoo still counts as live and reverses them
+            (<b>credit note + stock return + refund</b>) so Odoo matches MyBillBook. Nothing is deleted — the reversal is fully audited.
+          </p>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.8rem;flex-wrap:wrap;">
+          <button class="admin-filter-btn" onclick="recCheck()" style="background:rgba(96,165,250,0.1);border-color:#60a5fa;color:#60a5fa;">🔌 Check Odoo connection</button>
+          <span id="rec-conn" style="font-size:0.82rem;color:var(--muted);">Odoo reachable only while the tunnel is up (ODOO_* env set).</span>
+        </div>
+
+        <div style="border:1px dashed rgba(255,255,255,0.18);border-radius:10px;padding:1rem;margin-bottom:0.9rem;">
+          <input type="file" id="rec-file" accept=".csv,text/csv" onchange="recLoadDaybook(event)"
+                 onclick="this.value=null; recClear();" style="font-size:0.85rem;color:var(--text);">
+          <div id="rec-summary" style="margin-top:0.7rem;font-size:0.85rem;color:var(--muted);">Upload a MyBillBook daybook CSV.</div>
+        </div>
+        <button class="admin-filter-btn" id="rec-scan" onclick="recScan()" disabled
+                style="background:rgba(212,175,55,0.12);border-color:var(--gold);color:var(--gold);font-weight:700;">
+          🔍 Find out-of-sync cancellations
+        </button>
+        <div id="rec-progress-wrap" style="display:none;margin-top:1rem;">
+          <div style="height:8px;background:rgba(255,255,255,0.08);border-radius:6px;overflow:hidden;">
+            <div id="rec-bar" style="height:100%;width:0;background:var(--gold);transition:width 0.2s;"></div>
+          </div>
+          <div id="rec-progress-text" style="font-size:0.82rem;color:var(--muted);margin-top:0.4rem;"></div>
+        </div>
+        <div id="rec-result" style="margin-top:1rem;font-size:0.85rem;"></div>
+      </div><!-- /admin-section-odoo-reconcile -->
+
+      <!-- ── Backfill Razorpay charges → Odoo GST invoices ── -->
+      <div id="admin-section-odoo-razorpay" class="admin-section">
+        <div class="admin-section-header">
+          <h2>💳 Razorpay → Odoo</h2>
+          <p style="font-size:0.8rem;color:var(--muted);margin:0;">
+            Backfill historical <b>subscription</b> and <b>Book Club</b> charges into Odoo as GST invoices (both are taxable services, 18% GST — unlike books).
+            New charges already invoice in real time; this closes the history. Idempotent — anything already in Odoo is skipped.
+          </p>
+        </div>
+        <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.9rem;flex-wrap:wrap;">
+          <label style="color:var(--muted);font-size:0.82rem;">From</label>
+          <input type="date" id="rzb-from" value="2026-06-01" style="padding:0.45rem;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:var(--text);color-scheme:dark;">
+          <button class="admin-filter-btn" id="rzb-scan" onclick="rzbScan()" style="background:rgba(96,165,250,0.1);border-color:#60a5fa;color:#60a5fa;">🔍 Scan Razorpay</button>
+          <span id="rzb-conn" style="font-size:0.82rem;color:var(--muted);"></span>
+        </div>
+        <div id="rzb-progress-wrap" style="display:none;margin-top:0.5rem;">
+          <div style="height:8px;background:rgba(255,255,255,0.08);border-radius:6px;overflow:hidden;">
+            <div id="rzb-bar" style="height:100%;width:0;background:var(--gold);transition:width 0.2s;"></div>
+          </div>
+          <div id="rzb-progress-text" style="font-size:0.82rem;color:var(--muted);margin-top:0.4rem;"></div>
+        </div>
+        <div id="rzb-result" style="margin-top:1rem;font-size:0.85rem;"></div>
+      </div><!-- /admin-section-odoo-razorpay -->
+
+      <!-- ── Razorpay payments ledger (3 tabs) ── -->
+      <div id="admin-section-razorpay-payments" class="admin-section">
+        <div class="admin-section-header">
+          <h2>💰 Razorpay Payments</h2>
+          <p style="font-size:0.8rem;color:var(--muted);margin:0;">
+            All captured Razorpay payments, split by type: <b>Book Club</b>, <b>Author Subscriptions</b>, and <b>Book Purchases</b> (native-app checkout &amp; other).
+          </p>
+        </div>
+        <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.9rem;flex-wrap:wrap;">
+          <label style="color:var(--muted);font-size:0.82rem;">From</label>
+          <input type="date" id="rpay-from" value="2026-06-01" style="padding:0.45rem;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:var(--text);color-scheme:dark;">
+          <label style="color:var(--muted);font-size:0.82rem;">To</label>
+          <input type="date" id="rpay-to" style="padding:0.45rem;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:var(--text);color-scheme:dark;">
+          <button class="btn-primary" style="border:none;cursor:pointer;padding:0.55rem 1.1rem;border-radius:8px;" onclick="rpayRun()">▶ Load</button>
+          <span id="rpay-mode" style="font-size:0.78rem;color:var(--muted);"></span>
+        </div>
+        <div class="admin-filter-row" style="margin-bottom:0.9rem;">
+          <button class="admin-filter-btn active" id="rpay-tab-club" onclick="rpayTab('club',this)">🎟️ Club Membership</button>
+          <button class="admin-filter-btn" id="rpay-tab-subscriptions" onclick="rpayTab('subscriptions',this)">📗 Author Subscriptions</button>
+          <button class="admin-filter-btn" id="rpay-tab-other" onclick="rpayTab('other',this)">📚 Book Purchases</button>
+        </div>
+        <div id="rpay-result" style="font-size:0.85rem;"><span style="color:var(--muted)">Pick a range and click Load.</span></div>
+      </div><!-- /admin-section-razorpay-payments -->
+
+      <!-- ── Razorpay settlements (batch transfers to bank) ── -->
+      <div id="admin-section-razorpay-settlements" class="admin-section">
+        <div class="admin-section-header">
+          <h2>🏦 Razorpay Settlements</h2>
+          <p style="font-size:0.8rem;color:var(--muted);margin:0;">
+            What Razorpay actually <b>transferred to your bank</b>. Payments are settled in <b>batches</b> (net of fees + GST), not order-by-order — each row is one bank credit with its UTR reference.
+          </p>
+        </div>
+        <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.9rem;flex-wrap:wrap;">
+          <label style="color:var(--muted);font-size:0.82rem;">From</label>
+          <input type="date" id="rset-from" value="2026-06-01" style="padding:0.45rem;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:var(--text);color-scheme:dark;">
+          <label style="color:var(--muted);font-size:0.82rem;">To</label>
+          <input type="date" id="rset-to" style="padding:0.45rem;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:var(--text);color-scheme:dark;">
+          <button class="btn-primary" style="border:none;cursor:pointer;padding:0.55rem 1.1rem;border-radius:8px;" onclick="rsetRun()">▶ Load</button>
+          <span id="rset-mode" style="font-size:0.78rem;color:var(--muted);"></span>
+        </div>
+        <div id="rset-result" style="font-size:0.85rem;"><span style="color:var(--muted)">Pick a range and click Load.</span></div>
+      </div><!-- /admin-section-razorpay-settlements -->
 
     </main>
 
@@ -7432,6 +7787,23 @@
           <label class="sf-label">Phone Number <span style="color:#e05252;font-weight:600;">*</span></label>
           <input id="bc-phone" type="tel" class="sf-input" placeholder="10-digit mobile number" maxlength="10" />
           <div style="font-size:0.72rem;color:var(--muted);margin-top:0.3rem;">We use this to send your membership updates on WhatsApp.</div>
+        </div>
+        <div class="sf-field">
+          <label class="sf-label">State <span style="color:#e05252;font-weight:600;">*</span></label>
+          <select id="bc-state" class="sf-input">
+            <option value="">Select your state</option>
+            <option>Andaman and Nicobar Islands</option><option>Andhra Pradesh</option><option>Arunachal Pradesh</option>
+            <option>Assam</option><option>Bihar</option><option>Chandigarh</option><option>Chhattisgarh</option>
+            <option>Dadra and Nagar Haveli and Daman and Diu</option><option>Delhi</option><option>Goa</option>
+            <option>Gujarat</option><option>Haryana</option><option>Himachal Pradesh</option><option>Jammu and Kashmir</option>
+            <option>Jharkhand</option><option>Karnataka</option><option>Kerala</option><option>Ladakh</option>
+            <option>Lakshadweep</option><option>Madhya Pradesh</option><option>Maharashtra</option><option>Manipur</option>
+            <option>Meghalaya</option><option>Mizoram</option><option>Nagaland</option><option>Odisha</option>
+            <option>Puducherry</option><option>Punjab</option><option>Rajasthan</option><option>Sikkim</option>
+            <option>Tamil Nadu</option><option>Telangana</option><option>Tripura</option><option>Uttar Pradesh</option>
+            <option>Uttarakhand</option><option>West Bengal</option>
+          </select>
+          <div style="font-size:0.72rem;color:var(--muted);margin-top:0.3rem;">Needed for a correct GST invoice.</div>
         </div>
         <!-- Marketing consent -->
         <div style="display:flex;align-items:flex-start;gap:0.6rem;margin:0.75rem 0 0.5rem;">
@@ -8488,6 +8860,8 @@
       document.getElementById('admin-login-error').style.display = 'none';
       document.getElementById('admin-login-btn').textContent = 'Sign In';
       document.getElementById('admin-login-btn').disabled   = false;
+      document.getElementById('admin-otp').value = '';
+      staffOtpMode('admin', false);
       setTimeout(() => document.getElementById('admin-email').focus(), 100);
     }
     function hideAdminLogin() {
@@ -8523,6 +8897,137 @@
         btn.disabled = false; btn.textContent = 'Sign In';
       }
     }
+
+    // ══ Staff auth: forgot-password + OTP login (admins + sales) ══════════════
+    var _staffResetToken = null;
+
+    function staffOtpMode(role, on) {
+      document.getElementById(role + '-login-error').textContent = '';
+      const info = document.getElementById(role + '-login-info'); if (info) info.style.display = 'none';
+      document.getElementById(role + '-pw-field').style.display       = on ? 'none' : '';
+      document.getElementById(role + '-otp-field').style.display      = 'none';
+      document.getElementById(role + '-login-btn').style.display      = on ? 'none' : '';
+      const sb = document.getElementById(role + '-otp-send-btn'); sb.style.display = on ? '' : 'none'; sb.textContent = 'Send OTP';
+      document.getElementById(role + '-otp-verify-btn').style.display = 'none';
+      document.getElementById(role + '-otp-link').style.display       = on ? 'none' : '';
+      document.getElementById(role + '-pw-link').style.display        = on ? '' : 'none';
+      document.getElementById(role + '-forgot-link').style.display    = on ? 'none' : '';
+    }
+
+    async function staffForgot(role) {
+      const email = document.getElementById(role + '-email').value.trim();
+      const errEl = document.getElementById(role + '-login-error');
+      const info  = document.getElementById(role + '-login-info');
+      errEl.textContent = ''; info.style.display = 'none';
+      if (!email) { errEl.textContent = 'Enter your email above first.'; return; }
+      try {
+        await fetch('/.netlify/functions/staff-forgot-password', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+        info.textContent = '✅ If that email is registered, a reset link is on its way. Check your inbox.';
+        info.style.display = 'block';
+      } catch(e) { errEl.textContent = 'Could not send reset email. Please try again.'; }
+    }
+
+    async function staffOtpSend(role) {
+      const email = document.getElementById(role + '-email').value.trim();
+      const errEl = document.getElementById(role + '-login-error');
+      const info  = document.getElementById(role + '-login-info');
+      const btn   = document.getElementById(role + '-otp-send-btn');
+      errEl.textContent = ''; info.style.display = 'none';
+      if (!email) { errEl.textContent = 'Enter your email above first.'; return; }
+      btn.disabled = true; btn.textContent = 'Sending…';
+      try {
+        const res  = await fetch('/.netlify/functions/staff-send-otp', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+        const data = await res.json();
+        if (!data.success) { errEl.textContent = data.error || 'Could not send OTP.'; btn.disabled = false; btn.textContent = 'Send OTP'; return; }
+        document.getElementById(role + '-otp-field').style.display      = '';
+        document.getElementById(role + '-otp-verify-btn').style.display = '';
+        info.textContent = data.message || 'OTP sent. Check your email.'; info.style.display = 'block';
+        btn.disabled = false; btn.textContent = 'Resend OTP';
+        setTimeout(() => document.getElementById(role + '-otp').focus(), 100);
+      } catch(e) { errEl.textContent = 'Connection error. Please try again.'; btn.disabled = false; btn.textContent = 'Send OTP'; }
+    }
+
+    async function staffOtpVerify(role) {
+      const email = document.getElementById(role + '-email').value.trim();
+      const otp   = document.getElementById(role + '-otp').value.trim();
+      const errEl = document.getElementById(role + '-login-error');
+      const btn   = document.getElementById(role + '-otp-verify-btn');
+      errEl.textContent = '';
+      if (!email || !otp) { errEl.textContent = 'Enter the OTP sent to your email.'; return; }
+      btn.disabled = true; btn.textContent = 'Verifying…';
+      try {
+        const res  = await fetch('/.netlify/functions/staff-verify-otp', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, otp })
+        });
+        const data = await res.json();
+        if (!data.success) { errEl.textContent = data.error || 'Invalid OTP.'; btn.disabled = false; btn.textContent = 'Verify & Sign In'; return; }
+        // Route by the role the server resolved (not by which panel was used)
+        if (data.role === 'admin') {
+          _adminSession = { email: data.email, name: data.name, adminKey: data.adminKey };
+          sessionStorage.setItem('yfb_admin_session', JSON.stringify(_adminSession));
+          _applyAdminSession(); hideAdminLogin(); hideSalesLogin();
+          setView('admin');
+          adminNav('orders', document.querySelector('#admin-sidebar [data-section="orders"]'));
+        } else {
+          _salesSession = { email: data.email, name: data.name, salesKey: data.salesKey };
+          sessionStorage.setItem('yfb_sales_session', JSON.stringify(_salesSession));
+          _applySalesSession(); hideAdminLogin(); hideSalesLogin();
+          setView('sales');
+          salesNav('orders', document.querySelector('#sales-sidebar [data-section="orders"]'));
+        }
+      } catch(e) { errEl.textContent = 'Connection error. Please try again.'; btn.disabled = false; btn.textContent = 'Verify & Sign In'; }
+    }
+
+    // ── Staff password reset (from emailed link #staff-reset?token=…) ──
+    function showStaffReset(token) {
+      _staffResetToken = token;
+      document.getElementById('admin-login-panel').classList.remove('open');
+      document.getElementById('sales-login-panel').classList.remove('open');
+      document.getElementById('staff-reset-pw').value = '';
+      document.getElementById('staff-reset-error').textContent = '';
+      document.getElementById('staff-reset-ok').style.display = 'none';
+      const b = document.getElementById('staff-reset-btn'); b.disabled = false; b.textContent = 'Set New Password'; b.style.display = '';
+      document.getElementById('staff-reset-panel').classList.add('open');
+    }
+    function hideStaffReset() {
+      document.getElementById('staff-reset-panel').classList.remove('open');
+      if (location.hash.indexOf('staff-reset') !== -1) history.replaceState(null, '', location.pathname + location.search);
+    }
+    async function staffResetSubmit() {
+      const pw    = document.getElementById('staff-reset-pw').value;
+      const errEl = document.getElementById('staff-reset-error');
+      const okEl  = document.getElementById('staff-reset-ok');
+      const btn   = document.getElementById('staff-reset-btn');
+      errEl.textContent = ''; okEl.style.display = 'none';
+      if (!pw || pw.length < 8) { errEl.textContent = 'Password must be at least 8 characters.'; return; }
+      btn.disabled = true; btn.textContent = 'Saving…';
+      try {
+        const res  = await fetch('/.netlify/functions/staff-reset-password', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: _staffResetToken, password: pw })
+        });
+        const data = await res.json();
+        if (!data.success) { errEl.textContent = data.error || 'Reset failed.'; btn.disabled = false; btn.textContent = 'Set New Password'; return; }
+        okEl.textContent = '✅ Password updated. You can now sign in with your new password.';
+        okEl.style.display = 'block'; btn.style.display = 'none';
+      } catch(e) { errEl.textContent = 'Connection error. Please try again.'; btn.disabled = false; btn.textContent = 'Set New Password'; }
+    }
+    (function initStaffReset() {
+      try {
+        const h = location.hash || '';
+        if (h.indexOf('staff-reset') !== -1) {
+          const m = h.match(/token=([^&]+)/);
+          if (m) showStaffReset(decodeURIComponent(m[1]));
+        }
+      } catch(e) {}
+    })();
 
     // ── Logout ──
     // ══ Sales: Add Book ══════════════════════════════════════════════════════
@@ -8630,7 +9135,7 @@
           shopifyTags: tags,
           description: desc,
           mrp: parseFloat(mrp),
-          salePrice: discount > 0 ? parseFloat((parseFloat(mrp) * (1 - discount / 100)).toFixed(2)) : null,
+          salePrice: discount > 0 ? Math.round(parseFloat(mrp) * (1 - discount / 100)) : null,
           barcode, phone,
           initialStock: stock,
           cover: _sabCoverBase64 || null,
@@ -9865,6 +10370,121 @@ Questions? We're always here!
     }
     // ═════════════════════════════════════════════════════════════════════════
 
+    // ══ Admin: Admin Users Management ═══════════════════════════════════════════
+    var _acResetEmail = null;
+
+    async function adminLoadAdmins() {
+      const bodyEl = document.getElementById('admin-admins-body');
+      bodyEl.innerHTML = '<div style="color:var(--muted);font-size:0.84rem;">⏳ Loading…</div>';
+      try {
+        const data = await adminPost('admin-manage-admins', { action: 'list' });
+        if (!data.success) throw new Error(data.error);
+        const members = data.members || [];
+        if (!members.length) {
+          bodyEl.innerHTML = '<div style="color:var(--muted);font-size:0.84rem;">No admin accounts found.</div>';
+          return;
+        }
+        const me = (_adminSession && _adminSession.email) || '';
+        bodyEl.innerHTML = `
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead><tr><th>Name</th><th>Email</th><th>Created</th><th>Actions</th></tr></thead>
+              <tbody>${members.map(m => `
+                <tr>
+                  <td style="font-weight:600;color:var(--text);">${m.name || '—'}${m.email === me ? ' <span style="color:var(--muted);font-weight:400;">(you)</span>' : ''}</td>
+                  <td style="color:var(--gold);">${m.email}</td>
+                  <td style="font-size:0.75rem;color:var(--muted);">${m.created_at ? new Date(m.created_at).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) : '—'}</td>
+                  <td style="display:flex;gap:0.5rem;">
+                    <button onclick="adminShowResetAdmin('${m.email}')" class="admin-filter-btn" style="font-size:0.7rem;padding:0.2rem 0.6rem;">🔑 Reset PW</button>
+                    ${m.email === me ? '' : `<button onclick="adminDeleteAdmin('${m.id}','${m.email}')" class="admin-filter-btn" style="font-size:0.7rem;padding:0.2rem 0.6rem;color:#f87171;border-color:rgba(248,113,113,0.3);">🗑 Delete</button>`}
+                  </td>
+                </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>`;
+      } catch(e) {
+        bodyEl.innerHTML = `<div style="color:#f87171;font-size:0.84rem;">Error: ${e.message}</div>`;
+      }
+    }
+
+    function adminShowCreateAdmin() {
+      document.getElementById('admin-admins-create-form').style.display = '';
+      document.getElementById('admin-admins-reset-form').style.display  = 'none';
+      document.getElementById('admin-admins-create-error').style.display = 'none';
+      document.getElementById('admin-admins-create-ok').style.display    = 'none';
+      ['ac-name','ac-email','ac-password'].forEach(id => document.getElementById(id).value = '');
+    }
+    function adminHideCreateAdmin() {
+      document.getElementById('admin-admins-create-form').style.display = 'none';
+    }
+
+    async function adminCreateAdmin() {
+      const name     = document.getElementById('ac-name').value.trim();
+      const email    = document.getElementById('ac-email').value.trim();
+      const password = document.getElementById('ac-password').value;
+      const errEl    = document.getElementById('admin-admins-create-error');
+      const okEl     = document.getElementById('admin-admins-create-ok');
+      const btn      = document.getElementById('ac-save-btn');
+      errEl.style.display = 'none'; okEl.style.display = 'none';
+      if (!email || !password) { errEl.textContent = 'Email and password are required.'; errEl.style.display = 'block'; return; }
+      if (password.length < 8) { errEl.textContent = 'Password must be at least 8 characters.'; errEl.style.display = 'block'; return; }
+      btn.disabled = true; btn.textContent = 'Creating…';
+      try {
+        const data = await adminPost('admin-manage-admins', { action: 'create', email, name, password });
+        if (!data.success) throw new Error(data.error);
+        okEl.textContent = `✅ Admin created for ${email}`;
+        okEl.style.display = 'block';
+        ['ac-name','ac-email','ac-password'].forEach(id => document.getElementById(id).value = '');
+        adminLoadAdmins();
+      } catch(e) {
+        errEl.textContent = e.message; errEl.style.display = 'block';
+      } finally {
+        btn.disabled = false; btn.textContent = 'Create Admin';
+      }
+    }
+
+    function adminShowResetAdmin(email) {
+      _acResetEmail = email;
+      document.getElementById('ac-reset-email-label').textContent = email;
+      document.getElementById('ac-new-password').value = '';
+      document.getElementById('admin-admins-reset-error').style.display = 'none';
+      document.getElementById('admin-admins-reset-ok').style.display    = 'none';
+      document.getElementById('admin-admins-reset-form').style.display  = '';
+      document.getElementById('admin-admins-create-form').style.display = 'none';
+    }
+    function adminHideResetAdmin() {
+      document.getElementById('admin-admins-reset-form').style.display = 'none';
+    }
+
+    async function adminResetAdminPassword() {
+      const password = document.getElementById('ac-new-password').value;
+      const errEl    = document.getElementById('admin-admins-reset-error');
+      const okEl     = document.getElementById('admin-admins-reset-ok');
+      const btn      = document.getElementById('ac-reset-btn');
+      errEl.style.display = 'none'; okEl.style.display = 'none';
+      if (!password || password.length < 8) { errEl.textContent = 'Password must be at least 8 characters.'; errEl.style.display = 'block'; return; }
+      btn.disabled = true; btn.textContent = 'Resetting…';
+      try {
+        const data = await adminPost('admin-manage-admins', { action: 'reset-password', email: _acResetEmail, password });
+        if (!data.success) throw new Error(data.error);
+        okEl.textContent = `✅ Password reset for ${_acResetEmail}`;
+        okEl.style.display = 'block';
+        document.getElementById('ac-new-password').value = '';
+      } catch(e) {
+        errEl.textContent = e.message; errEl.style.display = 'block';
+      } finally {
+        btn.disabled = false; btn.textContent = 'Reset Password';
+      }
+    }
+
+    async function adminDeleteAdmin(id, email) {
+      if (!confirm(`Delete admin account for ${email}? This cannot be undone.`)) return;
+      const data = await adminPost('admin-manage-admins', { action: 'delete', id });
+      if (!data.success) { alert(data.error || 'Delete failed.'); return; }
+      adminLoadAdmins();
+    }
+    // ═════════════════════════════════════════════════════════════════════════
+
     // ══ SALES PORTAL ════════════════════════════════════════════════════════
     var _salesSession = null;
 
@@ -9886,6 +10506,8 @@ Questions? We're always here!
       document.getElementById('sales-login-error').textContent = '';
       document.getElementById('sales-login-btn').textContent   = 'Sign In';
       document.getElementById('sales-login-btn').disabled      = false;
+      document.getElementById('sales-otp').value = '';
+      staffOtpMode('sales', false);
       setTimeout(() => document.getElementById('sales-email').focus(), 100);
     }
     function hideSalesLogin() {
@@ -11301,7 +11923,7 @@ Questions? We're always here!
             shopifyTags: tags,
             description: desc,
             mrp:       parseFloat(mrp),
-            salePrice: discount > 0 ? parseFloat((parseFloat(mrp) * (1 - discount / 100)).toFixed(2)) : null,
+            salePrice: discount > 0 ? Math.round(parseFloat(mrp) * (1 - discount / 100)) : null,
             barcode, phone,
             initialStock: stock,
             cover: _abCoverBase64 || null,
@@ -11366,7 +11988,593 @@ Questions? We're always here!
       if (section === 'intelligence')    intelInit();
       if (section === 'add-book')    { ssResetAddBookForm(); abBuildTagGrid(); abLoadMetafields(); }
       if (section === 'sales-team')  adminLoadSalesTeam();
+      if (section === 'admin-users') adminLoadAdmins();
+      if (section === 'odoo-sync')   { osyncCheck(); rasInitDates(); }
+      if (section === 'odoo-reports') orInit();
+      if (section === 'odoo-reconcile') recInit();
+      if (section === 'odoo-razorpay') rzbInit();
+      if (section === 'razorpay-payments') rpayInit();
+      if (section === 'razorpay-settlements') rsetInit();
       // direct-sales and tag sections: user initiates load via button
+    }
+
+    // Collapse/expand a sidebar group (Odoo / Shopify)
+    function adminNavGroup(hdr) { hdr.parentElement.classList.toggle('collapsed'); }
+
+    // ── Odoo → Supabase author-sales refresh (the attribution leg) ──
+    function rasInitDates() {
+      const mr=_orMonthRange(), f=document.getElementById('ras-from'), t=document.getElementById('ras-to');
+      if (f && !f.value) f.value=mr.from; if (t && !t.value) t.value=mr.to;
+    }
+    async function rasRun(dry) {
+      const from=document.getElementById('ras-from').value, to=document.getElementById('ras-to').value;
+      const st=document.getElementById('ras-status');
+      if (!from || !to) { st.style.color='#f87171'; st.textContent='Pick a From and To date.'; return; }
+      st.style.color='var(--muted)'; st.textContent='⏳ '+(dry?'Previewing':'Refreshing')+'… (reading Odoo + Shopify tags)';
+      let d; try { d=await adminPost('admin-refresh-author-sales', { from, to, dryRun: dry }); }
+      catch(e){ st.style.color='#f87171'; st.textContent=e.message; return; }
+      if (!d.success) { st.style.color='#f87171'; st.textContent=d.error||'Failed'; return; }
+      st.style.color = dry ? '#fbbf24' : '#34d399';
+      st.innerHTML = (dry?'Preview — ':'✅ Done — ')
+        + `<b>${d.rowCount}</b> sale lines from ${d.orders} orders · ₹${Math.round(d.totalAmount).toLocaleString('en-IN')} · `
+        + `<b>${d.attributedRows}</b> attributed to ${d.authors} author(s) · ${d.linkedProducts} linked book(s)`
+        + (dry ? ' — nothing written yet; click <b>Refresh dashboards</b> to apply.' : ' written to Sales-by-Author / Total Sales.');
+    }
+
+    // ── Reconcile with MyBillBook (cancellations / returns / rejections) ──────
+    // Book of record = MyBillBook. A cancelled invoice keeps its number but its
+    // daybook row reads "Sales Invoice - Cancelled" (Total 0). We collect those
+    // numbers, ask Odoo which are still live, and reverse them on approval.
+    let _recInvoices = [];    // ALL sale invoices from the daybook: {no,total,moneyIn,cancelled}
+    let _recNeeds = [];        // cancelled-in-MyBillBook rows still live in Odoo (need reversing)
+    let _recPays = [];         // payment-drift rows (paid later in MyBillBook, still open in Odoo)
+    function recInit() { recClear(); recCheck(); }
+    function recClear() {
+      _recInvoices = []; _recNeeds = []; _recPays = [];
+      const f = document.getElementById('rec-file'); if (f) f.value = '';
+      const s = document.getElementById('rec-summary'); if (s) s.textContent = 'Upload a MyBillBook daybook CSV.';
+      const b = document.getElementById('rec-scan'); if (b) b.disabled = true;
+      const r = document.getElementById('rec-result'); if (r) r.innerHTML = '';
+      const pw = document.getElementById('rec-progress-wrap'); if (pw) pw.style.display = 'none';
+      const bar = document.getElementById('rec-bar'); if (bar) bar.style.width = '0%';
+    }
+    async function recCheck() {
+      const el = document.getElementById('rec-conn');
+      el.textContent = 'Checking Odoo…'; el.style.color = 'var(--muted)';
+      try {
+        const r = await adminPost('admin-odoo-sync', { action: 'check' });
+        if (r.configured && r.reachable) { el.textContent = '✅ Odoo reachable'; el.style.color = '#34d399'; }
+        else if (r.configured)          { el.textContent = '⚠️ Configured but unreachable — ' + (r.message || 'tunnel down'); el.style.color = '#fbbf24'; }
+        else                            { el.textContent = '❌ Odoo not configured on this deploy — start the tunnel / set ODOO_* env'; el.style.color = '#f87171'; }
+      } catch (e) { el.textContent = '❌ ' + e.message; el.style.color = '#f87171'; }
+    }
+    // Split one CSV line, honouring simple double-quoted fields.
+    function _recCsvSplit(line) {
+      const out = []; let cur = '', q = false;
+      for (let i = 0; i < line.length; i++) {
+        const c = line[i];
+        if (c === '"') { if (q && line[i+1] === '"') { cur += '"'; i++; } else q = !q; }
+        else if (c === ',' && !q) { out.push(cur); cur = ''; }
+        else cur += c;
+      }
+      out.push(cur); return out.map(s => s.trim());
+    }
+    function recLoadDaybook(ev) {
+      const f = ev.target.files[0]; if (!f) return;
+      const rd = new FileReader();
+      rd.onload = () => {
+        try {
+          const lines = String(rd.result).split(/\r?\n/);
+          const hi = lines.findIndex(l => /Transaction Type/i.test(l) && /Sr\.?\s*No/i.test(l));
+          if (hi < 0) throw new Error('not a daybook (no "Transaction Type / Sr No." header)');
+          const hdr = _recCsvSplit(lines[hi]);
+          const ci = { type: hdr.findIndex(h=>/transaction type/i.test(h)),
+                       sr: hdr.findIndex(h=>/sr\.?\s*no/i.test(h)),
+                       amt: hdr.findIndex(h=>/total amount/i.test(h)),
+                       moneyIn: hdr.findIndex(h=>/money\s*in/i.test(h)),
+                       date: hdr.findIndex(h=>/^date$/i.test(h)) };
+          if (ci.type < 0 || ci.sr < 0 || ci.amt < 0) throw new Error('daybook missing Transaction Type / Sr No. / Total Amount columns');
+          const invoices = []; let cancelledN = 0;
+          for (let i = hi + 1; i < lines.length; i++) {
+            if (!lines[i].trim()) continue;
+            const c = _recCsvSplit(lines[i]);
+            const type = (c[ci.type] || '');
+            if (!/sales invoice/i.test(type)) continue;   // only sale invoices (skip purchases/expenses/quotations)
+            const no = (c[ci.sr] || '').trim(); if (!no) continue;
+            const cancelled = /cancel/i.test(type);
+            if (cancelled) cancelledN++;
+            invoices.push({ no, total: Number(c[ci.amt]) || 0, moneyIn: ci.moneyIn>=0 ? (Number(c[ci.moneyIn])||0) : 0, cancelled });
+          }
+          _recInvoices = invoices;
+          const drow = lines.find(l => /^\s*Dated:/i.test(l)) || '';
+          const period = drow.replace(/^\s*Dated:\s*/i, '').trim();
+          document.getElementById('rec-summary').innerHTML =
+            '<b>' + invoices.length + '</b> sale invoices' + (period ? ' · ' + period : '') +
+            ' · <b style="color:#fbbf24">' + cancelledN + '</b> cancelled in MyBillBook' +
+            '<br><span style="color:var(--muted)">Scan cross-checks every invoice against Odoo for cancellations, edits (books added/removed) and later payments.</span>';
+          document.getElementById('rec-scan').disabled = invoices.length === 0;
+          document.getElementById('rec-result').innerHTML = '';
+        } catch (e) {
+          _recInvoices = [];
+          document.getElementById('rec-summary').innerHTML = '<span style="color:#f87171">Could not read daybook: ' + e.message + '</span>';
+          document.getElementById('rec-scan').disabled = true;
+        }
+      };
+      rd.readAsText(f);
+    }
+    async function recScan() {
+      if (!_recInvoices.length) return;
+      const btn = document.getElementById('rec-scan'); btn.disabled = true;
+      const res = document.getElementById('rec-result');
+      res.innerHTML = '<span style="color:var(--muted)">⏳ Cross-checking ' + _recInvoices.length + ' invoices against Odoo…</span>';
+      let d;
+      try { d = await adminPost('admin-odoo-reconcile', { action: 'scan', invoices: _recInvoices }); }
+      catch (e) { d = { success:false, error:e.message }; }
+      btn.disabled = false;
+      if (!d.success) { res.innerHTML = '<span style="color:#f87171">❌ ' + (d.error || 'scan failed') + '</span>'; return; }
+      recRenderScan(d);
+    }
+    function recRenderScan(d) {
+      const c = d.counts || {}, rows = d.rows || [];
+      _recNeeds = rows.filter(r => r.status === 'cancelled');
+      _recPays = rows.filter(r => r.status === 'payment');
+      const edited = rows.filter(r => r.status === 'edited');
+      let h = '<div style="margin-bottom:0.9rem;font-size:0.86rem;line-height:1.7;">'
+        + '<b style="color:#f87171">' + (c.cancelledFix||0) + '</b> cancelled → reverse (₹' + Math.round(d.cancelledTotal||0).toLocaleString('en-IN') + ') · '
+        + '<b style="color:#fbbf24">' + (c.edited||0) + '</b> edited → re-sync (Δ ₹' + Math.round(d.editedDelta||0).toLocaleString('en-IN') + ') · '
+        + '<b style="color:#60a5fa">' + (c.payment||0) + '</b> payment update (₹' + Math.round(d.paymentDelta||0).toLocaleString('en-IN') + ')<br>'
+        + '<b style="color:#34d399">' + (c.inSync||0) + '</b> in sync · '
+        + '<b>' + (c.reconciled||0) + '</b> already reconciled · '
+        + '<b>' + (c.notSynced||0) + '</b> not yet in Odoo (normal Odoo Sync will add them)'
+        + '</div>';
+
+      // ── Cancellations → reverse ──
+      if (_recNeeds.length) {
+        h += '<h4 style="margin:0.6rem 0 0.4rem;color:#f87171;">↩️ Cancelled in MyBillBook — reverse in Odoo</h4>';
+        h += '<div style="margin-bottom:0.6rem;"><button class="admin-filter-btn" onclick="recReverseAll()" '
+          + 'style="background:rgba(248,113,113,0.12);border-color:#f87171;color:#f87171;font-weight:700;">↩️ Reverse all ' + _recNeeds.length + '</button> '
+          + '<span style="color:var(--muted);font-size:0.8rem;">credit note + stock return + refund — nothing deleted</span></div>';
+        h += '<table style="width:100%;border-collapse:collapse;font-size:0.82rem;margin-bottom:1.2rem;">'
+          + '<thead><tr style="text-align:left;color:var(--muted);border-bottom:1px solid rgba(255,255,255,0.12);">'
+          + '<th style="padding:0.4rem 0.5rem;">Invoice</th><th>Odoo SO</th><th>Customer</th><th style="text-align:right;">Amount</th><th></th><th></th><th></th></tr></thead><tbody>';
+        _recNeeds.forEach(r => {
+          h += '<tr id="rec-row-' + r.invoiceNo + '" style="border-bottom:1px solid rgba(255,255,255,0.06);">'
+            + '<td style="padding:0.4rem 0.5rem;font-weight:600;">' + r.invoiceNo + '</td>'
+            + '<td>' + (r.so||'') + '</td><td>' + (r.customer||'') + '</td>'
+            + '<td style="text-align:right;">₹' + Math.round(r.odooTotal).toLocaleString('en-IN') + '</td>'
+            + '<td style="text-align:right;"><button onclick="recPreview(\'' + r.invoiceNo + '\')" '
+            + 'style="cursor:pointer;padding:0.25rem 0.55rem;border-radius:6px;border:1px solid rgba(255,255,255,0.2);background:transparent;color:var(--text);font-size:0.78rem;">Preview</button></td>'
+            + '<td style="text-align:right;"><button onclick="recReverse(\'' + r.invoiceNo + '\')" '
+            + 'style="cursor:pointer;padding:0.25rem 0.6rem;border-radius:6px;border:1px solid #f87171;background:rgba(248,113,113,0.12);color:#f87171;font-size:0.78rem;font-weight:600;">Reverse</button></td>'
+            + '<td id="rec-stat-' + r.invoiceNo + '" style="padding-left:0.5rem;font-size:0.78rem;"></td></tr>';
+        });
+        h += '</tbody></table>';
+      }
+
+      // ── Edits → re-sync (books added/removed) ──
+      if (edited.length) {
+        h += '<h4 style="margin:0.6rem 0 0.4rem;color:#fbbf24;">✏️ Edited in MyBillBook — books added/removed since sync</h4>'
+          + '<p style="color:var(--muted);font-size:0.8rem;margin:0 0 0.5rem;">Odoo holds the old version. <b>To fix:</b> re-run <code>mbb_sync_prep.py</code> on the changed invoice PDFs, go to <b>Odoo Sync → Sale Orders</b>, upload that payload and tick <b>“✏️ Reconcile edited invoices”</b> before syncing — it reverses each old sale and rebuilds it from the new lines (stock + revenue corrected). Unchanged invoices are skipped.</p>';
+        h += '<table style="width:100%;border-collapse:collapse;font-size:0.82rem;margin-bottom:1rem;">'
+          + '<thead><tr style="text-align:left;color:var(--muted);border-bottom:1px solid rgba(255,255,255,0.12);">'
+          + '<th style="padding:0.4rem 0.5rem;">Invoice</th><th>Odoo SO</th><th>Customer</th>'
+          + '<th style="text-align:right;">Odoo</th><th style="text-align:right;">MyBillBook</th><th style="text-align:right;">Δ</th></tr></thead><tbody>';
+        edited.forEach(r => {
+          const up = (r.delta||0) >= 0;
+          h += '<tr style="border-bottom:1px solid rgba(255,255,255,0.06);">'
+            + '<td style="padding:0.4rem 0.5rem;font-weight:600;">' + r.invoiceNo + '</td>'
+            + '<td>' + (r.so||'') + '</td><td>' + (r.customer||'') + '</td>'
+            + '<td style="text-align:right;">₹' + Math.round(r.odooTotal).toLocaleString('en-IN') + '</td>'
+            + '<td style="text-align:right;">₹' + Math.round(r.mbbTotal).toLocaleString('en-IN') + '</td>'
+            + '<td style="text-align:right;color:' + (up?'#34d399':'#f87171') + ';">' + (up?'+':'') + '₹' + Math.round(r.delta).toLocaleString('en-IN') + '</td></tr>';
+        });
+        h += '</tbody></table>';
+      }
+
+      // ── Payments → register (paid later in MyBillBook) ──
+      if (_recPays.length) {
+        h += '<h4 style="margin:0.6rem 0 0.4rem;color:#60a5fa;">💰 Paid later in MyBillBook — register the collection in Odoo</h4>'
+          + '<div style="margin-bottom:0.6rem;"><button class="admin-filter-btn" onclick="recPayAll()" '
+          + 'style="background:rgba(96,165,250,0.12);border-color:#60a5fa;color:#60a5fa;font-weight:700;">💰 Record all ' + _recPays.length + '</button> '
+          + '<span style="color:var(--muted);font-size:0.8rem;">registers the shortfall on the Bank journal — total unchanged</span></div>';
+        h += '<table style="width:100%;border-collapse:collapse;font-size:0.82rem;margin-bottom:1rem;">'
+          + '<thead><tr style="text-align:left;color:var(--muted);border-bottom:1px solid rgba(255,255,255,0.12);">'
+          + '<th style="padding:0.4rem 0.5rem;">Invoice</th><th>Odoo SO</th><th>Customer</th>'
+          + '<th style="text-align:right;">Odoo paid</th><th style="text-align:right;">MyBillBook</th><th style="text-align:right;">To post</th><th></th><th></th></tr></thead><tbody>';
+        _recPays.forEach(r => {
+          h += '<tr id="recp-row-' + r.invoiceNo + '" style="border-bottom:1px solid rgba(255,255,255,0.06);">'
+            + '<td style="padding:0.4rem 0.5rem;font-weight:600;">' + r.invoiceNo + '</td>'
+            + '<td>' + (r.so||'') + '</td><td>' + (r.customer||'') + '</td>'
+            + '<td style="text-align:right;">₹' + Math.round(r.odooPaid).toLocaleString('en-IN') + '</td>'
+            + '<td style="text-align:right;">₹' + Math.round(r.mbbMoneyIn).toLocaleString('en-IN') + '</td>'
+            + '<td style="text-align:right;color:#60a5fa;">+₹' + Math.round(r.payDelta).toLocaleString('en-IN') + '</td>'
+            + '<td style="text-align:right;"><button onclick="recPay(\'' + r.invoiceNo + '\')" '
+            + 'style="cursor:pointer;padding:0.25rem 0.6rem;border-radius:6px;border:1px solid #60a5fa;background:rgba(96,165,250,0.12);color:#60a5fa;font-size:0.78rem;font-weight:600;">Record</button></td>'
+            + '<td id="recp-stat-' + r.invoiceNo + '" style="padding-left:0.5rem;font-size:0.78rem;"></td></tr>';
+        });
+        h += '</tbody></table>';
+      }
+
+      if (!_recNeeds.length && !edited.length && !_recPays.length)
+        h += '<div style="color:#34d399;font-size:0.9rem;">✅ Odoo is in sync with MyBillBook — no cancellations, edits or payment updates to reconcile.</div>';
+      document.getElementById('rec-result').innerHTML = h;
+    }
+    function _recPayLookup(inv) { return _recPays.find(r => r.invoiceNo === inv); }
+    async function recPay(inv, silent) {
+      const row = _recPayLookup(inv); if (!row) return { skipped:true };
+      const stat = document.getElementById('recp-stat-' + inv);
+      if (!silent && !confirm('Register ₹' + Math.round(row.payDelta).toLocaleString('en-IN') + ' payment on ' + inv + ' in Odoo?\n\nMarks the customer\'s later payment as collected (Bank journal). Invoice total is unchanged.')) return { skipped:true };
+      if (stat) { stat.style.color='var(--muted)'; stat.textContent='⏳ posting…'; }
+      let d; try { d = await adminPost('admin-odoo-reconcile', { action:'pay', invoiceNo:inv, moneyIn:row.mbbMoneyIn, apply:true }); }
+      catch (e) { d = { success:false, error:e.message }; }
+      if (!d.success) { if(stat){stat.style.color='#f87171';stat.textContent='❌ '+(d.error||'failed');} return d; }
+      const rr = d.result || {};
+      if (rr.status === 'paid' || rr.status === 'in_sync') {
+        if (stat) { stat.style.color='#34d399'; stat.textContent = rr.status==='in_sync' ? '✅ already matched' : '✅ +₹'+Math.round(rr.applied||0).toLocaleString('en-IN')+' posted'; }
+        const btnRow = document.getElementById('recp-row-' + inv); if (btnRow) btnRow.querySelectorAll('button').forEach(b => b.disabled = true);
+      } else if (stat) { stat.style.color='#fbbf24'; stat.textContent = '⚠️ ' + (rr.status||'') + (rr.note ? ' — '+rr.note : ''); }
+      return d;
+    }
+    async function recPayAll() {
+      if (!_recPays.length) return;
+      if (!confirm('Register the later payments for all ' + _recPays.length + ' invoices in Odoo? Totals are unchanged.')) return;
+      const pw = document.getElementById('rec-progress-wrap'); pw.style.display = 'block';
+      const bar = document.getElementById('rec-bar'), pt = document.getElementById('rec-progress-text');
+      let done = 0, ok = 0, fail = 0;
+      for (const r of _recPays) {
+        pt.textContent = 'Recording payment ' + (done+1) + ' of ' + _recPays.length + ' (' + r.invoiceNo + ')…';
+        const d = await recPay(r.invoiceNo, true);
+        if (d && d.success && d.result && (d.result.status === 'paid' || d.result.status === 'in_sync')) ok++; else fail++;
+        done++; bar.style.width = Math.round(done/_recPays.length*100) + '%';
+      }
+      pt.textContent = 'Done — ' + ok + ' posted, ' + fail + ' failed.';
+    }
+    function _recPlanText(p) {
+      const inv = (p.invoices||[]).map(i => i.name + ': ' + i.action + ' (₹' + Math.round(i.amount) + ', ' + i.payment_state + ')').join('; ');
+      const pk  = (p.pickings||[]).map(k => k.name + ': ' + k.action).join('; ');
+      return 'Invoices — ' + (inv||'none') + '\nDeliveries — ' + (pk||'none');
+    }
+    async function recPreview(inv) {
+      const stat = document.getElementById('rec-stat-' + inv); if (stat) { stat.style.color='var(--muted)'; stat.textContent='⏳ preview…'; }
+      let d; try { d = await adminPost('admin-odoo-reconcile', { action:'reverse', invoiceNo:inv, apply:false }); }
+      catch (e) { d = { success:false, error:e.message }; }
+      if (!d.success) { if(stat){stat.style.color='#f87171';stat.textContent='❌ '+(d.error||'failed');} return; }
+      alert('Reversal plan for ' + inv + ' (nothing changed yet):\n\n' + _recPlanText(d.result || {}));
+      if (stat) { stat.style.color='var(--muted)'; stat.textContent=''; }
+    }
+    async function recReverse(inv, silent) {
+      const stat = document.getElementById('rec-stat-' + inv);
+      if (!silent && !confirm('Reverse ' + inv + ' in Odoo?\n\nThis posts a credit note, returns the stock and refunds any collected cash so Odoo matches the MyBillBook cancellation. Nothing is deleted.')) return { skipped:true };
+      if (stat) { stat.style.color='var(--muted)'; stat.textContent='⏳ reversing…'; }
+      let d; try { d = await adminPost('admin-odoo-reconcile', { action:'reverse', invoiceNo:inv, apply:true }); }
+      catch (e) { d = { success:false, error:e.message }; }
+      if (!d.success) { if(stat){stat.style.color='#f87171';stat.textContent='❌ '+(d.error||'failed');} return d; }
+      const rr = d.result || {};
+      if (rr.status === 'reversed' || rr.status === 'already') {
+        if (stat) { stat.style.color='#34d399';
+          stat.textContent = rr.status==='already' ? '✅ already reconciled'
+            : '✅ reversed' + (rr.done && rr.done.refunds ? ' + refunded' : '') + (rr.done && rr.done.returns && rr.done.returns.length ? ' + stock back' : ''); }
+        const btnRow = document.getElementById('rec-row-' + inv);
+        if (btnRow) btnRow.querySelectorAll('button').forEach(b => b.disabled = true);
+      } else if (stat) { stat.style.color='#fbbf24'; stat.textContent = '⚠️ ' + (rr.status || 'no change') + (rr.message ? ' — '+rr.message : ''); }
+      return d;
+    }
+    async function recReverseAll() {
+      if (!_recNeeds.length) return;
+      if (!confirm('Reverse all ' + _recNeeds.length + ' cancelled sales in Odoo?\n\nEach gets a credit note + stock return + refund so Odoo matches MyBillBook. Nothing is deleted.')) return;
+      const pw = document.getElementById('rec-progress-wrap'); pw.style.display = 'block';
+      const bar = document.getElementById('rec-bar'), pt = document.getElementById('rec-progress-text');
+      let done = 0, ok = 0, fail = 0;
+      for (const r of _recNeeds) {           // one per request — each chain must finish under Netlify's ~26s limit
+        pt.textContent = 'Reversing ' + (done+1) + ' of ' + _recNeeds.length + ' (' + r.invoiceNo + ')…';
+        const d = await recReverse(r.invoiceNo, true);
+        if (d && d.success && d.result && (d.result.status === 'reversed' || d.result.status === 'already')) ok++; else fail++;
+        done++; bar.style.width = Math.round(done/_recNeeds.length*100) + '%';
+      }
+      pt.textContent = 'Done — ' + ok + ' reversed, ' + fail + ' failed. Re-run “Refresh Author Sales” for the period so the dashboards drop the cancelled amounts.';
+    }
+
+    // ── Backfill Razorpay charges → Odoo GST invoices ────────────────────────
+    let _rzbTodo = [];   // charges the scan found NOT yet in Odoo
+    function rzbInit() {
+      _rzbTodo = [];
+      document.getElementById('rzb-result').innerHTML = '';
+      document.getElementById('rzb-conn').textContent = '';
+      document.getElementById('rzb-progress-wrap').style.display = 'none';
+    }
+    async function rzbScan() {
+      const from = document.getElementById('rzb-from').value || '2026-06-01';
+      const res = document.getElementById('rzb-result');
+      const btn = document.getElementById('rzb-scan'); btn.disabled = true;
+      res.innerHTML = '<span style="color:var(--muted)">⏳ Reading Book Club (Supabase) + subscription charges (Razorpay)…</span>';
+      let d; try { d = await adminPost('admin-odoo-razorpay-backfill', { action:'scan', from }); }
+      catch (e) { d = { success:false, error:e.message }; }
+      btn.disabled = false;
+      if (!d.success) { res.innerHTML = '<span style="color:#f87171">❌ ' + (d.error||'scan failed') + '</span>'; return; }
+      rzbRender(d);
+    }
+    function rzbRender(d) {
+      const c = d.counts || {};
+      _rzbTodo = (d.rows || []).filter(r => !r.inOdoo);
+      let h = '<div style="margin-bottom:0.8rem;font-size:0.86rem;line-height:1.7;">'
+        + '<b style="color:#34d399">' + (c.toCreate||0) + '</b> to create '
+        + '(<b>' + (c.sub||0) + '</b> subscription · <b>' + (c.club||0) + '</b> club) · '
+        + 'gross <b>₹' + Math.round(d.toCreateGross||0).toLocaleString('en-IN') + '</b> · '
+        + 'GST <b>₹' + Math.round(d.toCreateTax||0).toLocaleString('en-IN') + '</b><br>'
+        + '<b>' + (c.alreadyInOdoo||0) + '</b> already in Odoo (skipped) · scanning from ' + d.from
+        + '</div>';
+      if ((d.months||[]).length) {
+        h += '<table style="border-collapse:collapse;font-size:0.82rem;margin-bottom:0.9rem;"><thead><tr style="color:var(--muted);text-align:left;">'
+          + '<th style="padding:0.3rem 1rem 0.3rem 0;">Month</th><th style="text-align:right;">Charges</th><th style="text-align:right;padding-left:1rem;">Gross</th><th style="text-align:right;padding-left:1rem;">GST</th></tr></thead><tbody>';
+        d.months.forEach(m => { h += '<tr><td style="padding:0.2rem 1rem 0.2rem 0;">' + m.month + '</td><td style="text-align:right;">' + m.count
+          + '</td><td style="text-align:right;padding-left:1rem;">₹' + Math.round(m.gross).toLocaleString('en-IN')
+          + '</td><td style="text-align:right;padding-left:1rem;">₹' + Math.round(m.tax).toLocaleString('en-IN') + '</td></tr>'; });
+        h += '</tbody></table>';
+      }
+      if (!_rzbTodo.length) {
+        h += '<div style="color:#34d399;font-size:0.9rem;">✅ Nothing to backfill — every charge from ' + d.from + ' is already in Odoo.</div>';
+        document.getElementById('rzb-result').innerHTML = h; return;
+      }
+      h += '<button class="admin-filter-btn" onclick="rzbApply()" style="background:rgba(212,175,55,0.12);border-color:var(--gold);color:var(--gold);font-weight:700;margin-bottom:0.8rem;">▶ Create ' + _rzbTodo.length + ' invoices in Odoo</button>';
+      h += '<table style="width:100%;border-collapse:collapse;font-size:0.8rem;"><thead><tr style="text-align:left;color:var(--muted);border-bottom:1px solid rgba(255,255,255,0.12);">'
+        + '<th style="padding:0.35rem 0.5rem;">Date</th><th>Type</th><th>Customer</th><th>Detail</th><th style="text-align:right;">Gross</th><th></th></tr></thead><tbody>';
+      _rzbTodo.forEach(r => {
+        h += '<tr id="rzb-row-' + r.paymentId + '" style="border-bottom:1px solid rgba(255,255,255,0.06);">'
+          + '<td style="padding:0.35rem 0.5rem;">' + (r.chargedAt||'').slice(0,10) + '</td>'
+          + '<td>' + (r.type==='sub'?'📗 Sub':'🎟️ Club') + '</td>'
+          + '<td>' + (r.email||'') + '</td><td style="color:var(--muted);">' + (r.label||'') + '</td>'
+          + '<td style="text-align:right;">₹' + Math.round(r.gross).toLocaleString('en-IN') + '</td>'
+          + '<td id="rzb-stat-' + r.paymentId + '" style="padding-left:0.5rem;font-size:0.78rem;"></td></tr>';
+      });
+      h += '</tbody></table>';
+      document.getElementById('rzb-result').innerHTML = h;
+    }
+    async function rzbApply() {
+      if (!_rzbTodo.length) return;
+      if (!confirm('Create ' + _rzbTodo.length + ' GST invoices in Odoo?\n\nSubscription + Book Club charges since ' + document.getElementById('rzb-from').value + '. Idempotent — safe to re-run.')) return;
+      const pw = document.getElementById('rzb-progress-wrap'); pw.style.display = 'block';
+      const bar = document.getElementById('rzb-bar'), pt = document.getElementById('rzb-progress-text');
+      const BATCH = 3; let done = 0, created = 0, skip = 0, fail = 0;
+      for (let i = 0; i < _rzbTodo.length; i += BATCH) {
+        const slice = _rzbTodo.slice(i, i + BATCH);
+        pt.textContent = 'Creating ' + (i+1) + '–' + Math.min(i+BATCH, _rzbTodo.length) + ' of ' + _rzbTodo.length + '…';
+        let r; try { r = await adminPost('admin-odoo-razorpay-backfill', { action:'apply', charges: slice }); }
+        catch (e) { r = { success:false, error:e.message }; }
+        (r.success ? (r.results||[]) : slice.map(c => ({ paymentId:c.paymentId, status:'fail', error:(r.error||'request failed') }))).forEach(x => {
+          const st = document.getElementById('rzb-stat-' + x.paymentId);
+          if (x.status === 'created') { created++; if(st){st.style.color='#34d399';st.textContent='✅ '+(x.number||'created');} }
+          else if (x.status === 'skip') { skip++; if(st){st.style.color='var(--muted)';st.textContent='already in Odoo';} }
+          else { fail++; if(st){st.style.color='#f87171';st.textContent='❌ '+(x.error||'failed');} }
+        });
+        done += slice.length; bar.style.width = Math.round(done/_rzbTodo.length*100) + '%';
+      }
+      pt.textContent = 'Done — ' + created + ' created, ' + skip + ' already there, ' + fail + ' failed.';
+    }
+
+    // ── Razorpay payments ledger (3 tabs: club / subscriptions / other) ──────
+    let _rpayData = null, _rpayTab = 'club';
+    function rpayInit() {
+      const t = document.getElementById('rpay-to'); if (t && !t.value) t.value = new Date().toISOString().slice(0,10);
+      if (!_rpayData) document.getElementById('rpay-result').innerHTML = '<span style="color:var(--muted)">Pick a range and click Load.</span>';
+    }
+    function rpayTab(tab, el) {
+      _rpayTab = tab;
+      [...el.parentElement.children].forEach(b => b.classList.remove('active'));
+      el.classList.add('active');
+      rpayRenderTab();
+    }
+    async function rpayRun() {
+      const from = document.getElementById('rpay-from').value, to = document.getElementById('rpay-to').value;
+      const res = document.getElementById('rpay-result');
+      res.innerHTML = '<span style="color:var(--muted)">⏳ Loading Razorpay payments…</span>';
+      let d; try { d = await adminPost('admin-razorpay-payments', { action:'list', from, to }); }
+      catch (e) { d = { success:false, error:e.message }; }
+      if (!d.success) { res.innerHTML = '<span style="color:#f87171">❌ ' + (d.error||'failed') + '</span>'; return; }
+      _rpayData = d;
+      const m = document.getElementById('rpay-mode');
+      if (m) { m.textContent = d.mode === 'test' ? '⚠️ TEST-mode keys on this deploy — live payments not shown' : (d.mode === 'live' ? 'live' : '');
+        m.style.color = d.mode === 'test' ? '#fbbf24' : 'var(--muted)'; }
+      rpayRenderTab();
+    }
+    function _rpayInr(n){ return '₹' + Math.round(Number(n)||0).toLocaleString('en-IN'); }
+    function rpayRenderTab() {
+      if (!_rpayData) return;
+      const d = _rpayData, t = d.totals || {};
+      const rows = d[_rpayTab] || [];
+      const sub = { club:'Book Club', subscriptions:'Author Subscriptions', other:'Book Purchases' }[_rpayTab];
+      let h = '<div style="display:flex;gap:0.8rem;flex-wrap:wrap;margin-bottom:0.9rem;">'
+        + '<div class="admin-stat-card"><div class="admin-stat-num">' + _rpayInr(t.club) + '</div><div class="admin-stat-label">Club (' + (d.club||[]).length + ')</div></div>'
+        + '<div class="admin-stat-card"><div class="admin-stat-num">' + _rpayInr(t.subscriptions) + '</div><div class="admin-stat-label">Subscriptions (' + (d.subscriptions||[]).length + ')</div></div>'
+        + '<div class="admin-stat-card"><div class="admin-stat-num">' + _rpayInr(t.other) + '</div><div class="admin-stat-label">Book Purchases (' + (d.other||[]).length + ')</div></div>'
+        + '<div class="admin-stat-card"><div class="admin-stat-num">' + _rpayInr(t.all) + '</div><div class="admin-stat-label">Total (' + (t.count||0) + ')</div></div>'
+        + '</div>';
+      h += '<div style="margin-bottom:0.5rem;color:var(--muted);">' + sub + ' · ' + rows.length + ' payment(s) · ' + d.from + ' → ' + d.to + '</div>';
+      if (!rows.length) { h += '<div style="color:var(--muted);">No payments in this range.</div>'; document.getElementById('rpay-result').innerHTML = h; return; }
+      const extra = _rpayTab === 'subscriptions' ? '<th>Plan</th>' : _rpayTab === 'club' ? '<th>Name</th>' : '<th>Description</th>';
+      h += '<div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Date</th><th>Email / Contact</th>' + extra
+        + '<th>Method</th><th style="text-align:right">Amount</th><th>Payment ID</th></tr></thead><tbody>';
+      rows.forEach(r => {
+        const ecol = _e(r.email || r.contact || '—');
+        const xcol = _rpayTab === 'subscriptions' ? _e(r.plan||'') : _rpayTab === 'club' ? _e(r.name||'') : _e(r.description||'');
+        h += '<tr><td>' + _e((r.date||'').slice(0,10)) + '</td><td>' + ecol + '</td><td>' + xcol + '</td><td>' + _e(r.method||'')
+          + '</td><td style="text-align:right">' + _rpayInr(r.amount) + '</td><td style="font-family:monospace;font-size:0.75rem;color:var(--muted)">' + _e(r.paymentId) + '</td></tr>';
+      });
+      h += '</tbody></table></div>';
+      document.getElementById('rpay-result').innerHTML = h;
+    }
+
+    // ── Razorpay settlements (batch bank transfers) ──────────────────────────
+    function rsetInit() {
+      const t = document.getElementById('rset-to'); if (t && !t.value) t.value = new Date().toISOString().slice(0,10);
+    }
+    async function rsetRun() {
+      const from = document.getElementById('rset-from').value, to = document.getElementById('rset-to').value;
+      const res = document.getElementById('rset-result');
+      res.innerHTML = '<span style="color:var(--muted)">⏳ Loading Razorpay settlements…</span>';
+      let d; try { d = await adminPost('admin-razorpay-settlements', { action:'list', from, to }); }
+      catch (e) { d = { success:false, error:e.message }; }
+      if (!d.success) { res.innerHTML = '<span style="color:#f87171">❌ ' + (d.error||'failed') + '</span>'; return; }
+      const m = document.getElementById('rset-mode');
+      if (m) { m.textContent = d.mode === 'test' ? '⚠️ TEST-mode keys — no live settlements' : ''; m.style.color = '#fbbf24'; }
+      const t = d.totals || {};
+      let h = '<div style="display:flex;gap:0.8rem;flex-wrap:wrap;margin-bottom:0.9rem;">'
+        + '<div class="admin-stat-card"><div class="admin-stat-num">₹' + Math.round(t.toBank||0).toLocaleString('en-IN') + '</div><div class="admin-stat-label">Credited to bank (' + d.count + ')</div></div>'
+        + '<div class="admin-stat-card"><div class="admin-stat-num">₹' + Math.round(t.gross||0).toLocaleString('en-IN') + '</div><div class="admin-stat-label">Gross settled</div></div>'
+        + '<div class="admin-stat-card"><div class="admin-stat-num">₹' + Math.round((t.fees||0)+(t.tax||0)).toLocaleString('en-IN') + '</div><div class="admin-stat-label">Fees + GST</div></div>'
+        + '</div>';
+      h += '<div style="margin-bottom:0.5rem;color:var(--muted);">' + d.count + ' settlement(s) · ' + d.from + ' → ' + d.to + '</div>';
+      if (!(d.rows||[]).length) { h += '<div style="color:var(--muted);">No settlements in this range.</div>'; document.getElementById('rset-result').innerHTML = h; return; }
+      h += '<div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Date</th><th>Status</th>'
+        + '<th style="text-align:right">Gross</th><th style="text-align:right">Fees</th><th style="text-align:right">GST</th><th style="text-align:right">To Bank</th><th>UTR (bank ref)</th></tr></thead><tbody>';
+      (d.rows||[]).forEach(r => {
+        const ok = r.status === 'processed';
+        h += '<tr><td>' + _e((r.date||'').slice(0,10)) + '</td>'
+          + '<td><span class="admin-badge badge-' + (ok?'listed':'review') + '">' + _e(r.status) + '</span></td>'
+          + '<td style="text-align:right">₹' + Math.round(r.gross).toLocaleString('en-IN') + '</td>'
+          + '<td style="text-align:right;color:var(--muted)">₹' + Math.round(r.fees).toLocaleString('en-IN') + '</td>'
+          + '<td style="text-align:right;color:var(--muted)">₹' + Math.round(r.tax).toLocaleString('en-IN') + '</td>'
+          + '<td style="text-align:right;font-weight:700;color:#34d399">₹' + Math.round(r.toBank).toLocaleString('en-IN') + '</td>'
+          + '<td style="font-family:monospace;font-size:0.75rem;">' + _e(r.utr||'—') + '</td></tr>';
+      });
+      h += '</tbody></table></div>';
+      document.getElementById('rset-result').innerHTML = h;
+    }
+
+    // ── Quick Reports (Odoo) ─────────────────────────────────────────────────
+    let _orRep = 'customer-statement', _orLast = null;
+    function _orMonthRange() { const n=new Date(), p=x=>String(x).padStart(2,'0');
+      return { from:`${n.getFullYear()}-${p(n.getMonth()+1)}-01`, to:`${n.getFullYear()}-${p(n.getMonth()+1)}-${p(n.getDate())}` }; }
+    function orInit() {
+      const mr=_orMonthRange();
+      const f=document.getElementById('or-from'), t=document.getElementById('or-to');
+      if (f && !f.value) f.value=mr.from; if (t && !t.value) t.value=mr.to;
+      orPick('customer-statement', document.querySelector('#admin-section-odoo-reports [data-rep="customer-statement"]'));
+    }
+    function orPick(rep, el) {
+      _orRep = rep;
+      document.querySelectorAll('#admin-section-odoo-reports [data-rep]').forEach(b=>b.classList.remove('active'));
+      if (el) el.classList.add('active');
+      document.getElementById('or-name').style.display   = (rep==='customer-statement') ? '' : 'none';
+      document.getElementById('or-daterange').style.display = (rep==='pl'||rep==='gstr1') ? 'inline-flex' : 'none';
+      document.getElementById('or-result').innerHTML = '';
+      document.getElementById('or-csv-btn').style.display = 'none';
+      document.getElementById('or-pdf-btn').style.display = 'none';
+    }
+    function _inr(n){ n=Number(n)||0; const neg=n<0; n=Math.abs(n); let s=n.toFixed(2), [i,d]=s.split('.');
+      if(i.length>3){ i=i.slice(0,-3).replace(/\B(?=(\d\d)+(?!\d))/g,',')+','+i.slice(-3); } s='₹'+i+'.'+d; return neg?'('+s+')':s; }
+    async function orRun() {
+      const res=document.getElementById('or-result'); res.innerHTML='<p style="color:var(--muted)">⏳ Loading…</p>';
+      document.getElementById('or-csv-btn').style.display='none';
+      const p={ action:_orRep };
+      if (_orRep==='customer-statement') p.nameLike=document.getElementById('or-name').value.trim();
+      if (_orRep==='pl'||_orRep==='gstr1'){ p.from=document.getElementById('or-from').value; p.to=document.getElementById('or-to').value; }
+      let d; try { d=await adminPost('admin-odoo-reports', p); } catch(e){ res.innerHTML='<p style="color:#f87171">'+e.message+'</p>'; return; }
+      if (!d.success){ res.innerHTML='<p style="color:#f87171">'+(d.error||'Failed')+'</p>'; return; }
+      _orLast=d;
+      if (_orRep==='customer-statement') orRenderStatement(d);
+      else if (_orRep==='aged') orRenderAged(d);
+      else if (_orRep==='pl') orRenderPL(d);
+      else if (_orRep==='gstr1') orRenderGstr1(d);
+      else if (_orRep==='stock') orRenderStock(d);
+      else if (_orRep==='unsynced') orRenderUnsynced(d);
+      document.getElementById('or-csv-btn').style.display='';
+      document.getElementById('or-pdf-btn').style.display = (_orRep==='customer-statement' && !d.notFound) ? '' : 'none';
+    }
+    const _e=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+    function orRenderStatement(d){
+      if (d.notFound){ document.getElementById('or-result').innerHTML='<p style="color:#fbbf24">'+_e(d.message)+'</p>'; document.getElementById('or-csv-btn').style.display='none'; return; }
+      const p=d.partner, other=d.otherMatches&&d.otherMatches.length?`<div style="color:var(--muted);font-size:0.8rem;margin-top:0.4rem;">Other matches: ${d.otherMatches.map(_e).join(', ')}</div>`:'';
+      let h=`<div style="margin-bottom:0.6rem;"><b>${_e(p.name)}</b> · ${_e(p.email||'')} ${p.city?'· '+_e(p.city):''} ${p.vat?'· GSTIN '+_e(p.vat):''}</div>`;
+      h+='<div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Date</th><th>Document</th><th style="text-align:right">Debit</th><th style="text-align:right">Credit</th><th style="text-align:right">Balance</th></tr></thead><tbody>';
+      d.lines.forEach(l=>{ h+=`<tr><td>${_e(l.date)}</td><td>${_e(l.doc)}</td><td style="text-align:right">${l.debit?_inr(l.debit):'—'}</td><td style="text-align:right">${l.credit?_inr(l.credit):'—'}</td><td style="text-align:right">${_inr(l.balance)}</td></tr>`; });
+      h+=`</tbody><tfoot><tr style="font-weight:700;border-top:2px solid var(--gold)"><td colspan="2">Totals</td><td style="text-align:right">${_inr(d.totalInvoiced)}</td><td style="text-align:right">${_inr(d.totalPaid)}</td><td style="text-align:right;color:${d.outstanding>0?'#f87171':'#34d399'}">Due ${_inr(d.outstanding)}</td></tr></tfoot></table></div>`+other;
+      document.getElementById('or-result').innerHTML=h;
+    }
+    function orRenderAged(d){
+      let h='<div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Customer</th><th style="text-align:right">0–30d</th><th style="text-align:right">31–60d</th><th style="text-align:right">61–90d</th><th style="text-align:right">90d+</th><th style="text-align:right">Total Due</th></tr></thead><tbody>';
+      d.rows.forEach(r=>{ h+=`<tr><td>${_e(r.customer)}</td><td style="text-align:right">${r.d0_30?_inr(r.d0_30):'—'}</td><td style="text-align:right">${r.d31_60?_inr(r.d31_60):'—'}</td><td style="text-align:right">${r.d61_90?_inr(r.d61_90):'—'}</td><td style="text-align:right;color:${r.d90>0?'#f87171':''}">${r.d90?_inr(r.d90):'—'}</td><td style="text-align:right;font-weight:700">${_inr(r.total)}</td></tr>`; });
+      const t=d.totals; h+=`</tbody><tfoot><tr style="font-weight:700;border-top:2px solid var(--gold)"><td>All customers</td><td style="text-align:right">${_inr(t.d0_30)}</td><td style="text-align:right">${_inr(t.d31_60)}</td><td style="text-align:right">${_inr(t.d61_90)}</td><td style="text-align:right">${_inr(t.d90)}</td><td style="text-align:right">${_inr(t.total)}</td></tr></tfoot></table></div>`;
+      if(!d.rows.length) h='<p style="color:var(--muted)">No outstanding receivables. 🎉</p>';
+      document.getElementById('or-result').innerHTML=h;
+    }
+    function orRenderPL(d){
+      const inc=d.rows.filter(r=>r.type.indexOf('income')===0), exp=d.rows.filter(r=>r.type.indexOf('expense')===0);
+      let h=`<div style="margin-bottom:0.6rem;color:var(--muted)">Period ${_e(d.from)} → ${_e(d.to)}</div><div class="admin-table-wrap"><table class="admin-table"><tbody>`;
+      h+='<tr style="background:rgba(212,175,55,0.08)"><td colspan="2"><b>Income</b></td></tr>';
+      inc.forEach(r=>h+=`<tr><td>${_e(r.code)} ${_e(r.name)}</td><td style="text-align:right">${_inr(-r.balance)}</td></tr>`);
+      h+=`<tr style="font-weight:700"><td>Total Revenue</td><td style="text-align:right">${_inr(d.revenue)}</td></tr>`;
+      h+='<tr style="background:rgba(212,175,55,0.08)"><td colspan="2"><b>Expenses &amp; COGS</b></td></tr>';
+      exp.forEach(r=>h+=`<tr><td>${_e(r.code)} ${_e(r.name)}</td><td style="text-align:right">${_inr(r.balance)}</td></tr>`);
+      h+=`<tr style="font-weight:700"><td>Total Expenses</td><td style="text-align:right">${_inr(d.expenses)}</td></tr>`;
+      h+=`<tr style="font-weight:700;border-top:2px solid var(--gold)"><td>NET ${d.net<0?'LOSS':'PROFIT'}</td><td style="text-align:right;color:${d.net<0?'#f87171':'#34d399'}">${_inr(d.net)}</td></tr>`;
+      h+='</tbody></table></div><div style="color:var(--muted);font-size:0.78rem;margin-top:0.5rem;">Note: COGS here is Purchases + Stock-Variation as booked in Odoo. Inventory-adjusted month-end COGS is set at close.</div>';
+      document.getElementById('or-result').innerHTML=h;
+    }
+    function orRenderUnsynced(d){
+      let h=`<div style="margin-bottom:0.6rem;color:var(--muted)">Sales recorded in <b>Odoo</b> but not in MyBillBook (entered via Direct Sales). While MyBillBook is your book of record, staff should <b>back-enter these into MyBillBook</b>.</div>`;
+      if(!d.rows.length){ document.getElementById('or-result').innerHTML=h+'<p style="color:#34d399">✅ Nothing out of sync — all Odoo sales came from MyBillBook.</p>'; return; }
+      h+=`<div style="margin-bottom:0.6rem;font-weight:700">${d.count} order(s) · ₹${Math.round(d.total).toLocaleString('en-IN')} to reconcile</div>`;
+      h+='<div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Odoo SO</th><th>Ref</th><th>Date</th><th>Customer</th><th style="text-align:right">Amount</th><th>Invoiced</th></tr></thead><tbody>';
+      d.rows.forEach(r=>{ h+=`<tr><td>${_e(r.so)}</td><td>${_e(r.ref)}</td><td>${_e(r.date)}</td><td>${_e(r.cust)||'—'}</td><td style="text-align:right">${_inr(r.total)}</td><td>${r.invoiced?'yes':'—'}</td></tr>`; });
+      h+='</tbody></table></div>';
+      document.getElementById('or-result').innerHTML=h;
+    }
+    function orRenderStock(d){
+      let h=`<div style="display:flex;gap:0.8rem;flex-wrap:wrap;margin-bottom:0.9rem;">
+        <div class="admin-stat-card"><div class="admin-stat-num">${_inr(d.totalValue)}</div><div class="admin-stat-label">On-hand value (at cost)</div></div>
+        <div class="admin-stat-card"><div class="admin-stat-num">${d.itemCount}</div><div class="admin-stat-label">SKUs in stock</div></div>
+        <div class="admin-stat-card"><div class="admin-stat-num">${Math.round(d.totalQty)}</div><div class="admin-stat-label">Total units</div></div>
+        ${d.negativeCount?`<div class="admin-stat-card"><div class="admin-stat-num" style="color:#f87171">${d.negativeCount}</div><div class="admin-stat-label">Negative (over-sold)</div></div>`:''}</div>`;
+      h+='<div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>SKU</th><th>Book</th><th style="text-align:right">Qty</th><th style="text-align:right">Cost</th><th style="text-align:right">Value</th></tr></thead><tbody>';
+      d.rows.forEach(r=>{ h+=`<tr><td>${_e(r.sku)}</td><td>${_e(r.name)}</td><td style="text-align:right;${r.qty<0?'color:#f87171;font-weight:700':''}">${r.qty}</td><td style="text-align:right">${_inr(r.cost)}</td><td style="text-align:right">${_inr(r.value)}</td></tr>`; });
+      h+='</tbody></table></div><div style="color:var(--muted);font-size:0.78rem;margin-top:0.5rem;">Live Odoo on-hand (opening + purchases − sales as synced). Negative rows = over-sold in MyBillBook; clean those to reconcile.</div>';
+      if(!d.rows.length) h='<p style="color:var(--muted)">No stock on hand in Odoo.</p>';
+      document.getElementById('or-result').innerHTML=h;
+    }
+    function orRenderGstr1(d){
+      let h=`<div style="margin-bottom:0.6rem;color:var(--muted)">Period ${_e(d.from)} → ${_e(d.to)} · ${d.invoiceCount} invoices</div><div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Table</th><th>Description</th><th style="text-align:right">Value</th><th style="text-align:right">Tax</th></tr></thead><tbody>`;
+      h+=`<tr><td>4A</td><td>B2B (registered)</td><td style="text-align:right">${_inr(d.b2bTotal)}</td><td style="text-align:right">${_inr(d.taxAmount)}</td></tr>`;
+      h+=`<tr><td>7</td><td>B2C (unregistered)</td><td style="text-align:right">${_inr(d.b2cTotal)}</td><td style="text-align:right">—</td></tr>`;
+      h+=`<tr><td>8</td><td>Nil-rated / Exempt</td><td style="text-align:right">${_inr(d.exemptValue)}</td><td style="text-align:right">—</td></tr>`;
+      h+=`<tr style="font-weight:700;border-top:2px solid var(--gold)"><td colspan="2">Taxable value</td><td style="text-align:right">${_inr(d.taxableValue)}</td><td style="text-align:right">${_inr(d.taxAmount)}</td></tr>`;
+      h+='</tbody></table></div>';
+      document.getElementById('or-result').innerHTML=h;
+    }
+    function orExportCsv(){
+      if(!_orLast) return; let rows=[];
+      if(_orRep==='customer-statement'){ rows.push(['Date','Document','Debit','Credit','Balance']); _orLast.lines.forEach(l=>rows.push([l.date,l.doc,l.debit,l.credit,l.balance])); rows.push(['','Totals',_orLast.totalInvoiced,_orLast.totalPaid,'Due '+_orLast.outstanding]); }
+      else if(_orRep==='aged'){ rows.push(['Customer','0-30','31-60','61-90','90+','Total']); _orLast.rows.forEach(r=>rows.push([r.customer,r.d0_30,r.d31_60,r.d61_90,r.d90,r.total])); }
+      else if(_orRep==='pl'){ rows.push(['Code','Account','Type','Amount']); _orLast.rows.forEach(r=>rows.push([r.code,r.name,r.type,r.balance])); rows.push([],['','Revenue','',_orLast.revenue],['','Expenses','',_orLast.expenses],['','Net','',_orLast.net]); }
+      else if(_orRep==='stock'){ rows.push(['SKU','Book','Category','Qty','Cost','Value']); _orLast.rows.forEach(r=>rows.push([r.sku,r.name,r.category,r.qty,r.cost,r.value])); rows.push([],['','','','','Total value',_orLast.totalValue]); }
+      else if(_orRep==='unsynced'){ rows.push(['Odoo SO','Ref','Date','Customer','Amount','Invoiced']); _orLast.rows.forEach(r=>rows.push([r.so,r.ref,r.date,r.cust,r.total,r.invoiced?'yes':'no'])); }
+      else if(_orRep==='gstr1'){ rows.push(['Metric','Value']); rows.push(['Invoices',_orLast.invoiceCount],['Taxable',_orLast.taxableValue],['Tax',_orLast.taxAmount],['Exempt',_orLast.exemptValue],['B2B',_orLast.b2bTotal],['B2C',_orLast.b2cTotal]); }
+      const csv=rows.map(r=>r.map(c=>`"${String(c==null?'':c).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+      const blob=new Blob([csv],{type:'text/csv'}), a=document.createElement('a');
+      a.href=URL.createObjectURL(blob); a.download=`yfb-${_orRep}-${Date.now()}.csv`; a.click(); URL.revokeObjectURL(a.href);
+    }
+    // Printable statement -> browser "Save as PDF" (renders ₹ correctly via browser fonts)
+    function orStatementPdf(){
+      if(!_orLast || _orRep!=='customer-statement' || _orLast.notFound) return;
+      const d=_orLast, p=d.partner, due=d.outstanding;
+      const rows=d.lines.map(l=>`<tr><td>${_e(l.date)}</td><td>${_e(l.doc)}</td><td class="r">${l.debit?_inr(l.debit):'—'}</td><td class="r">${l.credit?_inr(l.credit):'—'}</td><td class="r">${_inr(l.balance)}</td></tr>`).join('');
+      const today=new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+      const html='<!doctype html><html><head><meta charset="utf-8"><title>Statement - '+_e(p.name)+'</title><style>'
+        +'body{font-family:Arial,Helvetica,sans-serif;color:#222;margin:32px;}h1{color:#1F3864;margin:0;font-size:22px;}'
+        +'.sub{color:#555;font-size:12px;margin:2px 0 14px;}.hd{font-weight:700;font-size:15px;margin:10px 0 2px;}'
+        +'table{border-collapse:collapse;width:100%;margin-top:8px;font-size:12px;}th{background:#1F3864;color:#fff;text-align:left;padding:7px 8px;}'
+        +'td{padding:6px 8px;border-bottom:1px solid #ddd;}.r{text-align:right;}tfoot td{font-weight:700;border-top:2px solid #333;}'
+        +'.due{margin-top:16px;color:#fff;padding:12px 14px;font-weight:700;display:flex;justify-content:space-between;font-size:15px;background:'+(due>0?'#C00000':'#2E7D32')+';}'
+        +'.note{color:#555;font-size:11px;margin-top:14px;font-style:italic;}@media print{body{margin:12mm;}}</style></head><body>'
+        +'<h1>Yellow Feather Books</h1><div class="sub">Phone: 9400448000</div>'
+        +'<div class="hd">STATEMENT OF ACCOUNT</div><div class="sub">As of '+today+'</div>'
+        +'<div style="font-size:13px;margin-bottom:6px;"><b>To:</b> '+_e(p.name)+(p.email?' &nbsp;|&nbsp; '+_e(p.email):'')+(p.city?' &nbsp;|&nbsp; '+_e(p.city):'')+(p.vat?' &nbsp;|&nbsp; GSTIN '+_e(p.vat):'')+'</div>'
+        +'<table><thead><tr><th>Date</th><th>Document</th><th class="r">Debit</th><th class="r">Credit</th><th class="r">Balance</th></tr></thead><tbody>'+rows
+        +'</tbody><tfoot><tr><td colspan="2">Totals</td><td class="r">'+_inr(d.totalInvoiced)+'</td><td class="r">'+_inr(d.totalPaid)+'</td><td class="r"></td></tr></tfoot></table>'
+        +'<div class="due"><span>'+(due>0?'AMOUNT DUE':'BALANCE')+'</span><span>'+_inr(due)+'</span></div>'
+        +'<div class="note">'+(due>0?'Kindly arrange payment at your earliest convenience. Please ignore this notice if payment has already been made.':'Account settled — thank you.')+' This is a computer-generated statement.</div>'
+        +'<scr'+'ipt>window.onload=function(){setTimeout(function(){window.print();},200);}<\/scr'+'ipt></body></html>';
+      const w=window.open('','_blank'); if(!w){ alert('Allow pop-ups to print the statement.'); return; }
+      w.document.write(html); w.document.close();
     }
 
     // ── Helpers ──
@@ -11375,6 +12583,161 @@ Questions? We're always here!
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ adminEmail: _adminSession.email, adminKey: _adminSession.adminKey, ...body })
       }).then(r => r.json());
+    }
+
+    // ── Odoo Sync (MyBillBook → Odoo, hybrid: local prep produces the payload) ──
+    let _osyncPayload = null;
+    function osyncTab(type, el) {
+      [...el.parentElement.children].forEach(b => b.classList.remove('active'));
+      el.classList.add('active');
+      const upload = (type === 'sales' || type === 'purchase' || type === 'expense');
+      document.getElementById('osync-sales-pane').style.display = upload ? '' : 'none';
+      document.getElementById('osync-soon-pane').style.display  = upload ? 'none' : '';
+      osyncClearLoaded();   // fresh start per tab — don't carry over the previous tab's file/result
+    }
+    async function osyncCheck() {
+      const el = document.getElementById('osync-conn');
+      el.textContent = 'Checking Odoo…'; el.style.color = 'var(--muted)';
+      try {
+        const r = await adminPost('admin-odoo-sync', { action: 'check' });
+        if (r.configured && r.reachable) { el.textContent = '✅ Odoo reachable'; el.style.color = '#34d399'; }
+        else if (r.configured)          { el.textContent = '⚠️ Configured but unreachable — ' + (r.message || 'tunnel down'); el.style.color = '#fbbf24'; }
+        else                            { el.textContent = '❌ Odoo not configured on this deploy — start the cloudflared tunnel / set ODOO_* env'; el.style.color = '#f87171'; }
+      } catch (e) { el.textContent = '❌ ' + e.message; el.style.color = '#f87171'; }
+    }
+    // Clear any previously-loaded payload from memory. Called on every file-picker
+    // click so a regenerated same-named file can never be synced as stale data
+    // (browsers don't fire onchange when you re-pick an identically-named file).
+    function osyncClearLoaded() {
+      _osyncPayload = null;
+      const f = document.getElementById('osync-file');     if (f) f.value = '';
+      const s = document.getElementById('osync-summary');   if (s) s.textContent = 'No payload loaded.';
+      const r = document.getElementById('osync-run');       if (r) r.disabled = true;
+      const rep = document.getElementById('osync-report');  if (rep) rep.innerHTML = '';       // clear previous run's result
+      const pw = document.getElementById('osync-progress-wrap'); if (pw) pw.style.display = 'none';
+      const bar = document.getElementById('osync-bar');     if (bar) bar.style.width = '0%';
+    }
+    function osyncLoadFile(ev) {
+      const f = ev.target.files[0]; if (!f) return;
+      const rd = new FileReader();
+      rd.onload = () => {
+        try {
+          const p = JSON.parse(rd.result);
+          const orders = p.orders || [];
+          if (!orders.length) throw new Error('payload has no orders[]');
+          _osyncPayload = p;
+          const isE       = (p.type === 'expense');
+          const isP       = (p.type === 'purchase');
+          const unmatched = (p.unmatched || []);
+          const snap      = (p.stockSnapshot || []).length;
+          let html;
+          if (isE) {
+            const total = orders.reduce((s, o) => s + (Number(o.amount) || 0), 0);
+            html = '<b>' + orders.length + '</b> expense vouchers · total <b>₹' + total.toLocaleString('en-IN') + '</b>';
+          } else {
+            const units = orders.reduce((s, o) => s + (o.lines || []).reduce((a, l) => a + (Number(l.qty) || 0), 0), 0);
+            const total = orders.reduce((s, o) => s + (Number(o.dayTotal) || 0), 0);
+            const paid  = orders.reduce((s, o) => s + (Number(isP ? o.moneyOut : o.moneyIn) || 0), 0);
+            html = '<b>' + orders.length + '</b> ' + (isP ? 'purchase bills' : 'orders') + ' · <b>' + units + '</b> book units · '
+                 + (isP ? 'spend' : 'revenue') + ' <b>₹' + total.toLocaleString('en-IN') + '</b> · '
+                 + (isP ? 'paid' : 'collected') + ' ₹' + paid.toLocaleString('en-IN');
+          }
+          if (unmatched.length) html += '<br><span style="color:#fbbf24">⚠️ ' + unmatched.length + ' unmatched book(s) — those lines are skipped (add them to Odoo first): ' + unmatched.slice(0, 6).join(', ') + (unmatched.length > 6 ? '…' : '') + '</span>';
+          document.getElementById('osync-summary').innerHTML = html;
+          document.getElementById('osync-snap-wrap').style.display = snap ? 'flex' : 'none';
+          document.getElementById('osync-autocreate-wrap').style.display = isP ? 'flex' : 'none';
+          document.getElementById('osync-livestock-wrap').style.display = isP ? 'flex' : 'none';
+          document.getElementById('osync-edits-wrap').style.display = (!isP && !isE) ? 'flex' : 'none';   // sales only
+          document.getElementById('osync-run').disabled = false;
+        } catch (e) {
+          _osyncPayload = null;
+          document.getElementById('osync-summary').innerHTML = '<span style="color:#f87171">Invalid payload: ' + e.message + '</span>';
+          document.getElementById('osync-run').disabled = true;
+        }
+      };
+      rd.readAsText(f);
+    }
+    async function osyncRun() {
+      if (!_osyncPayload) return;
+      const orders = _osyncPayload.orders || [];
+      const btn = document.getElementById('osync-run'); btn.disabled = true;
+      document.getElementById('osync-progress-wrap').style.display = 'block';
+      const bar = document.getElementById('osync-bar');
+      const ptext = document.getElementById('osync-progress-text');
+      const report = document.getElementById('osync-report'); report.innerHTML = '';
+      const action = (_osyncPayload.type === 'purchase') ? 'purchase'
+                   : (_osyncPayload.type === 'expense')  ? 'expense' : 'sales';
+      const autoCreate = document.getElementById('osync-autocreate').checked;
+      const moveStock = document.getElementById('osync-livestock').checked;
+      const reconcileEdits = document.getElementById('osync-edits').checked;
+      // 1 order per request: each SO→delivery→invoice→payment chain runs over the
+      // cloudflared tunnel to local Odoo and must finish within Netlify's ~10s
+      // function limit. Batching several new orders overruns it (Netlify then
+      // returns an HTML timeout page → "Unexpected token '<'").
+      const BATCH = 1, all = [];
+      let done = 0;
+      for (let i = 0; i < orders.length; i += BATCH) {
+        const slice = orders.slice(i, i + BATCH);
+        ptext.textContent = 'Syncing ' + (i + 1) + '–' + Math.min(i + BATCH, orders.length) + ' of ' + orders.length + '…';
+        let r;
+        try { r = await adminPost('admin-odoo-sync', { action: action, orders: slice, autoCreate: autoCreate, moveStock: moveStock, reconcileEdits: reconcileEdits }); }
+        catch (e) { r = { success: false, error: e.message }; }
+        if (r.success) {
+          for (const x of (r.results || [])) {
+            if (x.needsRebuild) {
+              // Edit reconcile: the old sale was reversed + retired in this request.
+              // Rebuild it as a fresh sale in a SECOND request (its ref is retired,
+              // so this creates a new mbb:<inv> from the new lines). Two lighter
+              // requests instead of one that overruns Netlify's limit.
+              const o = slice.find(s => s.invoiceNo === x.invoiceNo) || slice[0];
+              ptext.textContent = 'Rebuilding ' + x.invoiceNo + ' with the new lines…';
+              let r2;
+              try { r2 = await adminPost('admin-odoo-sync', { action: action, orders: [o], autoCreate: autoCreate, moveStock: moveStock, reconcileEdits: false }); }
+              catch (e) { r2 = { success: false, error: e.message }; }
+              const built = r2.success && r2.results && r2.results[0];
+              if (built && built.status !== 'fail') { built.status = 'edited'; built.edit = x.edit; all.push(built); }
+              else all.push({ invoiceNo: x.invoiceNo, status: 'fail', error: 'reversed OK — rebuild failed: ' + ((r2 && r2.error) || (built && built.error) || '?') + ' (re-run to finish)' });
+            } else {
+              all.push(x);
+            }
+          }
+        } else {
+          // Don't abort the whole run — the order may even have been created
+          // (sync is idempotent; re-running will skip it). Record + keep going.
+          slice.forEach(o => all.push({ invoiceNo: o.invoiceNo, billNo: o.billNo, voucherNo: o.voucherNo, status: 'fail', error: (r.error || 'request failed') }));
+        }
+        done += slice.length;
+        bar.style.width = Math.round(done / orders.length * 100) + '%';
+      }
+      const snap = _osyncPayload.stockSnapshot || [];
+      if (snap.length && document.getElementById('osync-snap').checked) {
+        const SB = 200; let sapplied = 0;
+        for (let i = 0; i < snap.length; i += SB) {
+          ptext.textContent = 'Snapshotting inventory ' + (i + 1) + '–' + Math.min(i + SB, snap.length) + ' of ' + snap.length + '…';
+          try { const r = await adminPost('admin-odoo-sync', { action: 'snapshot', rows: snap.slice(i, i + SB) }); sapplied += (r.applied || 0); } catch (e) {}
+        }
+        ptext.textContent = 'Snapshot applied to ' + sapplied + ' products. ';
+      }
+      const ok = all.filter(x => x.status === 'ok').length;
+      const skip = all.filter(x => x.status === 'skip').length;
+      const edits = all.filter(x => x.status === 'edited');
+      const fails = all.filter(x => x.status === 'fail');
+      const createdN = all.reduce((s, x) => s + ((x.created || []).length), 0);
+      let h = '<div style="margin-bottom:0.5rem;"><b style="color:#34d399">✅ ' + ok + ' synced</b> · <span style="color:#fbbf24">' + skip + ' skipped (already in Odoo)</span>'
+            + (edits.length ? ' · <span style="color:#c084fc">✏️ ' + edits.length + ' edited (reversed + rebuilt)</span>' : '')
+            + ' · <span style="color:#f87171">' + fails.length + ' failed</span>'
+            + (createdN ? ' · <span style="color:#60a5fa">' + createdN + ' new books created</span>' : '') + '</div>';
+      if (edits.length) {
+        h += '<table style="width:100%;border-collapse:collapse;margin-bottom:0.5rem;"><tr style="text-align:left;color:var(--muted)"><th>Invoice</th><th>Old → New</th></tr>';
+        edits.forEach(x => { const e = x.edit || {}; h += '<tr><td style="padding:2px 10px 2px 0">' + (x.invoiceNo || '') + '</td><td style="color:#c084fc">₹' + Math.round(e.from||0).toLocaleString('en-IN') + ' → ₹' + Math.round(e.to||x.total||0).toLocaleString('en-IN') + '</td></tr>'; });
+        h += '</table>';
+      }
+      if (fails.length) {
+        h += '<table style="width:100%;border-collapse:collapse;"><tr style="text-align:left;color:var(--muted)"><th>Invoice</th><th>Error</th></tr>';
+        fails.forEach(x => { h += '<tr><td style="padding:2px 10px 2px 0">' + (x.invoiceNo || x.billNo || x.voucherNo || '') + '</td><td style="color:#f87171">' + (x.error || '') + '</td></tr>'; });
+        h += '</table>';
+      }
+      ptext.textContent += 'Done.'; report.innerHTML = h; btn.disabled = false;
     }
     function fmtDate(iso) {
       if (!iso) return '—';
@@ -11776,6 +13139,7 @@ Questions? We're always here!
     var _dsSearchTimer = null;
     var _dsDropdownIdx = -1;
     var _dsResults     = [];
+    var _dsItems = [];   // selected books [{sku,title,price,qty,coverUrl}] -> Odoo multi-line sale
 
     function dsBookTitleInput(val) {
       clearTimeout(_dsSearchTimer);
@@ -11815,26 +13179,58 @@ Questions? We're always here!
     function dsSelectBook(idx) {
       const b = _dsResults[idx];
       if (!b) return;
-      document.getElementById('ds-book-title').value        = b.title;
+      // Add the picked book to the order (bump qty if it's already in the list).
+      const sku = b.sku || '';
+      const row = sku ? _dsItems.find(function(it){ return it.sku === sku; }) : null;
+      if (row) { row.qty += 1; }
+      else { _dsItems.push({ sku: sku, title: b.title, price: b.priceAmount || 0, qty: 1, coverUrl: b.coverUrl || '' }); }
+      // Reset the search for the next book.
+      document.getElementById('ds-book-title').value = '';
       document.getElementById('ds-book-dropdown').style.display = 'none';
-      // Show inline preview
-      const preview = document.getElementById('ds-book-preview');
-      if (b.coverUrl) {
-        document.getElementById('ds-book-cover').src         = b.coverUrl;
-        document.getElementById('ds-book-cover').style.display = '';
-      } else {
-        document.getElementById('ds-book-cover').style.display = 'none';
+      _dsResults = [];
+      dsRenderItems();
+    }
+
+    function dsRenderItems() {
+      const wrap = document.getElementById('ds-items-list');
+      if (!wrap) return;
+      if (!_dsItems.length) {
+        wrap.innerHTML = '<div style="font-size:0.8rem;color:var(--muted);padding:0.5rem 0;">No books added yet — search above and pick a title to add it.</div>';
+        dsComputeTotal(); return;
       }
-      document.getElementById('ds-book-preview-title').textContent = b.title;
-      document.getElementById('ds-book-preview-price').textContent = b.price || '';
-      preview.style.display = 'flex';
+      wrap.innerHTML = _dsItems.map(function(it, i){
+        const lineTotal = (it.qty * it.price).toFixed(2);
+        return '<div style="display:flex;align-items:center;gap:0.6rem;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:0.5rem 0.7rem;margin-bottom:0.5rem;">' +
+          (it.coverUrl ? '<img src="' + it.coverUrl + '" style="width:30px;height:42px;object-fit:cover;border-radius:3px;flex-shrink:0;" />' : '<div style="width:30px;height:42px;background:rgba(255,255,255,0.06);border-radius:3px;flex-shrink:0;"></div>') +
+          '<div style="flex:1;min-width:0;"><div style="font-size:0.83rem;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + (it.title || '') + '</div>' +
+          (it.sku ? '<div style="font-size:0.68rem;color:var(--muted);">' + it.sku + '</div>' : '<div style="font-size:0.68rem;color:#f59e0b;">no Shopify SKU — Odoo matches by title</div>') + '</div>' +
+          '<span style="font-size:0.68rem;color:var(--muted);">Qty</span>' +
+          '<input type="number" min="1" value="' + it.qty + '" onchange="dsItemQty(' + i + ',this.value)" style="width:52px;font-size:0.8rem;padding:0.3rem 0.4rem;border-radius:5px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:var(--text);" />' +
+          '<span style="font-size:0.68rem;color:var(--muted);">₹</span>' +
+          '<input type="number" min="0" step="0.01" value="' + it.price + '" onchange="dsItemPrice(' + i + ',this.value)" style="width:72px;font-size:0.8rem;padding:0.3rem 0.4rem;border-radius:5px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:var(--text);" />' +
+          '<div style="width:76px;text-align:right;font-size:0.82rem;font-weight:600;color:var(--gold);">₹' + lineTotal + '</div>' +
+          '<button onclick="dsRemoveItem(' + i + ')" title="Remove" style="background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:1rem;line-height:1;">✕</button>' +
+        '</div>';
+      }).join('');
+      dsComputeTotal();
+    }
+
+    function dsItemQty(i, val)  { const q = parseInt(val) || 1;  _dsItems[i].qty = q < 1 ? 1 : q; dsRenderItems(); }
+    function dsItemPrice(i, val){ const p = parseFloat(val);     _dsItems[i].price = (isNaN(p) || p < 0) ? 0 : p; dsRenderItems(); }
+    function dsRemoveItem(i)    { _dsItems.splice(i, 1); dsRenderItems(); }
+
+    function dsComputeTotal() {
+      const total = _dsItems.reduce(function(s, it){ return s + it.qty * it.price; }, 0);
+      const amt = document.getElementById('ds-total-display');
+      if (amt) amt.value = total ? total.toFixed(2) : '';
     }
 
     function dsClearBookSelection() {
-      document.getElementById('ds-book-title').value         = '';
-      document.getElementById('ds-book-preview').style.display = 'none';
+      _dsItems = [];
+      document.getElementById('ds-book-title').value = '';
       document.getElementById('ds-book-dropdown').style.display = 'none';
       _dsResults = [];
+      dsRenderItems();
     }
 
     function dsBookTitleKeydown(e) {
@@ -11867,10 +13263,7 @@ Questions? We're always here!
 
     async function adminAddDirectSale() {
       const author_email     = (document.getElementById('ds-author-email').value    || '').trim();
-      const book_title       = (document.getElementById('ds-book-title').value      || '').trim();
       const sale_date        =  document.getElementById('ds-sale-date').value;
-      const quantity         =  parseInt(document.getElementById('ds-quantity').value) || 1;
-      const amount           =  parseFloat(document.getElementById('ds-amount').value);
       const order_number     = (document.getElementById('ds-order-number').value    || '').trim();
       const payment_status   =  document.getElementById('ds-payment-status').value;
       const notes            = (document.getElementById('ds-notes').value            || '').trim();
@@ -11878,21 +13271,34 @@ Questions? We're always here!
       const btn          =  document.getElementById('ds-add-btn');
 
       statusEl.style.color = 'var(--muted)'; statusEl.textContent = '';
-      if (!author_email || !book_title || !sale_date || !amount) {
+      if (!author_email || !sale_date) {
         statusEl.style.color = '#f87171';
-        statusEl.textContent = 'Author email, book title, date and amount are required.';
+        statusEl.textContent = 'Author email and sale date are required.';
         return;
       }
+      if (!_dsItems.length) {
+        statusEl.style.color = '#f87171';
+        statusEl.textContent = 'Add at least one book (search above and pick a title).';
+        return;
+      }
+      // Build the order from the selected books.
+      const items      = _dsItems.map(function(it){ return { sku: it.sku || null, title: it.title, qty: it.qty, price: it.price }; });
+      const quantity   = items.reduce(function(s, it){ return s + it.qty; }, 0);
+      const amount     = items.reduce(function(s, it){ return s + it.qty * it.price; }, 0);
+      const book_title = items.length === 1 ? items[0].title : (items[0].title + ' +' + (items.length - 1) + ' more');
+
       btn.disabled = true; btn.textContent = '⏳ Saving…';
       try {
-        const data = await adminPost('admin-direct-sales', { action: 'add', author_email, book_title, quantity, amount, sale_date, order_number: order_number || null, payment_status, notes: notes || null });
+        const data = await adminPost('admin-direct-sales', {
+          action: 'add', author_email, book_title, quantity, amount, sale_date,
+          order_number: order_number || null, payment_status, notes: notes || null,
+          items, sku: items.length === 1 ? items[0].sku : null
+        });
         if (data.success) {
           statusEl.style.color = '#34d399';
-          statusEl.textContent = `✓ Sale recorded for ${author_email}`;
+          statusEl.textContent = `✓ Sale recorded for ${author_email} — ${items.length} book${items.length > 1 ? 's' : ''}, ₹${amount.toFixed(2)}`;
           // Clear form
           dsClearBookSelection();
-          document.getElementById('ds-quantity').value        = '1';
-          document.getElementById('ds-amount').value          = '';
           document.getElementById('ds-order-number').value    = '';
           document.getElementById('ds-payment-status').value  = 'paid';
           document.getElementById('ds-notes').value           = '';
@@ -11929,6 +13335,7 @@ Questions? We're always here!
       const from = document.getElementById('ds-from').value;
       const to   = document.getElementById('ds-to').value;
       const rows = _dsAllSales.filter(r => {
+        if (!(r.author_email || '').trim()) return false;   // Sales by Author = admin-linked books only
         const st = (r.payment_status || 'paid');
         if (pay === 'paid'      && st !== 'paid')      return false;
         if (pay === 'unpaid'    && st !== 'unpaid')    return false;
@@ -12043,15 +13450,15 @@ Questions? We're always here!
     // Returns null if no usable header is found.
     function _dsParseOrderCsv(csv, creator) {
       const lines = String(csv || '').replace(/^﻿/, '').split(/\r?\n/);
-      const hi = lines.findIndex(l => /invoice|sr no/i.test(l) && /amount/i.test(l));
+      const hi = lines.findIndex(l => /amount/i.test(l) && /invoice|sr no|order|ref|book|title|date/i.test(l));
       if (hi < 0) return null;
       const header = ssParseLine(lines[hi]).map(h => h.trim().toLowerCase());
       const ci = {
-        invoice: _dsCol(header, ['invoice','invoice no','invoice no.','sr no.','order','order number']),
+        invoice: _dsCol(header, ['ref','ref #','ref no','invoice','invoice no','invoice no.','sr no.','order','order number']),
         date:    _dsCol(header, ['date','invoice date','sale date']),
         cust:    _dsCol(header, ['customer','contact name','name']),
         amount:  _dsCol(header, ['amount','total amount']),
-        status:  _dsCol(header, ['status','invoice status']),
+        status:  _dsCol(header, ['payment status','status','invoice status','payment']),
         money:   _dsCol(header, ['money in']),
         qty:     _dsCol(header, ['qty','quantity']),
         title:   _dsCol(header, ['booktitle','book title','title']),
@@ -12122,6 +13529,19 @@ Questions? We're always here!
         </div>`;
     }
 
+    // Downloadable sample for logging a day's offline sales (opens in Excel; one row per book).
+    function dsDownloadTemplate() {
+      const rows = [
+        ['Date','Book Title','Quantity','Amount','Payment Status','Customer','Notes','Ref'],
+        ['2026-07-15','Chittilasseriyile Choolamvilikkar','1','440','Paid','Ramesh (walk-in)','Anna University book fair','EVT-15JUL-001'],
+        ['2026-07-15','Manju','1','195','Paid','','Anna University book fair','EVT-15JUL-002'],
+        ['2026-07-15','Aami','2','500','Unpaid','College library','Credit — collect later','EVT-15JUL-003'],
+      ];
+      const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+      const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });   // BOM so Excel reads Malayalam
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = 'offline-sales-template.csv'; a.click(); URL.revokeObjectURL(a.href);
+    }
     async function dsBulkParse() {
       const csv      = document.getElementById('dsbulk-csv').value || '';
       const creator  = (document.getElementById('dsbulk-creator').value || '').trim().toLowerCase();
@@ -12365,11 +13785,11 @@ Questions? We're always here!
             <div style="font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.5rem;">Pricing on Approval</div>
             <div style="display:flex;align-items:center;gap:0.6rem;">
               <label style="font-size:0.82rem;color:var(--text);white-space:nowrap;">Discount %</label>
-              <input id="approval-discount" type="number" min="0" max="100" placeholder="0 = sell at MRP (₹${_mrpVal.toFixed(2)})"
+              <input id="approval-discount" type="number" min="0" max="100" placeholder="0 = sell at MRP (₹${Math.round(_mrpVal)})"
                 style="flex:1;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:0.4rem 0.7rem;color:var(--text);font-size:0.82rem;"
-                oninput="const d=parseFloat(this.value)||0;document.getElementById('approval-price-preview').textContent=d>0&&${_mrpVal}>0?'Sale price: ₹'+(${_mrpVal}*(1-d/100)).toFixed(2):'Selling at MRP: ₹${_mrpVal.toFixed(2)}';" />
+                oninput="const d=parseFloat(this.value)||0;document.getElementById('approval-price-preview').textContent=d>0&&${_mrpVal}>0?'Sale price: ₹'+Math.round(${_mrpVal}*(1-d/100)):'Selling at MRP: ₹${Math.round(_mrpVal)}';" />
             </div>
-            <div id="approval-price-preview" style="font-size:0.78rem;color:var(--gold);margin-top:0.35rem;">Selling at MRP: ₹${_mrpVal.toFixed(2)}</div>
+            <div id="approval-price-preview" style="font-size:0.78rem;color:var(--gold);margin-top:0.35rem;">Selling at MRP: ₹${Math.round(_mrpVal)}</div>
           </div>
           <button class="admin-btn admin-btn-approve" onclick="adminApproveModal('${s.id}','${s.shopify_id||''}',this)">✅ Approve &amp; Publish</button>
         ` : ''}
@@ -12864,37 +14284,24 @@ Questions? We're always here!
 
     // ── Total Sales: read-only combined view of Online + Direct sales ──
     var _tsRows = [];
+    var _tsOnline = [];   // Shopify online orders (cross-reference for the Online card)
     async function adminLoadTotalSales() {
       const body = document.getElementById('ts-body');
       adminLoading(body);
       try {
-        const [ordRes, dsRes] = await Promise.all([
-          adminPost('admin-orders', { status: 'any', limit: 250 }),
-          adminPost('admin-direct-sales', { action: 'list' })
-        ]);
-        const online = (ordRes.orders || []).map(o => {
-          const cancelled = !!o.cancelled_at;
-          const gross = parseFloat(o.total_price || 0);
-          return {
-            source: 'Online',
-            date:   (o.created_at || '').slice(0, 10),
-            ref:    o.name || '',
-            who:    o.customer || o.email || '—',
-            item:   (o.items || []).map(i => `${i.title} ×${i.quantity}`).join(', '),
-            gross,
-            amount: cancelled ? 0 : parseFloat(o.current_total_price ?? o.total_price ?? 0),  // net of refunds
-            cancelled,
-            paid:   ['paid','partially_refunded'].includes(o.financial_status) && !cancelled
-          };
-        });
+        // MyBillBook (direct_sales) is comprehensive — it already includes the
+        // online/Shopify orders (recreated), so it is the single source of truth
+        // for Total Sales. (Online detail lives in the Online Orders tab.)
+        const dsRes = await adminPost('admin-direct-sales', { action: 'list' });
         const direct = (dsRes.sales || []).map(d => {
           const cancelled = (d.payment_status || '') === 'cancelled';
           const gross = parseFloat(d.amount || 0);
+          const cust  = (d.notes || '').startsWith('Customer: ') ? d.notes.slice(10) : (d.author_email || '—');
           return {
-            source: 'Direct',
+            source: 'MyBillBook',
             date:   (d.sale_date || '').slice(0, 10),
             ref:    d.order_number || '',
-            who:    d.author_email || '—',
+            who:    cust,
             item:   d.book_title || '',
             gross,
             amount: cancelled ? 0 : gross,
@@ -12902,7 +14309,21 @@ Questions? We're always here!
             paid:   (d.payment_status || 'paid') === 'paid'
           };
         });
-        _tsRows = online.concat(direct).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+        _tsRows = direct.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+
+        // Online (Shopify) cross-reference for the 🌐 Online stat card. MyBillBook
+        // (Total) already includes these orders (recreated), so this is NOT added
+        // to Total — it only reports the online portion. Best-effort; net of
+        // cancellations/refunds, matching the Online Orders tab. Limit 250 ≈ a few
+        // months back, enough for the usual month/period view.
+        try {
+          const oRes = await adminPost('admin-orders', { status: 'any', limit: 250 });
+          _tsOnline = (oRes.orders || []).map(o => ({
+            date: (o.created_at || '').slice(0, 10),
+            net:  o.cancelled_at ? 0 : parseFloat(o.current_total_price ?? o.total_price ?? 0)
+          }));
+        } catch (e) { _tsOnline = []; }
+
         const _f = document.getElementById('ts-date-from'), _t = document.getElementById('ts-date-to');
         if (!_f.value && !_t.value) { const mr = _monthRange(); _f.value = mr.from; _t.value = mr.to; }
         adminRenderTotalSales();
@@ -12928,8 +14349,11 @@ Questions? We're always here!
       const stats = document.getElementById('ts-stats');
       const active = r => !r.cancelled;
       const booked    = rows.filter(active).reduce((s, r) => s + r.amount, 0);            // total sales (paid + unpaid)
-      const onl       = rows.filter(r => r.source === 'Online' && active(r)).reduce((s, r) => s + r.amount, 0);
-      const dir       = rows.filter(r => r.source === 'Direct' && active(r)).reduce((s, r) => s + r.amount, 0);
+      // Online = net Shopify online sales over the selected date range (cross-ref
+      // from Shopify, since MyBillBook rows carry no channel flag). Direct = the
+      // offline remainder, so the three reconcile (Total = Online + Direct).
+      const onl       = _tsOnline.filter(o => (!from || o.date >= from) && (!to || o.date <= to)).reduce((s, o) => s + o.net, 0);
+      const dir       = Math.max(booked - onl, 0);
       const collected = rows.filter(r => r.paid && active(r)).reduce((s, r) => s + r.amount, 0);
       const unpaid    = rows.filter(r => !r.paid && active(r)).reduce((s, r) => s + r.amount, 0);
       const lost      = rows.reduce((s, r) => s + (r.gross - r.amount), 0);               // refunded + cancelled
@@ -14087,6 +15511,7 @@ Questions? We're always here!
       }
     })();
     var _ordersFetchPromise = null;
+    var _ordersAuthExpired  = false;   // set when the reader token is expired/invalid
 
     const ORDERS_QUERY = `
       query GetOrders($token: String!, $first: Int!) {
@@ -14124,17 +15549,22 @@ Questions? We're always here!
     async function _doFetchOrders() {
       if (!readerToken) return [];
       const controller = new AbortController();
-      const timeout    = setTimeout(() => controller.abort(), 8000);
+      const timeout    = setTimeout(() => controller.abort(), 12000);
       try {
-        const res  = await fetch(API_URL, {
+        // Use the Admin-API-backed function so ALL orders show, including
+        // cancelled / refunded / voided (Storefront customer.orders hides cancelled).
+        const res  = await fetch('/.netlify/functions/get-member-orders', {
           method:  'POST',
-          headers: { 'Content-Type': 'application/json', 'X-Shopify-Storefront-Access-Token': STOREFRONT_TOKEN },
-          body:    JSON.stringify({ query: ORDERS_QUERY, variables: { token: readerToken, first: 50 } }),
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ token: readerToken }),
           signal:  controller.signal
         });
         clearTimeout(timeout);
         const json = await res.json();
-        return json?.data?.customer?.orders?.edges?.map(e => e.node) || [];
+        // Expired / invalid reader token: surface it so the UI can prompt
+        // re-login instead of silently showing "No Orders Yet".
+        _ordersAuthExpired = !!(json && json.authExpired);
+        return json?.orders ?? null;   // null => failed/expired; [] => no orders; array => render
       } catch(e) {
         clearTimeout(timeout);
         return null;
@@ -14161,6 +15591,26 @@ Questions? We're always here!
       });
     }
 
+    // Stale/expired reader session — clear the dead token + cache and prompt re-login.
+    function _renderOrdersSessionExpired() {
+      try {
+        localStorage.removeItem('yfb_reader_token');
+        localStorage.removeItem('yfb_orders_cache');
+        sessionStorage.removeItem('yfb_orders_cache');
+      } catch(e) {}
+      _ordersCache = null;
+      document.getElementById('orders-loading').style.display = 'none';
+      document.getElementById('orders-list').innerHTML = `
+        <div class="orders-empty">
+          <div class="empty-icon">🔑</div>
+          <h3>Session expired</h3>
+          <p>Your sign-in has expired. Please log in again to see your orders.</p>
+          <button onclick="closeOrdersPanel();openLoginModal();" class="btn-primary" style="display:inline-flex;margin-top:1.5rem;border:none;cursor:pointer;font-family:Inter,sans-serif;">
+            Log in again →
+          </button>
+        </div>`;
+    }
+
     // Called when user opens My Orders tab
     async function fetchOrders() {
       // Instant render from cache — don't clear list to avoid flash
@@ -14170,6 +15620,7 @@ Questions? We're always here!
         // Silent background refresh
         _doFetchOrders().then(orders => {
           if (orders !== null) { _ordersCache = orders; renderOrders(orders); }
+          else if (_ordersAuthExpired) { _renderOrdersSessionExpired(); }
         });
         return;
       }
@@ -14180,8 +15631,12 @@ Questions? We're always here!
       const orders = await (_ordersFetchPromise || _doFetchOrders());
       document.getElementById('orders-loading').style.display = 'none';
       if (orders === null) {
-        document.getElementById('orders-list').innerHTML =
-          '<p style="color:var(--muted);text-align:center;padding:3rem 0;">Failed to load orders. Please try again.</p>';
+        if (_ordersAuthExpired) {
+          _renderOrdersSessionExpired();
+        } else {
+          document.getElementById('orders-list').innerHTML =
+            '<p style="color:var(--muted);text-align:center;padding:3rem 0;">Failed to load orders. Please try again.</p>';
+        }
       } else {
         _saveOrdersCache(orders);
         renderOrders(orders);
@@ -14268,6 +15723,7 @@ Questions? We're always here!
                 <div class="order-date">${date}</div>
               </div>
               <div class="order-meta">
+                ${order.cancelledAt ? '<span class="order-badge badge-refund">CANCELLED</span>' : ''}
                 ${financialBadge(order.financialStatus)}
                 ${fulfillBadge(order.fulfillmentStatus)}
                 <span class="order-total">₹${amount}</span>
@@ -15820,6 +17276,7 @@ Questions? We're always here!
       const email           = document.getElementById('bc-email').value.trim();
       const password        = document.getElementById('bc-password').value;
       const rawPhone        = document.getElementById('bc-phone').value.trim().replace(/\D/g, '');
+      const state           = document.getElementById('bc-state').value;
       const marketingAgree  = document.getElementById('bc-marketing-agree')?.checked || false;
       const errEl           = document.getElementById('bc-error');
       const btn             = document.getElementById('bc-join-btn');
@@ -15836,6 +17293,7 @@ Questions? We're always here!
         errEl.textContent = 'Please enter a valid 10-digit Indian mobile number.';
         errEl.style.display = 'block'; return;
       }
+      if (!state)    { errEl.textContent = 'Please select your state.';        errEl.style.display = 'block'; return; }
       const phone = '+91' + rawPhone;
 
       // Check if already a member
@@ -15892,7 +17350,7 @@ Questions? We're always here!
                   razorpay_payment_id: response.razorpay_payment_id,
                   razorpay_order_id:   response.razorpay_order_id,
                   razorpay_signature:  response.razorpay_signature,
-                  email, name, password, phone, marketing_consent: marketingAgree
+                  email, name, password, phone, state, marketing_consent: marketingAgree
                 })
               });
               const verData = await verRes.json();
@@ -17874,7 +19332,11 @@ Questions? We're always here!
       document.getElementById('page-content').classList.remove('pane-mode');
       _resetOtpForm('alp');
     }
-    var ALP_SIGNUP_ENABLED = false; // Set to true when author signup is ready
+    // Set to true when author signup is ready for everyone. Until then it's open
+    // only for validation: on any Netlify draft/preview host (hostname has '--')
+    // or with ?signup=test — production (apex/custom domain, no '--') stays gated.
+    var ALP_SIGNUP_ENABLED = location.hostname.includes('--')
+      || new URLSearchParams(location.search).get('signup') === 'test';
     function alpSwitchTab(tab) {
       const isSignin = tab === 'signin';
       document.getElementById('alp-tab-signin').classList.toggle('active', isSignin);

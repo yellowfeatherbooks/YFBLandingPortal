@@ -280,7 +280,7 @@ exports.handler = async (event) => {
           const currentMrp = parseFloat(variant.compare_at_price || variant.price || 0);
           const variantBody = { id: variantId, taxable: false };
           if (discountPercent > 0 && currentMrp > 0) {
-            variantBody.price            = parseFloat((currentMrp * (1 - discountPercent / 100)).toFixed(2));
+            variantBody.price            = Math.round(currentMrp * (1 - discountPercent / 100));
             variantBody.compare_at_price = currentMrp;
             console.log(`Discount ${discountPercent}% applied: ₹${currentMrp} → ₹${variantBody.price}`);
           }

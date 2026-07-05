@@ -36,6 +36,7 @@ exports.handler = async (event) => {
           handle
           priceRange { minVariantPrice { amount } }
           images(first: 1) { edges { node { url } } }
+          variants(first: 1) { edges { node { sku } } }
         }
       }
     }
@@ -53,9 +54,13 @@ exports.handler = async (event) => {
     const data = await res.json();
     const edges = data.data?.products?.edges || [];
     const books = edges.map(({ node }) => ({
-      title:    node.title,
-      handle:   node.handle,
-      coverUrl: node.images?.edges?.[0]?.node?.url || '',
+      title:       node.title,
+      handle:      node.handle,
+      sku:         node.variants?.edges?.[0]?.node?.sku || '',   // = Odoo default_code
+      coverUrl:    node.images?.edges?.[0]?.node?.url || '',
+      priceAmount: node.priceRange?.minVariantPrice?.amount
+                     ? parseFloat(node.priceRange.minVariantPrice.amount)
+                     : null,
       price:    node.priceRange?.minVariantPrice?.amount
                   ? `₹${parseFloat(node.priceRange.minVariantPrice.amount).toFixed(0)}`
                   : ''

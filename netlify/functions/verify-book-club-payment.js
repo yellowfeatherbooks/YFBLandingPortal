@@ -1,4 +1,8 @@
-const crypto = require('crypto');
+const crypto  = require('crypto');
+const odoo    = require('./lib/odoo');            // Book Club payment -> Odoo GST invoice
+const shopify = require('./lib/shopify-customer'); // member state -> GST place-of-supply
+
+const CLUB_AMOUNT_PAISE = 9900;         // ₹99/year — must match create-book-club-order.js
 
 const RZP_KEY_ID     = process.env.RAZORPAY_KEY_ID;
 const RZP_SECRET     = process.env.RAZORPAY_KEY_SECRET;
@@ -124,7 +128,7 @@ exports.handler = async (event) => {
   if (event.httpMethod !== 'POST')    return { statusCode: 405, headers: cors, body: 'Method Not Allowed' };
 
   try {
-    const { razorpay_payment_id, razorpay_order_id, razorpay_signature, email, name, password, phone, marketing_consent } =
+    const { razorpay_payment_id, razorpay_order_id, razorpay_signature, email, name, password, phone, state, marketing_consent } =
       JSON.parse(event.body || '{}');
 
     // 1 — Verify Razorpay signature
@@ -238,12 +242,49 @@ exports.handler = async (event) => {
       shopifyToken = await storefrontLogin(email, password);
     }
 
-    // 6 — Trigger n8n invoice workflow (fire and forget)
+    // 6 — Raise the GST tax invoice in Odoo FIRST (membership is a taxable
+    // service, SAC 999590, 18% GST inclusive), then fetch its official PDF so the
+    // n8n mailer can attach the real GST invoice instead of generating its own.
+    // Best-effort + idempotent by payment id; env-gated (skips when ODOO_* unset);
+    // never fails the membership.
+    let odooInvoiceNumber = null, odooInvoicePdfBase64 = null;
+    if (odoo.isConfigured()) {
+      try {
+        // State for the GST split: prefer the one captured at checkout, else
+        // fall back to the member's Shopify address (null -> intra default).
+        const stateName = state || await shopify.getCustomerStateByEmail(email);
+        const inv = await odoo.createClubMembershipInvoice({
+          email,
+          name,
+          stateName,
+          amountPaise: CLUB_AMOUNT_PAISE,
+          paymentId:   razorpay_payment_id,
+          orderId:     razorpay_order_id,
+        });
+        odooInvoiceNumber = inv.number;
+        console.log(`Odoo club invoice ${inv.number} (${inv.created ? 'created' : 'existing'}) total ₹${inv.total} for ${email}`);
+        try {
+          odooInvoicePdfBase64 = await odoo.getInvoicePdfBase64(inv.invoiceId);
+        } catch (pdfErr) {
+          console.error('Odoo invoice PDF fetch failed (n8n falls back to its own):', pdfErr.message);
+        }
+      } catch (e) {
+        console.error('Odoo club invoice failed (non-fatal):', e.message);
+      }
+    }
+
+    // 7 — Trigger the n8n mailer (fire and forget). When the Odoo GST invoice +
+    // PDF are present, n8n should email THAT instead of generating its own; when
+    // they're null (Odoo unavailable), n8n falls back to its current behaviour.
     const n8nUrl = process.env.N8N_BOOK_CLUB_INVOICE_URL || 'https://yellowfeather.app.n8n.cloud/webhook/yfb-book-club-invoice';
     fetch(n8nUrl, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ email, name, phone: phone || null, razorpay_payment_id, razorpay_order_id })
+      body:    JSON.stringify({
+        email, name, phone: phone || null, razorpay_payment_id, razorpay_order_id,
+        odoo_invoice_number:     odooInvoiceNumber,
+        odoo_invoice_pdf_base64: odooInvoicePdfBase64
+      })
     }).then(r => console.log('n8n invoice webhook status:', r.status))
       .catch(e => console.error('n8n invoice webhook failed:', e.message));
 

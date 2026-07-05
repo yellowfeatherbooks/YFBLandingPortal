@@ -230,7 +230,7 @@ exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: corsHeaders, body: '' };
 
   try {
-    const { email, name, plan_name, plan_id, amount, subscription_id, payment_id, razorpay_signature } = JSON.parse(event.body || '{}');
+    const { email, name, plan_name, plan_id, amount, subscription_id, payment_id, razorpay_signature, state } = JSON.parse(event.body || '{}');
     if (!email || !plan_name || !subscription_id) return {
       statusCode: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -328,6 +328,26 @@ exports.handler = async (event) => {
         body: JSON.stringify({ access_until: null })
       }
     ).catch(e => console.warn('access_until clear failed:', e.message));
+
+    // Persist the GST place-of-supply state (best-effort, separate PATCH so a
+    // missing `state` column can never break the subscription upsert above —
+    // add a `state text` column to `subscriptions` to enable accurate CGST/SGST
+    // vs IGST on the Odoo invoice).
+    if (state) {
+      fetch(
+        `${SUPABASE_URL}/rest/v1/subscriptions?email=eq.${encodeURIComponent(email)}`,
+        {
+          method: 'PATCH',
+          headers: {
+            'apikey':        SUPABASE_SVC_KEY,
+            'Authorization': `Bearer ${SUPABASE_SVC_KEY}`,
+            'Content-Type':  'application/json'
+          },
+          body: JSON.stringify({ state })
+        }
+      ).then(r => { if (!r.ok) console.warn('subscription state save failed (add a `state` column?):', r.status); })
+       .catch(e => console.warn('subscription state save failed:', e.message));
+    }
 
     // Ensure every paying club member has a Shopify account (so they can log in
     // with a password in the app and portal). New accounts get a password-set email.

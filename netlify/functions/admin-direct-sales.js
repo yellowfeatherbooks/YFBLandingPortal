@@ -3,6 +3,7 @@
 // POST { adminEmail, adminKey, action: 'list' | 'add' | 'delete', ... }
 
 const crypto           = require('crypto');
+const odoo             = require('./lib/odoo');   // direct sale -> Odoo GST-exempt invoice
 const SUPABASE_URL     = process.env.SUPABASE_URL;
 const SUPABASE_KEY     = process.env.SUPABASE_KEY;
 const SUPABASE_SVC_KEY = process.env.SUPABASE_SERVICE_KEY || SUPABASE_KEY;
@@ -41,7 +42,7 @@ exports.handler = async (event) => {
   // ── LIST ───────────────────────────────────────────────────────────────────
   if (action === 'list') {
     const { author_email } = body;
-    let url = `${SUPABASE_URL}/rest/v1/direct_sales?order=sale_date.desc,created_at.desc&limit=200`;
+    let url = `${SUPABASE_URL}/rest/v1/direct_sales?order=sale_date.desc,created_at.desc&limit=5000`;
     if (author_email) url += `&author_email=eq.${encodeURIComponent(author_email)}`;
     const res  = await fetch(url, {
       headers: { 'apikey': SUPABASE_SVC_KEY, 'Authorization': `Bearer ${SUPABASE_SVC_KEY}` }
@@ -53,10 +54,40 @@ exports.handler = async (event) => {
 
   // ── ADD ────────────────────────────────────────────────────────────────────
   if (action === 'add') {
-    const { author_email, book_title, quantity, amount, sale_date, order_number, payment_status, notes } = body;
+    const { author_email, book_title, quantity, amount, sale_date, order_number, payment_status, notes, sku, items } = body;
     if (!author_email || !book_title || !amount || !sale_date) {
       return json({ success: false, error: 'author_email, book_title, amount and sale_date are required.' });
     }
+    // ── ODOO FIRST ──────────────────────────────────────────────────────────
+    // Offline sales are NOT in MyBillBook, so Odoo is the system of record here:
+    // the sale must land in Odoo (inventory + accounting) BEFORE we write the
+    // Supabase dashboard row. If Odoo is unreachable or the write fails, we record
+    // NOTHING — no Supabase-only orphans that would drift from the ledger.
+    // (Ref `direct:<order_number|timestamp>`; sales entered here are flagged as
+    // "not in MyBillBook" in the out-of-sync report so staff can back-enter them.)
+    if (!odoo.isConfigured()) {
+      return json({ success: false, error: 'Odoo is not reachable (tunnel down) — sale NOT recorded. Bring Odoo up and retry.' }, 503);
+    }
+    let odooRes;
+    try {
+      odooRes = await odoo.createDirectSaleOrder({
+        items:         Array.isArray(items) && items.length ? items : null,
+        sku:           sku || null,
+        bookTitle:     book_title,
+        bookSummary:   book_title,
+        authorEmail:   author_email,
+        amount:        parseFloat(amount),
+        quantity:      parseInt(quantity) || 1,
+        saleDate:      sale_date,
+        orderNumber:   order_number || null,   // idempotency key when supplied (Ref column)
+        paymentStatus: payment_status || 'paid',
+        notes:         notes || null,
+      });
+    } catch (e) {
+      return json({ success: false, error: 'Odoo write failed — sale NOT recorded: ' + e.message }, 502);
+    }
+
+    // ── SUPABASE LAST (only now that Odoo has it) ───────────────────────────────
     const res = await fetch(
       `${SUPABASE_URL}/rest/v1/direct_sales`,
       {
@@ -73,16 +104,31 @@ exports.handler = async (event) => {
           quantity:       parseInt(quantity) || 1,
           amount:         parseFloat(amount),
           sale_date,
-          order_number:   order_number   || null,
+          order_number:   order_number || odooRes.number || null,   // keep the Odoo SO no. if no Ref given
           payment_status: payment_status || 'paid',
           notes:          notes          || null,
           source:         'direct'
         })
       }
     );
-    if (!res.ok) return json({ success: false, error: await res.text() });
+    if (!res.ok) return json({ success: false, error: 'Odoo recorded (' + odooRes.number + ') but the dashboard write failed: ' + await res.text() });
     const rows = await res.json();
-    return json({ success: true, sale: rows[0] });
+    const sale = rows[0];
+
+    // Store SKU + line items best-effort (separate PATCH; harmless if columns absent).
+    const extra = {};
+    if (sku) extra.sku = sku;
+    if (Array.isArray(items) && items.length) extra.items = items;
+    if (Object.keys(extra).length) {
+      fetch(`${SUPABASE_URL}/rest/v1/direct_sales?id=eq.${sale.id}`, {
+        method: 'PATCH',
+        headers: { 'apikey': SUPABASE_SVC_KEY, 'Authorization': `Bearer ${SUPABASE_SVC_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(extra)
+      }).then(r => { if (!r.ok) console.warn('direct_sales sku/items save failed:', r.status); })
+        .catch(e => console.warn('direct_sales sku/items save failed:', e.message));
+    }
+
+    return json({ success: true, sale, odoo: { number: odooRes.number, total: odooRes.total, paymentState: odooRes.paymentState, created: odooRes.created } });
   }
 
   // ── UPDATE (e.g. mark paid/unpaid) ───────────────────────────────────────────

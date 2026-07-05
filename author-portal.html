@@ -2065,6 +2065,24 @@
       </label>
     </div>
 
+    <!-- State — needed for a correct GST invoice (CGST+SGST vs IGST) -->
+    <div class="tnc-row" style="align-items:center;">
+      <label for="sub-state" style="white-space:nowrap;">Your State <span style="color:#e05252;font-weight:600;">*</span></label>
+      <select id="sub-state" style="flex:1;max-width:340px;padding:0.5rem 0.6rem;border:1px solid #d9d4e0;border-radius:8px;font-size:0.9rem;background:#fff;">
+        <option value="">Select your state</option>
+        <option>Andaman and Nicobar Islands</option><option>Andhra Pradesh</option><option>Arunachal Pradesh</option>
+        <option>Assam</option><option>Bihar</option><option>Chandigarh</option><option>Chhattisgarh</option>
+        <option>Dadra and Nagar Haveli and Daman and Diu</option><option>Delhi</option><option>Goa</option>
+        <option>Gujarat</option><option>Haryana</option><option>Himachal Pradesh</option><option>Jammu and Kashmir</option>
+        <option>Jharkhand</option><option>Karnataka</option><option>Kerala</option><option>Ladakh</option>
+        <option>Lakshadweep</option><option>Madhya Pradesh</option><option>Maharashtra</option><option>Manipur</option>
+        <option>Meghalaya</option><option>Mizoram</option><option>Nagaland</option><option>Odisha</option>
+        <option>Puducherry</option><option>Punjab</option><option>Rajasthan</option><option>Sikkim</option>
+        <option>Tamil Nadu</option><option>Telangana</option><option>Tripura</option><option>Uttar Pradesh</option>
+        <option>Uttarakhand</option><option>West Bengal</option>
+      </select>
+    </div>
+
     <div class="plans">
 
       <!-- Starter -->
@@ -2598,10 +2616,13 @@
     var currentUserName  = null;
     var pendingResetToken = null;
 
+    // Preview/draft hosts (hostname contains '--') run against Razorpay TEST mode,
+    // so they need TEST-mode plan IDs; production (apex/custom domain) uses live plans.
+    var _useTestPlans = location.hostname.includes('--');
     var PLANS = {
-      starter:   { name: 'Starter',   quota: 1,  price: 99,  plan_id: 'plan_SkuiB2nyoaswNZ' },
-      growth:    { name: 'Growth',    quota: 3,  price: 199, plan_id: 'plan_SkukwXUCHR58qz' },
-      publisher: { name: 'Publisher', quota: 10, price: 399, plan_id: 'plan_SkukHR8IHnriYi' }
+      starter:   { name: 'Starter',   quota: 1,  price: 99,  plan_id: _useTestPlans ? 'plan_T4AJygtm6empDc' : 'plan_SkuiB2nyoaswNZ' },
+      growth:    { name: 'Growth',    quota: 3,  price: 199, plan_id: _useTestPlans ? 'plan_T4AJz3eaBiXgrj' : 'plan_SkukwXUCHR58qz' },
+      publisher: { name: 'Publisher', quota: 10, price: 399, plan_id: _useTestPlans ? 'plan_T4AJzQk5NWdPwX' : 'plan_SkukHR8IHnriYi' }
     };
 
     var currentEmail          = null;
@@ -2625,8 +2646,11 @@
     }, { threshold: 0.15 });
     reveals.forEach(el => observer.observe(el));
 
-    // Set to true when author signup is ready to re-enable
-    var AUTHOR_SIGNUP_ENABLED = false;
+    // Set to true when author signup is ready for everyone. Until then it's open
+    // only for validation: on any Netlify draft/preview host (hostname has '--')
+    // or with ?signup=test — production (apex/custom domain, no '--') stays gated.
+    var AUTHOR_SIGNUP_ENABLED = location.hostname.includes('--')
+      || new URLSearchParams(location.search).get('signup') === 'test';
 
     function switchAuthTab(tab) {
       document.getElementById('auth-login-panel').style.display  = tab === 'login'  ? 'block' : 'none';
@@ -2768,6 +2792,9 @@
     }
 
     async function handleSignup() {
+      // Author registration is gated pre-launch — block submission even if the panel
+      // is force-shown (the tab already routes to the "Coming Shortly" banner).
+      if (!AUTHOR_SIGNUP_ENABLED) { switchAuthTab('signup'); return; }
       var name            = document.getElementById('signup-name').value.trim();
       var email           = document.getElementById('signup-email').value.trim().toLowerCase();
       var phone           = document.getElementById('signup-phone').value.trim();
@@ -2965,6 +2992,9 @@
       }
       if (!RAZORPAY_KEY) { alert('Payment system not ready. Please refresh and try again.'); return; }
 
+      var subState = document.getElementById('sub-state').value;
+      if (!subState) { alert('Please select your state (needed for your GST invoice).'); return; }
+
       var plan = PLANS[planKey];
       var originalText = btn.innerHTML;
       btn.innerHTML = 'Please wait…';
@@ -2998,7 +3028,7 @@
             var sid       = response.razorpay_subscription_id || subId;
             var paymentId = response.razorpay_payment_id  || '';
             var signature = response.razorpay_signature   || '';
-            var saved     = await saveSubscription(planKey, sid, paymentId, signature);
+            var saved     = await saveSubscription(planKey, sid, paymentId, signature, subState);
             if (!saved) {
               alert('Payment received but we could not save your subscription. Please contact bookstore@yellowfeatherbookstore.com with your payment ID: ' + paymentId);
               return;
@@ -3021,7 +3051,7 @@
       }
     }
 
-    async function saveSubscription(planKey, subscriptionId, paymentId, signature) {
+    async function saveSubscription(planKey, subscriptionId, paymentId, signature, state) {
       var plan = PLANS[planKey];
       try {
         var res  = await fetch(SAVE_SUB_URL, {
@@ -3035,7 +3065,8 @@
             amount:             plan.price,
             subscription_id:    subscriptionId,
             payment_id:         paymentId  || '',
-            razorpay_signature: signature  || ''
+            razorpay_signature: signature  || '',
+            state:              state      || ''
           })
         });
         var data = await res.json();

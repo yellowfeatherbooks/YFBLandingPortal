@@ -15,6 +15,8 @@
 // Env: RAZORPAY_WEBHOOK_SECRET, SUPABASE_URL, SUPABASE_SERVICE_KEY (or SUPABASE_KEY)
 
 const crypto       = require('crypto');
+const odoo         = require('./lib/odoo');           // Razorpay charge -> Odoo GST invoice
+const shopify      = require('./lib/shopify-customer'); // author state -> GST place-of-supply
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SERVICE_KEY  = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_KEY;
 const WEBHOOK_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET;
@@ -37,6 +39,63 @@ function patchForEvent(evt, accessUntil) {
       return { status: 'completed' };
     default:
       return null;                                                 // ignore everything else
+  }
+}
+
+// Look up the author's email / name / plan for this subscription from Supabase
+// (the charge payload only carries Razorpay ids, not the author's email).
+async function lookupSubscriber(subscriptionId) {
+  const base = `${SUPABASE_URL}/rest/v1/subscriptions?subscription_id=eq.${encodeURIComponent(subscriptionId)}&limit=1`;
+  const hdr  = { headers: { 'apikey': SERVICE_KEY, 'Authorization': `Bearer ${SERVICE_KEY}` } };
+  // Try including the checkout `state`; fall back if that column doesn't exist yet
+  // (so a missing column degrades the GST split instead of dropping the invoice).
+  // Note: the subscriptions table has no `name` column — the invoice uses email.
+  let res = await fetch(`${base}&select=email,plan_name,state`, hdr);
+  if (!res.ok) res = await fetch(`${base}&select=email,plan_name`, hdr);
+  if (!res.ok) return null;
+  const rows = await res.json();
+  return Array.isArray(rows) && rows.length ? rows[0] : null;
+}
+
+// On subscription.charged, raise the GST tax invoice in Odoo (the subscription is
+// a taxable service; books are exempt). Idempotent by Razorpay payment id.
+// Best-effort by default: a failure here never blocks the DB sync — set
+// ODOO_INVOICE_REQUIRED=true to instead 5xx so Razorpay retries.
+// Returns null on success/skip, or an error string when the caller should retry.
+async function invoiceOnCharge(sub, body) {
+  if (!odoo.isConfigured()) return null;                  // Odoo not wired up -> skip silently
+
+  const pay = body.payload && body.payload.payment && body.payload.payment.entity;
+  const amountPaise = pay && pay.amount;
+  if (!amountPaise) { console.warn('razorpay-webhook: charged event without payment amount; skipping Odoo invoice'); return null; }
+
+  const subscriber = await lookupSubscriber(sub.id);
+  if (!subscriber || !subscriber.email) {
+    console.warn(`razorpay-webhook: no Supabase email for ${sub.id}; skipping Odoo invoice`);
+    return null;
+  }
+
+  // State for the GST split: prefer the one captured at checkout (stored on the
+  // subscription), else the author's Shopify address (null -> intra default).
+  const stateName = subscriber.state || await shopify.getCustomerStateByEmail(subscriber.email);
+
+  try {
+    const r = await odoo.createSubscriptionInvoice({
+      email:          subscriber.email,
+      name:           subscriber.name,
+      planName:       subscriber.plan_name,
+      stateName,
+      amountPaise,
+      currency:       (pay.currency) || 'INR',
+      paymentId:      pay.id,
+      subscriptionId: sub.id,
+      chargedAt:      pay.created_at ? new Date(pay.created_at * 1000).toISOString() : undefined,
+    });
+    console.log(`razorpay-webhook: Odoo invoice ${r.number} (${r.created ? 'created' : 'existing'}) total ₹${r.total} for ${subscriber.email}`);
+    return null;
+  } catch (e) {
+    console.error('razorpay-webhook: Odoo invoice failed:', e.message);
+    return process.env.ODOO_INVOICE_REQUIRED === 'true' ? e.message : null;
   }
 }
 
@@ -93,6 +152,13 @@ exports.handler = async (event) => {
       console.error('razorpay-webhook: DB patch failed', res.status, await res.text());
       return { statusCode: 502, body: 'db error' };   // let Razorpay retry
     }
+
+    // On a renewal/charge, mirror it into Odoo as a GST invoice (idempotent).
+    if (evt === 'subscription.charged') {
+      const odooErr = await invoiceOnCharge(sub, body);
+      if (odooErr) return { statusCode: 502, body: `odoo invoice error: ${odooErr}` }; // retry (idempotent)
+    }
+
     return { statusCode: 200, body: `ok: ${evt} -> ${patch.status}` };
   } catch (e) {
     console.error('razorpay-webhook error:', e.message);

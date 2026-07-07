@@ -6012,6 +6012,9 @@
           <button class="admin-nav-item" data-section="odoo-reconcile" onclick="adminNav('odoo-reconcile',this)">
             <span class="admin-nav-icon">↩️</span> Reconcile MyBillBook
           </button>
+          <button class="admin-nav-item" data-section="stock-match" onclick="adminNav('stock-match',this)">
+            <span class="admin-nav-icon">🧮</span> Stock Match
+          </button>
           <button class="admin-nav-item" data-section="odoo-reports" onclick="adminNav('odoo-reports',this)">
             <span class="admin-nav-icon">📄</span> Quick Reports
           </button>
@@ -7200,6 +7203,33 @@
         </div>
         <div id="rec-result" style="margin-top:1rem;font-size:0.85rem;"></div>
       </div><!-- /admin-section-odoo-reconcile -->
+
+      <!-- ── Stock Match (MyBillBook vs Odoo) ── -->
+      <div id="admin-section-stock-match" class="admin-section">
+        <div class="admin-section-header">
+          <h2>🧮 Stock Match</h2>
+          <p style="font-size:0.8rem;color:var(--muted);margin:0;">
+            Upload MyBillBook's <b>Reports → Stock Summary → Download CSV</b> export and compare it against
+            live Odoo on-hand, SKU by SKU. Read-only — nothing is changed in Odoo here.
+          </p>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.8rem;flex-wrap:wrap;">
+          <button class="admin-filter-btn" onclick="smCheck()" style="background:rgba(96,165,250,0.1);border-color:#60a5fa;color:#60a5fa;">🔌 Check Odoo connection</button>
+          <span id="sm-conn" style="font-size:0.82rem;color:var(--muted);">Odoo reachable only while the tunnel is up (ODOO_* env set).</span>
+        </div>
+
+        <div style="border:1px dashed rgba(255,255,255,0.18);border-radius:10px;padding:1rem;margin-bottom:0.9rem;">
+          <input type="file" id="sm-file" accept=".csv,text/csv" onchange="smLoadCsv(event)"
+                 onclick="this.value=null; smClear();" style="font-size:0.85rem;color:var(--text);">
+          <div id="sm-summary" style="margin-top:0.7rem;font-size:0.85rem;color:var(--muted);">Upload a MyBillBook Stock Summary CSV.</div>
+        </div>
+        <button class="admin-filter-btn" id="sm-run" onclick="smRun()" disabled
+                style="background:rgba(212,175,55,0.12);border-color:var(--gold);color:var(--gold);font-weight:700;">
+          🧮 Compare with Odoo
+        </button>
+        <div id="sm-result" style="margin-top:1rem;font-size:0.85rem;"></div>
+      </div><!-- /admin-section-stock-match -->
 
       <!-- ── Backfill Razorpay charges → Odoo GST invoices ── -->
       <div id="admin-section-odoo-razorpay" class="admin-section">
@@ -11992,6 +12022,7 @@ Questions? We're always here!
       if (section === 'odoo-sync')   { osyncCheck(); rasInitDates(); }
       if (section === 'odoo-reports') orInit();
       if (section === 'odoo-reconcile') recInit();
+      if (section === 'stock-match')   smInit();
       if (section === 'odoo-razorpay') rzbInit();
       if (section === 'razorpay-payments') rpayInit();
       if (section === 'razorpay-settlements') rsetInit();
@@ -12272,6 +12303,91 @@ Questions? We're always here!
         done++; bar.style.width = Math.round(done/_recNeeds.length*100) + '%';
       }
       pt.textContent = 'Done — ' + ok + ' reversed, ' + fail + ' failed. Re-run “Refresh Author Sales” for the period so the dashboards drop the cancelled amounts.';
+    }
+
+    // ── Stock Match (MyBillBook Stock Summary CSV vs live Odoo on-hand) ────────
+    let _smRows = [];   // parsed {sku, qty} from the uploaded CSV
+    function smInit() { smClear(); smCheck(); }
+    function smClear() {
+      _smRows = [];
+      const f = document.getElementById('sm-file'); if (f) f.value = '';
+      const s = document.getElementById('sm-summary'); if (s) s.textContent = 'Upload a MyBillBook Stock Summary CSV.';
+      const b = document.getElementById('sm-run'); if (b) b.disabled = true;
+      const r = document.getElementById('sm-result'); if (r) r.innerHTML = '';
+    }
+    async function smCheck() {
+      const el = document.getElementById('sm-conn');
+      el.textContent = 'Checking Odoo…'; el.style.color = 'var(--muted)';
+      try {
+        const r = await adminPost('admin-odoo-sync', { action: 'check' });
+        if (r.configured && r.reachable) { el.textContent = '✅ Odoo reachable'; el.style.color = '#34d399'; }
+        else if (r.configured)          { el.textContent = '⚠️ Configured but unreachable — ' + (r.message || 'tunnel down'); el.style.color = '#fbbf24'; }
+        else                            { el.textContent = '❌ Odoo not configured on this deploy — start the tunnel / set ODOO_* env'; el.style.color = '#f87171'; }
+      } catch (e) { el.textContent = '❌ ' + e.message; el.style.color = '#f87171'; }
+    }
+    function smLoadCsv(ev) {
+      const f = ev.target.files[0]; if (!f) return;
+      const rd = new FileReader();
+      rd.onload = () => {
+        try {
+          const lines = String(rd.result).split(/\r?\n/);
+          const hi = lines.findIndex(l => _recCsvSplit(l)[0] === 'Name');
+          if (hi < 0) throw new Error('not a Stock Summary CSV (no "Name" header row)');
+          const agg = {}; let skipped = 0;
+          for (let i = hi + 1; i < lines.length; i++) {
+            if (!lines[i].trim()) continue;
+            const c = _recCsvSplit(lines[i]);
+            if (c.length < 6 || !c[0]) continue;
+            const sku = (c[2] || '').trim();
+            if (!sku) { skipped++; continue; }
+            const qty = parseFloat(String(c[5] || '').replace(/PCS/i, '').replace(/,/g, '').trim()) || 0;
+            agg[sku] = (agg[sku] || 0) + qty;
+          }
+          _smRows = Object.entries(agg).map(([sku, qty]) => ({ sku, qty }));
+          document.getElementById('sm-summary').innerHTML =
+            '<b>' + _smRows.length + '</b> coded SKUs parsed' + (skipped ? ' · <span style="color:#fbbf24">' + skipped + ' rows with no Item Code skipped</span>' : '');
+          document.getElementById('sm-run').disabled = _smRows.length === 0;
+          document.getElementById('sm-result').innerHTML = '';
+        } catch (e) {
+          _smRows = [];
+          document.getElementById('sm-summary').innerHTML = '<span style="color:#f87171">Could not read CSV: ' + e.message + '</span>';
+          document.getElementById('sm-run').disabled = true;
+        }
+      };
+      rd.readAsText(f);
+    }
+    async function smRun() {
+      if (!_smRows.length) return;
+      const res = document.getElementById('sm-result'); res.innerHTML = '<p style="color:var(--muted)">⏳ Comparing with Odoo…</p>';
+      let d; try { d = await adminPost('admin-odoo-reports', { action: 'stock-match', mbbRows: _smRows }); }
+      catch (e) { res.innerHTML = '<p style="color:#f87171">' + e.message + '</p>'; return; }
+      if (!d.success) { res.innerHTML = '<p style="color:#f87171">' + (d.error || 'Failed') + '</p>'; return; }
+      let h = `<div style="display:flex;gap:0.8rem;flex-wrap:wrap;margin-bottom:0.9rem;">
+        <div class="admin-stat-card"><div class="admin-stat-num" style="color:#34d399;">${d.matchedCount}</div><div class="admin-stat-label">SKUs match</div></div>
+        <div class="admin-stat-card"><div class="admin-stat-num" style="color:${d.mismatched.length?'#f87171':''};">${d.mismatched.length}</div><div class="admin-stat-label">Qty mismatches</div></div>
+        <div class="admin-stat-card"><div class="admin-stat-num" style="color:${d.mbbOnly.length?'#fbbf24':''};">${d.mbbOnly.length}</div><div class="admin-stat-label">Not yet in Odoo</div></div>
+        <div class="admin-stat-card"><div class="admin-stat-num" style="color:${d.odooOnly.length?'#fbbf24':''};">${d.odooOnly.length}</div><div class="admin-stat-label">Not in MyBillBook CSV</div></div>
+      </div>`;
+      if (d.mismatched.length) {
+        h += '<div style="font-weight:700;color:#f87171;margin-bottom:0.4rem;">⚠️ Quantity mismatches</div>';
+        h += '<div class="admin-table-wrap" style="margin-bottom:1.2rem;"><table class="admin-table"><thead><tr><th>SKU</th><th>Book</th><th style="text-align:right">MyBillBook</th><th style="text-align:right">Odoo</th><th style="text-align:right">Delta</th></tr></thead><tbody>';
+        d.mismatched.forEach(r => { h += `<tr><td>${_e(r.sku)}</td><td>${_e(r.name)||'—'}</td><td style="text-align:right">${r.mbbQty}</td><td style="text-align:right">${r.odooQty}</td><td style="text-align:right;color:${r.delta<0?'#f87171':'#fbbf24'};font-weight:700">${r.delta>0?'+':''}${r.delta}</td></tr>`; });
+        h += '</tbody></table></div>';
+      }
+      if (d.mbbOnly.length) {
+        h += '<div style="font-weight:700;color:#fbbf24;margin-bottom:0.4rem;">📥 In MyBillBook but not created in Odoo yet (create via a Purchase Order sync)</div>';
+        h += '<div class="admin-table-wrap" style="margin-bottom:1.2rem;"><table class="admin-table"><thead><tr><th>SKU</th><th style="text-align:right">MyBillBook Qty</th></tr></thead><tbody>';
+        d.mbbOnly.forEach(r => { h += `<tr><td>${_e(r.sku)}</td><td style="text-align:right">${r.qty}</td></tr>`; });
+        h += '</tbody></table></div>';
+      }
+      if (d.odooOnly.length) {
+        h += '<div style="font-weight:700;color:#fbbf24;margin-bottom:0.4rem;">📤 In Odoo (non-zero) but missing from this MyBillBook CSV</div>';
+        h += '<div class="admin-table-wrap" style="margin-bottom:1.2rem;"><table class="admin-table"><thead><tr><th>SKU</th><th>Book</th><th style="text-align:right">Odoo Qty</th></tr></thead><tbody>';
+        d.odooOnly.forEach(r => { h += `<tr><td>${_e(r.sku)}</td><td>${_e(r.name)}</td><td style="text-align:right">${r.qty}</td></tr>`; });
+        h += '</tbody></table></div>';
+      }
+      if (!d.mismatched.length && !d.mbbOnly.length && !d.odooOnly.length) h += '<p style="color:#34d399">✅ Odoo mirrors MyBillBook exactly — every SKU matches.</p>';
+      res.innerHTML = h;
     }
 
     // ── Backfill Razorpay charges → Odoo GST invoices ────────────────────────

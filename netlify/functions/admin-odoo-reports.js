@@ -110,6 +110,44 @@ exports.handler = async (event) => {
         negativeCount: negatives.length, negativeValue: r2(negatives.reduce((s,r)=>s+r.value,0)) });
     }
 
+    if (action === 'stock-match') {
+      // Compare an uploaded MyBillBook Stock Summary CSV (parsed client-side into
+      // {sku, qty} rows, aggregated here) against live Odoo on-hand by SKU.
+      const mbbRows = Array.isArray(body.mbbRows) ? body.mbbRows : [];
+      if (!mbbRows.length) return json({ success:false, error:'No MyBillBook rows provided' });
+      const mbb = {};
+      for (const r of mbbRows) {
+        const sku = String(r.sku||'').trim(); if (!sku) continue;
+        mbb[sku] = (mbb[sku]||0) + (Number(r.qty)||0);
+      }
+      const prods = await odoo.execKw('product.product','search_read',
+        [[['type','=','product']], ['default_code','name','qty_available']], { limit: 5000 });
+      const odooQty = {}, nameBySku = {};
+      for (const p of prods) {
+        const sku = (p.default_code||'').trim(); if (!sku) continue;
+        odooQty[sku] = r2(p.qty_available); nameBySku[sku] = p.name;
+      }
+      const allSkus = new Set([...Object.keys(mbb), ...Object.keys(odooQty)]);
+      const mismatched = [], mbbOnly = [], odooOnly = [];
+      let matchedCount = 0;
+      for (const sku of allSkus) {
+        const inMbb = Object.prototype.hasOwnProperty.call(mbb, sku);
+        const inOdoo = Object.prototype.hasOwnProperty.call(odooQty, sku);
+        if (inMbb && inOdoo) {
+          const mq = r2(mbb[sku]), oq = odooQty[sku];
+          if (Math.abs(mq-oq) < 0.01) matchedCount++;
+          else mismatched.push({ sku, name: nameBySku[sku]||'', mbbQty: mq, odooQty: oq, delta: r2(oq-mq) });
+        } else if (inMbb && !inOdoo) {
+          mbbOnly.push({ sku, qty: r2(mbb[sku]) });
+        } else if (!inMbb && inOdoo && Math.abs(odooQty[sku]) > 0.0001) {
+          odooOnly.push({ sku, name: nameBySku[sku]||'', qty: odooQty[sku] });
+        }
+      }
+      mismatched.sort((a,b)=>Math.abs(b.delta)-Math.abs(a.delta));
+      odooOnly.sort((a,b)=>Math.abs(b.qty)-Math.abs(a.qty));
+      return json({ success:true, matchedCount, mismatched, mbbOnly, odooOnly });
+    }
+
     if (action === 'unsynced') {
       // Sales that exist in Odoo but NOT in MyBillBook = those entered via the Direct
       // Sales page (client_order_ref 'direct:%'). While MyBillBook is the book of

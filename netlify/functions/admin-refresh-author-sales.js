@@ -66,8 +66,21 @@ exports.handler = async (event) => {
 
     // 2) Odoo shop sales in range (batched)
     const sos = await odoo.execKw('sale.order','search_read',
-      [['|',['client_order_ref','=like','sales:%'],['client_order_ref','=like','mbb:%']], ['id','client_order_ref','date_order','invoice_ids','partner_id']], { limit: 10000 });
-    const inRange = sos.filter(s => { const d=(s.date_order||'').slice(0,10); return d>=from && d<=to; });
+      [['|',['client_order_ref','=like','sales:%'],['client_order_ref','=like','mbb:%']], ['id','client_order_ref','date_order','invoice_ids','partner_id','state']], { limit: 10000 });
+    const inRangeAll = sos.filter(s => { const d=(s.date_order||'').slice(0,10); return d>=from && d<=to; });
+
+    // Exclude cancelled-state SOs and any whose invoice has been reversed by a
+    // posted credit note (e.g. a MyBillBook cancellation reconciled after the
+    // fact) — those sales never really happened and shouldn't feed the author
+    // attribution / Total Sales dashboards, regardless of what date_order says.
+    const candInvIds = [...new Set(inRangeAll.flatMap(s=>s.invoice_ids||[]))];
+    const reversedInvIds = new Set();
+    if (candInvIds.length) {
+      const cns = await odoo.execKw('account.move','search_read',
+        [[['move_type','=','out_refund'],['state','=','posted'],['reversed_entry_id','in',candInvIds]], ['reversed_entry_id']], { limit: 20000 });
+      cns.forEach(c => { if (c.reversed_entry_id) reversedInvIds.add(c.reversed_entry_id[0]); });
+    }
+    const inRange = inRangeAll.filter(s => s.state !== 'cancel' && !(s.invoice_ids||[]).some(id => reversedInvIds.has(id)));
     const soById = {}; inRange.forEach(s => soById[s.id]=s);
     const invIds = [...new Set(inRange.flatMap(s=>s.invoice_ids||[]))];
     const payById = {};

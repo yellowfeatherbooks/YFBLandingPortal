@@ -57,26 +57,45 @@ exports.handler = async (event) => {
         [[['account_type','in',['income','income_other','expense','expense_direct_cost','expense_depreciation']]], ['id','code','name','account_type']]);
       const byId={}; accts.forEach(a=>byId[a.id]=a);
       const acctIds = accts.map(a=>a.id);
-      const grp = await odoo.execKw('account.move.line','read_group',
-        [[['parent_state','=','posted'],['date','>=',from],['date','<=',to],['account_id','in',acctIds]], ['balance:sum'], ['account_id']]);
-      const balByAcct = {}; grp.forEach(g => balByAcct[g.account_id[0]] = g.balance);
+      const incomeAcctIds = accts.filter(a=>a.account_type.startsWith('income')).map(a=>a.id);
+      const expenseAcctIds = accts.filter(a=>a.account_type.startsWith('expense')).map(a=>a.id);
+      const balByAcct = {};
 
-      // Fold in credit notes dated OUTSIDE this range that reverse an invoice dated
-      // INSIDE it — their own-month ledger entry would otherwise hide the reversal
-      // from this period. A credit note dated inside the range is already counted
-      // by the query above, so it's excluded here to avoid double-counting.
-      const invs = await odoo.execKw('account.move','search_read',
-        [[['move_type','=','out_invoice'],['state','=','posted'],['invoice_date','>=',from],['invoice_date','<=',to]], ['id']], { limit: 20000 });
-      const invIds = invs.map(i => i.id);
-      if (invIds.length) {
-        const cns = await odoo.execKw('account.move','search_read',
-          [[['move_type','=','out_refund'],['state','=','posted'],['reversed_entry_id','in',invIds]], ['id','date']], { limit: 20000 });
-        const outsideCnIds = cns.filter(c => !(c.date >= from && c.date <= to)).map(c => c.id);
-        if (outsideCnIds.length) {
-          const cnLines = await odoo.execKw('account.move.line','read_group',
-            [[['parent_state','=','posted'],['move_id','in',outsideCnIds],['account_id','in',acctIds]], ['balance:sum'], ['account_id']]);
-          cnLines.forEach(g => { balByAcct[g.account_id[0]] = (balByAcct[g.account_id[0]]||0) + g.balance; });
+      // Expenses: unaffected by sale reversals — pure ledger balance dated in range.
+      if (expenseAcctIds.length) {
+        const expGrp = await odoo.execKw('account.move.line','read_group',
+          [[['parent_state','=','posted'],['date','>=',from],['date','<=',to],['account_id','in',expenseAcctIds]], ['balance:sum'], ['account_id']]);
+        expGrp.forEach(g => balByAcct[g.account_id[0]] = g.balance);
+      }
+
+      // Income: derive from ORIGINAL out_invoice lines dated in range (by
+      // invoice_date, not ledger date), excluding any invoice since reversed —
+      // regardless of which month the credit note itself landed in. A raw
+      // ledger-date query double-dips: a July-dated credit note for a June sale
+      // would reduce BOTH June's revenue (via a separate fold-in) AND July's (via
+      // its own ledger date), when the reduction should only ever hit June's.
+      if (incomeAcctIds.length) {
+        const invs = await odoo.execKw('account.move','search_read',
+          [[['move_type','=','out_invoice'],['state','=','posted'],['invoice_date','>=',from],['invoice_date','<=',to]], ['id']], { limit: 20000 });
+        const invIds = invs.map(i => i.id);
+        const reversedIds = new Set();
+        if (invIds.length) {
+          const cns = await odoo.execKw('account.move','search_read',
+            [[['move_type','=','out_refund'],['state','=','posted'],['reversed_entry_id','in',invIds]], ['reversed_entry_id']], { limit: 20000 });
+          cns.forEach(c => { if (c.reversed_entry_id) reversedIds.add(c.reversed_entry_id[0]); });
         }
+        const liveInvIds = invIds.filter(id => !reversedIds.has(id));
+        if (liveInvIds.length) {
+          const incGrp = await odoo.execKw('account.move.line','read_group',
+            [[['parent_state','=','posted'],['move_id','in',liveInvIds],['account_id','in',incomeAcctIds]], ['balance:sum'], ['account_id']]);
+          incGrp.forEach(g => { balByAcct[g.account_id[0]] = (balByAcct[g.account_id[0]]||0) + g.balance; });
+        }
+        // Any income-account activity NOT tied to a sale invoice/credit note at
+        // all (rare manual journal entries, misc income) — still ledger-dated.
+        const nonInvGrp = await odoo.execKw('account.move.line','read_group',
+          [[['parent_state','=','posted'],['date','>=',from],['date','<=',to],['account_id','in',incomeAcctIds],
+            ['move_id.move_type','not in',['out_invoice','out_refund']]], ['balance:sum'], ['account_id']]);
+        nonInvGrp.forEach(g => { balByAcct[g.account_id[0]] = (balByAcct[g.account_id[0]]||0) + g.balance; });
       }
 
       const rows = acctIds.map(id => ({ code:byId[id].code, name:byId[id].name, type:byId[id].account_type, balance:r2(balByAcct[id]||0) }))

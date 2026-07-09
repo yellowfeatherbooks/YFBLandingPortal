@@ -48,12 +48,38 @@ exports.handler = async (event) => {
     }
 
     if (action === 'pl') {
+      // Rolling P&L: reflects current known truth, not a locked snapshot. A sale
+      // dated in this period that gets reversed LATER (credit note posted in a
+      // different month, e.g. a MyBillBook cancellation caught weeks after the
+      // fact) must still net out of THIS period's revenue — the sale never really
+      // happened. GSTR-1 stays date-as-issued (unchanged); only P&L nets forward.
       const accts = await odoo.execKw('account.account','search_read',
         [[['account_type','in',['income','income_other','expense','expense_direct_cost','expense_depreciation']]], ['id','code','name','account_type']]);
       const byId={}; accts.forEach(a=>byId[a.id]=a);
+      const acctIds = accts.map(a=>a.id);
       const grp = await odoo.execKw('account.move.line','read_group',
-        [[['parent_state','=','posted'],['date','>=',from],['date','<=',to],['account_id','in',accts.map(a=>a.id)]], ['balance:sum'], ['account_id']]);
-      const rows = grp.map(g=>({ code:byId[g.account_id[0]].code, name:byId[g.account_id[0]].name, type:byId[g.account_id[0]].account_type, balance:r2(g.balance) }))
+        [[['parent_state','=','posted'],['date','>=',from],['date','<=',to],['account_id','in',acctIds]], ['balance:sum'], ['account_id']]);
+      const balByAcct = {}; grp.forEach(g => balByAcct[g.account_id[0]] = g.balance);
+
+      // Fold in credit notes dated OUTSIDE this range that reverse an invoice dated
+      // INSIDE it — their own-month ledger entry would otherwise hide the reversal
+      // from this period. A credit note dated inside the range is already counted
+      // by the query above, so it's excluded here to avoid double-counting.
+      const invs = await odoo.execKw('account.move','search_read',
+        [[['move_type','=','out_invoice'],['state','=','posted'],['invoice_date','>=',from],['invoice_date','<=',to]], ['id']], { limit: 20000 });
+      const invIds = invs.map(i => i.id);
+      if (invIds.length) {
+        const cns = await odoo.execKw('account.move','search_read',
+          [[['move_type','=','out_refund'],['state','=','posted'],['reversed_entry_id','in',invIds]], ['id','date']], { limit: 20000 });
+        const outsideCnIds = cns.filter(c => !(c.date >= from && c.date <= to)).map(c => c.id);
+        if (outsideCnIds.length) {
+          const cnLines = await odoo.execKw('account.move.line','read_group',
+            [[['parent_state','=','posted'],['move_id','in',outsideCnIds],['account_id','in',acctIds]], ['balance:sum'], ['account_id']]);
+          cnLines.forEach(g => { balByAcct[g.account_id[0]] = (balByAcct[g.account_id[0]]||0) + g.balance; });
+        }
+      }
+
+      const rows = acctIds.map(id => ({ code:byId[id].code, name:byId[id].name, type:byId[id].account_type, balance:r2(balByAcct[id]||0) }))
         .filter(x=>x.balance!==0).sort((a,b)=>a.code.localeCompare(b.code));
       const income = r2(rows.filter(r=>r.type.startsWith('income')).reduce((s,r)=>s-r.balance,0));
       const expense = r2(rows.filter(r=>r.type.startsWith('expense')).reduce((s,r)=>s+r.balance,0));

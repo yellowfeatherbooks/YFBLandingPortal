@@ -6012,6 +6012,9 @@
           <button class="admin-nav-item" data-section="odoo-reconcile" onclick="adminNav('odoo-reconcile',this)">
             <span class="admin-nav-icon">↩️</span> Reconcile MyBillBook
           </button>
+          <button class="admin-nav-item" data-section="sales-match" onclick="adminNav('sales-match',this)">
+            <span class="admin-nav-icon">⚖️</span> Sales Match
+          </button>
           <button class="admin-nav-item" data-section="stock-match" onclick="adminNav('stock-match',this)">
             <span class="admin-nav-icon">🧮</span> Stock Match
           </button>
@@ -7203,6 +7206,35 @@
         </div>
         <div id="rec-result" style="margin-top:1rem;font-size:0.85rem;"></div>
       </div><!-- /admin-section-odoo-reconcile -->
+
+      <!-- ── Sales Match (MyBillBook vs Odoo, side by side) ── -->
+      <div id="admin-section-sales-match" class="admin-section">
+        <div class="admin-section-header">
+          <h2>⚖️ Sales Match</h2>
+          <p style="font-size:0.8rem;color:var(--muted);margin:0;">
+            Upload a MyBillBook daybook CSV — every sale invoice is listed side by side against its
+            Odoo total (reversed/credit-noted invoices net to their live amount), with the difference
+            in the last column. Read-only — nothing is changed in Odoo here. For fixing drift, use
+            <b>Reconcile MyBillBook</b>.
+          </p>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.8rem;flex-wrap:wrap;">
+          <button class="admin-filter-btn" onclick="svCheck()" style="background:rgba(96,165,250,0.1);border-color:#60a5fa;color:#60a5fa;">🔌 Check Odoo connection</button>
+          <span id="sv-conn" style="font-size:0.82rem;color:var(--muted);">Odoo reachable only while the tunnel is up (ODOO_* env set).</span>
+        </div>
+
+        <div style="border:1px dashed rgba(255,255,255,0.18);border-radius:10px;padding:1rem;margin-bottom:0.9rem;">
+          <input type="file" id="sv-file" accept=".csv,text/csv" onchange="svLoadCsv(event)"
+                 onclick="this.value=null; svClear();" style="font-size:0.85rem;color:var(--text);">
+          <div id="sv-summary" style="margin-top:0.7rem;font-size:0.85rem;color:var(--muted);">Upload a MyBillBook daybook CSV.</div>
+        </div>
+        <button class="admin-filter-btn" id="sv-run" onclick="svRun()" disabled
+                style="background:rgba(212,175,55,0.12);border-color:var(--gold);color:var(--gold);font-weight:700;">
+          ⚖️ Compare with Odoo
+        </button>
+        <div id="sv-result" style="margin-top:1rem;font-size:0.85rem;"></div>
+      </div><!-- /admin-section-sales-match -->
 
       <!-- ── Stock Match (MyBillBook vs Odoo) ── -->
       <div id="admin-section-stock-match" class="admin-section">
@@ -12022,6 +12054,7 @@ Questions? We're always here!
       if (section === 'odoo-sync')   { osyncCheck(); rasInitDates(); }
       if (section === 'odoo-reports') orInit();
       if (section === 'odoo-reconcile') recInit();
+      if (section === 'sales-match')   svInit();
       if (section === 'stock-match')   smInit();
       if (section === 'odoo-razorpay') rzbInit();
       if (section === 'razorpay-payments') rpayInit();
@@ -12303,6 +12336,87 @@ Questions? We're always here!
         done++; bar.style.width = Math.round(done/_recNeeds.length*100) + '%';
       }
       pt.textContent = 'Done — ' + ok + ' reversed, ' + fail + ' failed. Re-run “Refresh Author Sales” for the period so the dashboards drop the cancelled amounts.';
+    }
+
+    // ── Sales Match (MyBillBook daybook vs live Odoo, side by side) ────────────
+    let _svRows = [];   // parsed {no, customer, total, cancelled} from the uploaded daybook
+    function svInit() { svClear(); svCheck(); }
+    function svClear() {
+      _svRows = [];
+      const f = document.getElementById('sv-file'); if (f) f.value = '';
+      const s = document.getElementById('sv-summary'); if (s) s.textContent = 'Upload a MyBillBook daybook CSV.';
+      const b = document.getElementById('sv-run'); if (b) b.disabled = true;
+      const r = document.getElementById('sv-result'); if (r) r.innerHTML = '';
+    }
+    async function svCheck() {
+      const el = document.getElementById('sv-conn');
+      el.textContent = 'Checking Odoo…'; el.style.color = 'var(--muted)';
+      try {
+        const r = await adminPost('admin-odoo-sync', { action: 'check' });
+        if (r.configured && r.reachable) { el.textContent = '✅ Odoo reachable'; el.style.color = '#34d399'; }
+        else if (r.configured)          { el.textContent = '⚠️ Configured but unreachable — ' + (r.message || 'tunnel down'); el.style.color = '#fbbf24'; }
+        else                            { el.textContent = '❌ Odoo not configured on this deploy — start the tunnel / set ODOO_* env'; el.style.color = '#f87171'; }
+      } catch (e) { el.textContent = '❌ ' + e.message; el.style.color = '#f87171'; }
+    }
+    function svLoadCsv(ev) {
+      const f = ev.target.files[0]; if (!f) return;
+      const rd = new FileReader();
+      rd.onload = () => {
+        try {
+          const lines = String(rd.result).split(/\r?\n/);
+          const hi = lines.findIndex(l => /Transaction Type/i.test(l) && /Sr\.?\s*No/i.test(l));
+          if (hi < 0) throw new Error('not a daybook (no "Transaction Type / Sr No." header)');
+          const hdr = _recCsvSplit(lines[hi]);
+          const ci = { type: hdr.findIndex(h=>/transaction type/i.test(h)),
+                       sr: hdr.findIndex(h=>/sr\.?\s*no/i.test(h)),
+                       amt: hdr.findIndex(h=>/total amount/i.test(h)),
+                       name: hdr.findIndex(h=>/^name$/i.test(h)) };
+          if (ci.type < 0 || ci.sr < 0 || ci.amt < 0) throw new Error('daybook missing Transaction Type / Sr No. / Total Amount columns');
+          const rows = [];
+          for (let i = hi + 1; i < lines.length; i++) {
+            if (!lines[i].trim()) continue;
+            const c = _recCsvSplit(lines[i]);
+            const type = (c[ci.type] || '');
+            if (!/sales invoice/i.test(type)) continue;   // only sale invoices (skip purchases/expenses/quotations)
+            const no = (c[ci.sr] || '').trim(); if (!no) continue;
+            rows.push({ no, customer: ci.name>=0 ? (c[ci.name]||'') : '', total: Number(c[ci.amt]) || 0, cancelled: /cancel/i.test(type) });
+          }
+          _svRows = rows;
+          document.getElementById('sv-summary').innerHTML = '<b>' + rows.length + '</b> sale invoices parsed';
+          document.getElementById('sv-run').disabled = rows.length === 0;
+          document.getElementById('sv-result').innerHTML = '';
+        } catch (e) {
+          _svRows = [];
+          document.getElementById('sv-summary').innerHTML = '<span style="color:#f87171">Could not read daybook: ' + e.message + '</span>';
+          document.getElementById('sv-run').disabled = true;
+        }
+      };
+      rd.readAsText(f);
+    }
+    async function svRun() {
+      if (!_svRows.length) return;
+      const res = document.getElementById('sv-result'); res.innerHTML = '<p style="color:var(--muted)">⏳ Comparing with Odoo…</p>';
+      let d; try { d = await adminPost('admin-odoo-reports', { action: 'sales-match', mbbRows: _svRows }); }
+      catch (e) { res.innerHTML = '<p style="color:#f87171">' + e.message + '</p>'; return; }
+      if (!d.success) { res.innerHTML = '<p style="color:#f87171">' + (d.error || 'Failed') + '</p>'; return; }
+      const c = d.counts;
+      let h = `<div style="display:flex;gap:0.8rem;flex-wrap:wrap;margin-bottom:0.9rem;">
+        <div class="admin-stat-card"><div class="admin-stat-num">${c.total}</div><div class="admin-stat-label">Orders compared</div></div>
+        <div class="admin-stat-card"><div class="admin-stat-num" style="color:#34d399;">${c.matched}</div><div class="admin-stat-label">Match</div></div>
+        <div class="admin-stat-card"><div class="admin-stat-num" style="color:${c.mismatched?'#f87171':''};">${c.mismatched}</div><div class="admin-stat-label">Amount differs</div></div>
+        <div class="admin-stat-card"><div class="admin-stat-num" style="color:${c.notInOdoo?'#fbbf24':''};">${c.notInOdoo}</div><div class="admin-stat-label">Not in Odoo</div></div>
+        <div class="admin-stat-card"><div class="admin-stat-num">${_inr(d.mbbTotal)}</div><div class="admin-stat-label">MyBillBook total</div></div>
+        <div class="admin-stat-card"><div class="admin-stat-num">${_inr(d.odooTotal)}</div><div class="admin-stat-label">Odoo total</div></div>
+      </div>`;
+      h += '<div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Invoice</th><th>Customer</th><th>Odoo SO</th><th style="text-align:right">MyBillBook</th><th style="text-align:right">Odoo</th><th style="text-align:right">Difference</th></tr></thead><tbody>';
+      d.rows.forEach(r => {
+        const diffCell = r.inOdoo
+          ? `<span style="color:${Math.abs(r.delta)>0.5?(r.delta<0?'#f87171':'#fbbf24'):'#34d399'};font-weight:700">${r.delta>0?'+':''}${_inr(r.delta)}</span>`
+          : '<span style="color:#fbbf24">not in Odoo</span>';
+        h += `<tr><td>${_e(r.no)}</td><td>${_e(r.customer)||'—'}</td><td>${_e(r.so)||'—'}</td><td style="text-align:right">${_inr(r.mbbTotal)}</td><td style="text-align:right">${r.inOdoo?_inr(r.odooTotal):'—'}</td><td style="text-align:right">${diffCell}</td></tr>`;
+      });
+      h += '</tbody></table></div>';
+      res.innerHTML = h;
     }
 
     // ── Stock Match (MyBillBook Stock Summary CSV vs live Odoo on-hand) ────────

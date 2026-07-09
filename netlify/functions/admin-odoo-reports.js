@@ -148,6 +148,57 @@ exports.handler = async (event) => {
       return json({ success:true, matchedCount, mismatched, mbbOnly, odooOnly });
     }
 
+    if (action === 'sales-match') {
+      // Side-by-side per-order comparison: an uploaded MyBillBook daybook (parsed
+      // client-side into {no, customer, total, cancelled} sale-invoice rows) vs the
+      // matching Odoo SO's LIVE total (posted invoices minus any already-reversed
+      // ones), so a credit-noted cancellation nets to 0 rather than showing stale.
+      const mbbRows = Array.isArray(body.mbbRows) ? body.mbbRows : [];
+      if (!mbbRows.length) return json({ success:false, error:'No MyBillBook rows provided' });
+      const byNo = {};
+      for (const r of mbbRows) {
+        const no = String(r.no||'').trim(); if (!no) continue;
+        byNo[no] = { no, customer: String(r.customer||''), mbbTotal: r2(r.total), cancelled: !!r.cancelled };
+      }
+      const nos = Object.keys(byNo);
+      const refs = [];
+      nos.forEach(no => refs.push(`mbb:${no}`, `sales:${no}`));
+      const sos = await odoo.execKw('sale.order','search_read',
+        [[['client_order_ref','in',refs]], ['id','name','client_order_ref','partner_id','invoice_ids']], { limit: 8000 });
+      const byInvoiceNo = {};
+      sos.forEach(s => { const m=(s.client_order_ref||'').match(/^(?:mbb|sales):(.+)$/); if (m) byInvoiceNo[m[1]] = s; });
+
+      const allInvIds = [];
+      sos.forEach(s => (s.invoice_ids||[]).forEach(id => allInvIds.push(id)));
+      const invById = {};
+      if (allInvIds.length) {
+        const ivs = await odoo.execKw('account.move','search_read',
+          [[['id','in',allInvIds],['move_type','=','out_invoice'],['state','=','posted']], ['id','amount_total']], { limit: 20000 });
+        ivs.forEach(iv => invById[iv.id] = iv.amount_total);
+      }
+      const reversedIds = new Set();
+      if (allInvIds.length) {
+        const cns = await odoo.execKw('account.move','search_read',
+          [[['move_type','=','out_refund'],['state','=','posted'],['reversed_entry_id','in',allInvIds]], ['reversed_entry_id']], { limit: 20000 });
+        cns.forEach(c => { if (c.reversed_entry_id) reversedIds.add(c.reversed_entry_id[0]); });
+      }
+
+      const rows = nos.map(no => {
+        const mbb = byNo[no];
+        const s = byInvoiceNo[no];
+        if (!s) return { no, customer: mbb.customer, mbbTotal: mbb.mbbTotal, odooTotal: null, so: null, delta: null, inOdoo: false };
+        const liveTotal = r2((s.invoice_ids||[]).filter(id => !reversedIds.has(id)).reduce((sum,id) => sum+(invById[id]||0), 0));
+        return { no, customer: (s.partner_id&&s.partner_id[1])||mbb.customer, so: s.name,
+          mbbTotal: mbb.mbbTotal, odooTotal: liveTotal, delta: r2(liveTotal-mbb.mbbTotal), inOdoo: true };
+      }).sort((a,b) => Math.abs(b.delta||0) - Math.abs(a.delta||0));
+
+      const notInOdoo = rows.filter(r => !r.inOdoo).length;
+      const mismatched = rows.filter(r => r.inOdoo && Math.abs(r.delta) > 0.5).length;
+      const matched = rows.length - mismatched - notInOdoo;
+      return json({ success:true, rows, counts: { total: rows.length, matched, mismatched, notInOdoo },
+        mbbTotal: r2(rows.reduce((s,r)=>s+r.mbbTotal,0)), odooTotal: r2(rows.reduce((s,r)=>s+(r.odooTotal||0),0)) });
+    }
+
     if (action === 'unsynced') {
       // Sales that exist in Odoo but NOT in MyBillBook = those entered via the Direct
       // Sales page (client_order_ref 'direct:%'). While MyBillBook is the book of

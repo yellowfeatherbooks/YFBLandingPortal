@@ -12447,7 +12447,7 @@ Questions? We're always here!
           const lines = String(rd.result).split(/\r?\n/);
           const hi = lines.findIndex(l => _recCsvSplit(l)[0] === 'Name');
           if (hi < 0) throw new Error('not a Stock Summary CSV (no "Name" header row)');
-          const agg = {}; let skipped = 0;
+          const agg = {}; const names = {}; let skipped = 0;
           for (let i = hi + 1; i < lines.length; i++) {
             if (!lines[i].trim()) continue;
             const c = _recCsvSplit(lines[i]);
@@ -12456,8 +12456,9 @@ Questions? We're always here!
             if (!sku) { skipped++; continue; }
             const qty = parseFloat(String(c[5] || '').replace(/PCS/i, '').replace(/,/g, '').trim()) || 0;
             agg[sku] = (agg[sku] || 0) + qty;
+            if (!names[sku] && c[0]) names[sku] = c[0].trim();
           }
-          _smRows = Object.entries(agg).map(([sku, qty]) => ({ sku, qty }));
+          _smRows = Object.entries(agg).map(([sku, qty]) => ({ sku, qty, name: names[sku] || '' }));
           document.getElementById('sm-summary').innerHTML =
             '<b>' + _smRows.length + '</b> coded SKUs parsed' + (skipped ? ' · <span style="color:#fbbf24">' + skipped + ' rows with no Item Code skipped</span>' : '');
           document.getElementById('sm-run').disabled = _smRows.length === 0;
@@ -12490,8 +12491,8 @@ Questions? We're always here!
       }
       if (d.mbbOnly.length) {
         h += '<div style="font-weight:700;color:#fbbf24;margin-bottom:0.4rem;">📥 In MyBillBook but not created in Odoo yet (create via a Purchase Order sync)</div>';
-        h += '<div class="admin-table-wrap" style="margin-bottom:1.2rem;"><table class="admin-table"><thead><tr><th>SKU</th><th style="text-align:right">MyBillBook Qty</th></tr></thead><tbody>';
-        d.mbbOnly.forEach(r => { h += `<tr><td>${_e(r.sku)}</td><td style="text-align:right">${r.qty}</td></tr>`; });
+        h += '<div class="admin-table-wrap" style="margin-bottom:1.2rem;"><table class="admin-table"><thead><tr><th>SKU</th><th>Book</th><th style="text-align:right">MyBillBook Qty</th></tr></thead><tbody>';
+        d.mbbOnly.forEach(r => { h += `<tr><td>${_e(r.sku)}</td><td>${_e(r.name)||'—'}</td><td style="text-align:right">${r.qty}</td></tr>`; });
         h += '</tbody></table></div>';
       }
       if (d.odooOnly.length) {

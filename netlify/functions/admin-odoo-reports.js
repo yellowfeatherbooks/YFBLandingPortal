@@ -160,10 +160,11 @@ exports.handler = async (event) => {
       // {sku, qty} rows, aggregated here) against live Odoo on-hand by SKU.
       const mbbRows = Array.isArray(body.mbbRows) ? body.mbbRows : [];
       if (!mbbRows.length) return json({ success:false, error:'No MyBillBook rows provided' });
-      const mbb = {};
+      const mbb = {}, mbbName = {};
       for (const r of mbbRows) {
         const sku = String(r.sku||'').trim(); if (!sku) continue;
         mbb[sku] = (mbb[sku]||0) + (Number(r.qty)||0);
+        if (!mbbName[sku] && r.name) mbbName[sku] = String(r.name).trim();
       }
       const prods = await odoo.execKw('product.product','search_read',
         [[['type','=','product']], ['default_code','name','qty_available']], { limit: 5000 });
@@ -183,7 +184,7 @@ exports.handler = async (event) => {
           if (Math.abs(mq-oq) < 0.01) matchedCount++;
           else mismatched.push({ sku, name: nameBySku[sku]||'', mbbQty: mq, odooQty: oq, delta: r2(oq-mq) });
         } else if (inMbb && !inOdoo) {
-          mbbOnly.push({ sku, qty: r2(mbb[sku]) });
+          mbbOnly.push({ sku, name: mbbName[sku]||'', qty: r2(mbb[sku]) });
         } else if (!inMbb && inOdoo && Math.abs(odooQty[sku]) > 0.0001) {
           odooOnly.push({ sku, name: nameBySku[sku]||'', qty: odooQty[sku] });
         }

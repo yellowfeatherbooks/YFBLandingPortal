@@ -219,6 +219,15 @@ async function createServiceInvoice(opts) {
 
   const posted = await findOne('account.move', [['id', '=', invoiceId]],
     ['name', 'amount_total', 'amount_tax', 'amount_untaxed']);
+
+  // This invoice only ever gets created AFTER Razorpay confirms the charge
+  // (real-time webhook / verify fn, or backfill from an already-paid Razorpay
+  // record) — the money is already collected, so register it immediately.
+  // Without this the invoice sits posted-but-unpaid forever and wrongly shows
+  // up as an outstanding receivable.
+  try { await registerPaymentAmount(invoiceId, posted.amount_total, invoiceDate, MBB_PAY_JOURNAL); }
+  catch (e) { /* payment registration best-effort — invoice itself still stands */ }
+
   return {
     created: true,
     invoiceId,

@@ -7167,7 +7167,7 @@
           </span>
           <button class="btn-primary" style="border:none;cursor:pointer;padding:0.55rem 1.1rem;border-radius:8px;" onclick="orRun()">▶ Run</button>
           <button id="or-csv-btn" style="display:none;cursor:pointer;padding:0.5rem 0.9rem;border-radius:8px;border:1px solid rgba(255,255,255,0.2);background:transparent;color:var(--text);" onclick="orExportCsv()">⬇ CSV</button>
-          <button id="or-pdf-btn" style="display:none;cursor:pointer;padding:0.5rem 0.9rem;border-radius:8px;border:1px solid rgba(255,255,255,0.2);background:transparent;color:var(--text);" onclick="orStatementPdf()">🖨️ PDF</button>
+          <button id="or-pdf-btn" style="display:none;cursor:pointer;padding:0.5rem 0.9rem;border-radius:8px;border:1px solid rgba(255,255,255,0.2);background:transparent;color:var(--text);" onclick="orPdf()">🖨️ PDF</button>
         </div>
         <div id="or-result" style="font-size:0.86rem;"></div>
       </div><!-- /admin-section-odoo-reports -->
@@ -12708,7 +12708,7 @@ Questions? We're always here!
       else if (_orRep==='stock') orRenderStock(d);
       else if (_orRep==='unsynced') orRenderUnsynced(d);
       document.getElementById('or-csv-btn').style.display='';
-      document.getElementById('or-pdf-btn').style.display = (_orRep==='customer-statement' && !d.notFound) ? '' : 'none';
+      document.getElementById('or-pdf-btn').style.display = !d.notFound ? '' : 'none';
     }
     const _e=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
     function orRenderStatement(d){
@@ -12805,6 +12805,65 @@ Questions? We're always here!
         +'<scr'+'ipt>window.onload=function(){setTimeout(function(){window.print();},200);}<\/scr'+'ipt></body></html>';
       const w=window.open('','_blank'); if(!w){ alert('Allow pop-ups to print the statement.'); return; }
       w.document.write(html); w.document.close();
+    }
+    // Shared print → "Save as PDF" shell for the non-statement reports below.
+    function _printReport(title, subtitle, bodyHtml){
+      const today=new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+      const html='<!doctype html><html><head><meta charset="utf-8"><title>'+_e(title)+'</title><style>'
+        +'body{font-family:Arial,Helvetica,sans-serif;color:#222;margin:32px;}h1{color:#1F3864;margin:0;font-size:22px;}'
+        +'.sub{color:#555;font-size:12px;margin:2px 0 14px;}.hd{font-weight:700;font-size:15px;margin:10px 0 2px;}'
+        +'table{border-collapse:collapse;width:100%;margin-top:8px;font-size:12px;}th{background:#1F3864;color:#fff;text-align:left;padding:7px 8px;}'
+        +'td{padding:6px 8px;border-bottom:1px solid #ddd;}.r{text-align:right;}tfoot td{font-weight:700;border-top:2px solid #333;}'
+        +'.note{color:#555;font-size:11px;margin-top:14px;font-style:italic;}@media print{body{margin:12mm;}}</style></head><body>'
+        +'<h1>Yellow Feather Books</h1><div class="sub">Phone: 9400448000</div>'
+        +'<div class="hd">'+_e(title)+'</div><div class="sub">'+(subtitle?_e(subtitle)+' &nbsp;|&nbsp; ':'')+'Generated '+today+'</div>'
+        +bodyHtml
+        +'<div class="note">This is a computer-generated report.</div>'
+        +'<scr'+'ipt>window.onload=function(){setTimeout(function(){window.print();},200);}<\/scr'+'ipt></body></html>';
+      const w=window.open('','_blank'); if(!w){ alert('Allow pop-ups to print/save as PDF.'); return; }
+      w.document.write(html); w.document.close();
+    }
+    function orPdf(){
+      if(!_orLast) return;
+      if(_orRep==='customer-statement') return orStatementPdf();
+      const d=_orLast;
+      if(_orRep==='pl'){
+        const rows=d.rows.map(r=>`<tr><td>${_e(r.code)}</td><td>${_e(r.name)}</td><td>${_e(r.type)}</td><td class="r">${_inr(r.balance)}</td></tr>`).join('');
+        const body='<table><thead><tr><th>Code</th><th>Account</th><th>Type</th><th class="r">Amount</th></tr></thead><tbody>'+rows
+          +'</tbody><tfoot><tr><td colspan="3">Revenue</td><td class="r">'+_inr(d.revenue)+'</td></tr>'
+          +'<tr><td colspan="3">Expenses</td><td class="r">'+_inr(d.expenses)+'</td></tr>'
+          +'<tr><td colspan="3">NET '+(d.net<0?'LOSS':'PROFIT')+'</td><td class="r" style="color:'+(d.net<0?'#C00000':'#2E7D32')+'">'+_inr(d.net)+'</td></tr></tfoot></table>';
+        return _printReport('PROFIT & LOSS STATEMENT', 'Period '+_e(d.from)+' to '+_e(d.to), body);
+      }
+      if(_orRep==='gstr1'){
+        const body='<table><tbody>'
+          +'<tr><td>Invoices</td><td class="r">'+d.invoiceCount+'</td></tr>'
+          +'<tr><td>Taxable Value</td><td class="r">'+_inr(d.taxableValue)+'</td></tr>'
+          +'<tr><td>Tax Amount</td><td class="r">'+_inr(d.taxAmount)+'</td></tr>'
+          +'<tr><td>Exempt Value</td><td class="r">'+_inr(d.exemptValue)+'</td></tr>'
+          +'<tr><td>B2B Total</td><td class="r">'+_inr(d.b2bTotal)+'</td></tr>'
+          +'<tr><td>B2C Total</td><td class="r">'+_inr(d.b2cTotal)+'</td></tr>'
+          +'</tbody></table>';
+        return _printReport('GSTR-1 SUMMARY', 'Period '+_e(d.from)+' to '+_e(d.to), body);
+      }
+      if(_orRep==='aged'){
+        const rows=d.rows.map(r=>`<tr><td>${_e(r.customer)}</td><td class="r">${_inr(r.d0_30)}</td><td class="r">${_inr(r.d31_60)}</td><td class="r">${_inr(r.d61_90)}</td><td class="r">${_inr(r.d90)}</td><td class="r">${_inr(r.total)}</td></tr>`).join('');
+        const t=d.totals;
+        const body='<table><thead><tr><th>Customer</th><th class="r">0-30d</th><th class="r">31-60d</th><th class="r">61-90d</th><th class="r">90d+</th><th class="r">Total</th></tr></thead><tbody>'+rows
+          +'</tbody><tfoot><tr><td>All customers</td><td class="r">'+_inr(t.d0_30)+'</td><td class="r">'+_inr(t.d31_60)+'</td><td class="r">'+_inr(t.d61_90)+'</td><td class="r">'+_inr(t.d90)+'</td><td class="r">'+_inr(t.total)+'</td></tr></tfoot></table>';
+        return _printReport('AGED RECEIVABLES', '', body);
+      }
+      if(_orRep==='stock'){
+        const rows=d.rows.map(r=>`<tr><td>${_e(r.sku)}</td><td>${_e(r.name)}</td><td>${_e(r.category)}</td><td class="r">${r.qty}</td><td class="r">${_inr(r.cost)}</td><td class="r">${_inr(r.value)}</td></tr>`).join('');
+        const body='<table><thead><tr><th>SKU</th><th>Book</th><th>Category</th><th class="r">Qty</th><th class="r">Cost</th><th class="r">Value</th></tr></thead><tbody>'+rows
+          +'</tbody><tfoot><tr><td colspan="5">Total Value</td><td class="r">'+_inr(d.totalValue)+'</td></tr></tfoot></table>';
+        return _printReport('STOCK ON HAND', '', body);
+      }
+      if(_orRep==='unsynced'){
+        const rows=d.rows.map(r=>`<tr><td>${_e(r.so)}</td><td>${_e(r.ref)}</td><td>${_e(r.date)}</td><td>${_e(r.cust)||'—'}</td><td class="r">${_inr(r.total)}</td><td>${r.invoiced?'yes':'—'}</td></tr>`).join('');
+        const body='<table><thead><tr><th>Odoo SO</th><th>Ref</th><th>Date</th><th>Customer</th><th class="r">Amount</th><th>Invoiced</th></tr></thead><tbody>'+rows+'</tbody></table>';
+        return _printReport('SALES NOT IN MYBILLBOOK', '', body);
+      }
     }
 
     // ── Helpers ──

@@ -13017,7 +13017,7 @@ Questions? We're always here!
       let d; try { d = await adminPost('admin-odoo-reports', { action: def.action, from, to }); }
       catch (e) { tableEl.innerHTML = '<p style="color:#f87171">'+e.message+'</p>'; return; }
       if (!d.success) { tableEl.innerHTML = '<p style="color:#f87171">'+(d.error||'Failed')+'</p>'; return; }
-      _rpt[prefix] = { rows: d.rows, columns: def.columns, filtered: d.rows, total: d.total };
+      _rpt[prefix] = { rows: d.rows, columns: def.columns, filtered: d.rows, total: d.total, liveTotal: d.liveTotal };
       rptRenderFilters(prefix);
       rptApplyFilters(prefix);
       document.getElementById('rpt-'+prefix+'-csv-btn').style.display = '';
@@ -13058,7 +13058,8 @@ Questions? We're always here!
       const el = document.getElementById('rpt-'+prefix+'-table');
       const countEl = document.getElementById('rpt-'+prefix+'-count');
       const filteredTotal = st.filtered.reduce((s,r)=> s + (typeof r.total==='number' ? r.total : 0), 0);
-      if (countEl) countEl.textContent = st.filtered.length + ' of ' + st.rows.length + ' rows shown · filtered total ' + _inr(filteredTotal);
+      const liveNote = st.liveTotal != null ? ' (live only, excl. reversed: ' + _inr(st.liveTotal) + ')' : '';
+      if (countEl) countEl.textContent = st.filtered.length + ' of ' + st.rows.length + ' rows shown · filtered total ' + _inr(filteredTotal) + liveNote;
       let h = '<div class="admin-table-wrap"><table class="admin-table"><thead><tr>' + st.columns.map(c=>`<th${c.align==='right'?' style="text-align:right"':''}>${_e(c.label)}</th>`).join('') + '</tr></thead><tbody>';
       st.filtered.forEach(r => { h += '<tr>' + st.columns.map(c => {
         const v = c.format ? c.format(r[c.key], r) : _e(r[c.key]);

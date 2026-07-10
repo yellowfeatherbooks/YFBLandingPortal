@@ -260,10 +260,11 @@ exports.handler = async (event) => {
     }
 
     if (action === 'razorpay-invoices') {
-      // All Odoo customer invoices sourced from Razorpay (ref = 'razorpay:<paymentId>').
-      // type: sub if origin is a subscription id (sub_…), else club/other.
+      // All Odoo customer invoices sourced from Razorpay (ref = 'razorpay:<paymentId>'),
+      // i.e. Book Club memberships + author subscriptions — the two taxable revenue
+      // streams. type: sub if origin is a subscription id (sub_…), else club/other.
       const rows = await odoo.execKw('account.move', 'search_read',
-        [[['move_type','=','out_invoice'],['ref','=like','razorpay:%']],
+        [[['move_type','=','out_invoice'],['ref','=like','razorpay:%'],['invoice_date','>=',from],['invoice_date','<=',to]],
          ['name','invoice_date','partner_id','amount_total','amount_tax','payment_state','state','invoice_origin','ref']],
         { order: 'invoice_date asc, id asc', limit: 1000 });
       const TEST_RE = /test|webhook|sub_(TEST|WHTEST|STATETEST|GST|PREF|DRAFTTEST|KOCHU)/i;
@@ -274,7 +275,7 @@ exports.handler = async (event) => {
       const all = rows.map(map);
       const subs = all.filter(x => x.type === 'subscription');
       const club = all.filter(x => x.type === 'club');
-      return json({ success:true, count: all.length,
+      return json({ success:true, from, to, count: all.length,
         subscriptions: subs, club, subscriptionsTotal: r2(subs.reduce((s,x)=>s+x.total,0)),
         clubTotal: r2(club.reduce((s,x)=>s+x.total,0)) });
     }

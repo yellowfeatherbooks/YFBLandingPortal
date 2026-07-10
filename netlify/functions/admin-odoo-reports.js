@@ -326,6 +326,49 @@ exports.handler = async (event) => {
           expenses, expenseTotal, net: r2(revenueNet - expenseTotal) } });
     }
 
+    if (action === 'sale-orders-detail') {
+      const sos = await odoo.execKw('sale.order','search_read',
+        [[['date_order','>=',from],['date_order','<=',to+' 23:59:59']],
+         ['name','date_order','partner_id','client_order_ref','state','amount_total','invoice_ids']],
+        { order:'date_order desc, id desc', limit: 3000 });
+      const rows = sos.map(s => ({ number: s.name, date: (s.date_order||'').slice(0,10),
+        customer: (s.partner_id&&s.partner_id[1])||'', ref: s.client_order_ref||'',
+        status: s.state, total: r2(s.amount_total), invoiced: (s.invoice_ids||[]).length ? 'yes' : 'no' }));
+      return json({ success:true, from, to, count: rows.length, rows, total: r2(rows.reduce((s,r)=>s+r.total,0)) });
+    }
+
+    if (action === 'purchase-orders-detail') {
+      const pos = await odoo.execKw('purchase.order','search_read',
+        [[['date_order','>=',from],['date_order','<=',to+' 23:59:59']],
+         ['name','date_order','partner_id','partner_ref','state','amount_total','invoice_ids']],
+        { order:'date_order desc, id desc', limit: 3000 });
+      const rows = pos.map(p => ({ number: p.name, date: (p.date_order||'').slice(0,10),
+        vendor: (p.partner_id&&p.partner_id[1])||'', ref: p.partner_ref||'',
+        status: p.state, total: r2(p.amount_total), invoiced: (p.invoice_ids||[]).length ? 'yes' : 'no' }));
+      return json({ success:true, from, to, count: rows.length, rows, total: r2(rows.reduce((s,r)=>s+r.total,0)) });
+    }
+
+    if (action === 'expenses-detail') {
+      // MyBillBook-synced operating expenses only (ref 'mbbexp:<voucherNo>') --
+      // distinct from book-purchase POs above. Category comes from the single
+      // expense line's own description (set at sync time to e.name/category).
+      const bills = await odoo.execKw('account.move','search_read',
+        [[['move_type','=','in_invoice'],['ref','=like','mbbexp:%'],['invoice_date','>=',from],['invoice_date','<=',to]],
+         ['name','invoice_date','partner_id','amount_total','payment_state','state','invoice_line_ids']],
+        { order:'invoice_date desc, id desc', limit: 3000 });
+      const lineIds = [...new Set(bills.flatMap(b => (b.invoice_line_ids||[]).slice(0,1)))];
+      const lineById = {};
+      if (lineIds.length) {
+        const lines = await odoo.execKw('account.move.line','search_read', [[['id','in',lineIds]]], { fields:['id','name'] });
+        lines.forEach(l => { lineById[l.id] = l.name; });
+      }
+      const rows = bills.map(b => { const firstLineId = (b.invoice_line_ids||[])[0];
+        return { number: b.name, date: b.invoice_date, vendor: (b.partner_id&&b.partner_id[1])||'',
+          category: (firstLineId && lineById[firstLineId]) || '', status: b.state,
+          total: r2(b.amount_total), paid: b.payment_state }; });
+      return json({ success:true, from, to, count: rows.length, rows, total: r2(rows.reduce((s,r)=>s+r.total,0)) });
+    }
+
     return json({ success:false, error:'Unknown action' }, 400);
   } catch (e) { return json({ success:false, error: e.message }, 500); }
 };

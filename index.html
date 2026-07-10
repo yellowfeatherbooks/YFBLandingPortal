@@ -3077,6 +3077,8 @@
     .admin-nav-group.collapsed .admin-nav-children { display: none; }
     .admin-nav-children { display: flex; flex-direction: column; }
     .admin-nav-children .admin-nav-item { padding-left: 2.1rem; font-size: 0.86rem; }
+    .admin-nav-children .admin-nav-group-hdr { padding-left: 2.1rem; font-size: 0.78rem; }
+    .admin-nav-children .admin-nav-children .admin-nav-item { padding-left: 3.4rem; }
 
     /* Admin content */
     #admin-content { flex: 1; overflow-y: auto; padding: 1.5rem; }
@@ -6021,6 +6023,28 @@
           <button class="admin-nav-item" data-section="odoo-reports" onclick="adminNav('odoo-reports',this)">
             <span class="admin-nav-icon">📄</span> Quick Reports
           </button>
+          <div class="admin-nav-group">
+            <button class="admin-nav-group-hdr" onclick="adminNavGroup(this)">
+              <span class="admin-nav-icon">📊</span> Reports <span class="admin-nav-chev">▾</span>
+            </button>
+            <div class="admin-nav-children">
+              <button class="admin-nav-item" data-section="report-so" onclick="adminNav('report-so',this)">
+                <span class="admin-nav-icon">🧾</span> Sale Orders
+              </button>
+              <button class="admin-nav-item" data-section="report-po" onclick="adminNav('report-po',this)">
+                <span class="admin-nav-icon">📦</span> Purchase Orders
+              </button>
+              <button class="admin-nav-item" data-section="report-exp" onclick="adminNav('report-exp',this)">
+                <span class="admin-nav-icon">💸</span> Expenses
+              </button>
+              <button class="admin-nav-item" data-section="report-pl" onclick="adminNav('report-pl',this)">
+                <span class="admin-nav-icon">📈</span> P&amp;L
+              </button>
+              <button class="admin-nav-item" data-section="report-gst" onclick="adminNav('report-gst',this)">
+                <span class="admin-nav-icon">🧾</span> GST
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -7154,8 +7178,6 @@
           <button class="admin-filter-btn" data-rep="aged" onclick="orPick('aged',this)">⏳ Aged Receivables</button>
           <button class="admin-filter-btn" data-rep="stock" onclick="orPick('stock',this)">📦 Stock on Hand</button>
           <button class="admin-filter-btn" data-rep="unsynced" onclick="orPick('unsynced',this)">⚠️ Not in MyBillBook</button>
-          <button class="admin-filter-btn" data-rep="pl" onclick="orPick('pl',this)">📈 Profit &amp; Loss</button>
-          <button class="admin-filter-btn" data-rep="gstr1" onclick="orPick('gstr1',this)">🧾 GSTR-1</button>
           <button class="admin-filter-btn" data-rep="razorpay-invoices" onclick="orPick('razorpay-invoices',this)">💳 Razorpay Invoices</button>
         </div>
         <div style="display:flex;gap:0.6rem;align-items:center;flex-wrap:wrap;margin-bottom:1rem;">
@@ -7172,6 +7194,87 @@
         </div>
         <div id="or-result" style="font-size:0.86rem;"></div>
       </div><!-- /admin-section-odoo-reports -->
+
+      <!-- ── Sale Orders (detailed, filterable) ── -->
+      <div id="admin-section-report-so" class="admin-section">
+        <div class="admin-section-header"><h2>🧾 Sale Orders</h2></div>
+        <div style="display:flex;gap:0.6rem;align-items:center;flex-wrap:wrap;margin-bottom:1rem;">
+          <label style="color:var(--muted);font-size:0.82rem;">From</label>
+          <input type="date" id="rpt-so-from" style="padding:0.45rem;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:var(--text);color-scheme:dark;">
+          <label style="color:var(--muted);font-size:0.82rem;">To</label>
+          <input type="date" id="rpt-so-to" style="padding:0.45rem;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:var(--text);color-scheme:dark;">
+          <button class="btn-primary" style="border:none;cursor:pointer;padding:0.55rem 1.1rem;border-radius:8px;" onclick="rptRun('so')">▶ Run</button>
+          <button id="rpt-so-csv-btn" style="display:none;cursor:pointer;padding:0.5rem 0.9rem;border-radius:8px;border:1px solid rgba(255,255,255,0.2);background:transparent;color:var(--text);" onclick="rptExportCsv('so')">⬇ CSV</button>
+          <button id="rpt-so-pdf-btn" style="display:none;cursor:pointer;padding:0.5rem 0.9rem;border-radius:8px;border:1px solid rgba(255,255,255,0.2);background:transparent;color:var(--text);" onclick="rptExportPdf('so','SALE ORDERS')">🖨️ PDF</button>
+        </div>
+        <div id="rpt-so-filters" style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.6rem;"></div>
+        <div id="rpt-so-count" style="font-size:0.8rem;color:var(--muted);margin-bottom:0.6rem;"></div>
+        <div id="rpt-so-table" style="font-size:0.86rem;"></div>
+      </div><!-- /admin-section-report-so -->
+
+      <!-- ── Purchase Orders (detailed, filterable) ── -->
+      <div id="admin-section-report-po" class="admin-section">
+        <div class="admin-section-header"><h2>📦 Purchase Orders</h2></div>
+        <div style="display:flex;gap:0.6rem;align-items:center;flex-wrap:wrap;margin-bottom:1rem;">
+          <label style="color:var(--muted);font-size:0.82rem;">From</label>
+          <input type="date" id="rpt-po-from" style="padding:0.45rem;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:var(--text);color-scheme:dark;">
+          <label style="color:var(--muted);font-size:0.82rem;">To</label>
+          <input type="date" id="rpt-po-to" style="padding:0.45rem;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:var(--text);color-scheme:dark;">
+          <button class="btn-primary" style="border:none;cursor:pointer;padding:0.55rem 1.1rem;border-radius:8px;" onclick="rptRun('po')">▶ Run</button>
+          <button id="rpt-po-csv-btn" style="display:none;cursor:pointer;padding:0.5rem 0.9rem;border-radius:8px;border:1px solid rgba(255,255,255,0.2);background:transparent;color:var(--text);" onclick="rptExportCsv('po')">⬇ CSV</button>
+          <button id="rpt-po-pdf-btn" style="display:none;cursor:pointer;padding:0.5rem 0.9rem;border-radius:8px;border:1px solid rgba(255,255,255,0.2);background:transparent;color:var(--text);" onclick="rptExportPdf('po','PURCHASE ORDERS')">🖨️ PDF</button>
+        </div>
+        <div id="rpt-po-filters" style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.6rem;"></div>
+        <div id="rpt-po-count" style="font-size:0.8rem;color:var(--muted);margin-bottom:0.6rem;"></div>
+        <div id="rpt-po-table" style="font-size:0.86rem;"></div>
+      </div><!-- /admin-section-report-po -->
+
+      <!-- ── Expenses (detailed, filterable) ── -->
+      <div id="admin-section-report-exp" class="admin-section">
+        <div class="admin-section-header"><h2>💸 Expenses</h2></div>
+        <div style="display:flex;gap:0.6rem;align-items:center;flex-wrap:wrap;margin-bottom:1rem;">
+          <label style="color:var(--muted);font-size:0.82rem;">From</label>
+          <input type="date" id="rpt-exp-from" style="padding:0.45rem;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:var(--text);color-scheme:dark;">
+          <label style="color:var(--muted);font-size:0.82rem;">To</label>
+          <input type="date" id="rpt-exp-to" style="padding:0.45rem;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:var(--text);color-scheme:dark;">
+          <button class="btn-primary" style="border:none;cursor:pointer;padding:0.55rem 1.1rem;border-radius:8px;" onclick="rptRun('exp')">▶ Run</button>
+          <button id="rpt-exp-csv-btn" style="display:none;cursor:pointer;padding:0.5rem 0.9rem;border-radius:8px;border:1px solid rgba(255,255,255,0.2);background:transparent;color:var(--text);" onclick="rptExportCsv('exp')">⬇ CSV</button>
+          <button id="rpt-exp-pdf-btn" style="display:none;cursor:pointer;padding:0.5rem 0.9rem;border-radius:8px;border:1px solid rgba(255,255,255,0.2);background:transparent;color:var(--text);" onclick="rptExportPdf('exp','EXPENSES')">🖨️ PDF</button>
+        </div>
+        <div id="rpt-exp-filters" style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.6rem;"></div>
+        <div id="rpt-exp-count" style="font-size:0.8rem;color:var(--muted);margin-bottom:0.6rem;"></div>
+        <div id="rpt-exp-table" style="font-size:0.86rem;"></div>
+      </div><!-- /admin-section-report-exp -->
+
+      <!-- ── P&L (standalone) ── -->
+      <div id="admin-section-report-pl" class="admin-section">
+        <div class="admin-section-header"><h2>📈 Profit &amp; Loss</h2></div>
+        <div style="display:flex;gap:0.6rem;align-items:center;flex-wrap:wrap;margin-bottom:1rem;">
+          <label style="color:var(--muted);font-size:0.82rem;">From</label>
+          <input type="date" id="pl2-from" style="padding:0.45rem;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:var(--text);color-scheme:dark;">
+          <label style="color:var(--muted);font-size:0.82rem;">To</label>
+          <input type="date" id="pl2-to" style="padding:0.45rem;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:var(--text);color-scheme:dark;">
+          <button class="btn-primary" style="border:none;cursor:pointer;padding:0.55rem 1.1rem;border-radius:8px;" onclick="pl2Run()">▶ Run</button>
+          <button id="pl2-csv-btn" style="display:none;cursor:pointer;padding:0.5rem 0.9rem;border-radius:8px;border:1px solid rgba(255,255,255,0.2);background:transparent;color:var(--text);" onclick="pl2ExportCsv()">⬇ CSV</button>
+          <button id="pl2-pdf-btn" style="display:none;cursor:pointer;padding:0.5rem 0.9rem;border-radius:8px;border:1px solid rgba(255,255,255,0.2);background:transparent;color:var(--text);" onclick="pl2Pdf()">🖨️ PDF</button>
+        </div>
+        <div id="pl2-result" style="font-size:0.86rem;"></div>
+      </div><!-- /admin-section-report-pl -->
+
+      <!-- ── GST / GSTR-1 (standalone) ── -->
+      <div id="admin-section-report-gst" class="admin-section">
+        <div class="admin-section-header"><h2>🧾 GST (GSTR-1)</h2></div>
+        <div style="display:flex;gap:0.6rem;align-items:center;flex-wrap:wrap;margin-bottom:1rem;">
+          <label style="color:var(--muted);font-size:0.82rem;">From</label>
+          <input type="date" id="gst2-from" style="padding:0.45rem;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:var(--text);color-scheme:dark;">
+          <label style="color:var(--muted);font-size:0.82rem;">To</label>
+          <input type="date" id="gst2-to" style="padding:0.45rem;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:var(--text);color-scheme:dark;">
+          <button class="btn-primary" style="border:none;cursor:pointer;padding:0.55rem 1.1rem;border-radius:8px;" onclick="gst2Run()">▶ Run</button>
+          <button id="gst2-csv-btn" style="display:none;cursor:pointer;padding:0.5rem 0.9rem;border-radius:8px;border:1px solid rgba(255,255,255,0.2);background:transparent;color:var(--text);" onclick="gst2ExportCsv()">⬇ CSV</button>
+          <button id="gst2-pdf-btn" style="display:none;cursor:pointer;padding:0.5rem 0.9rem;border-radius:8px;border:1px solid rgba(255,255,255,0.2);background:transparent;color:var(--text);" onclick="gst2Pdf()">🖨️ PDF</button>
+        </div>
+        <div id="gst2-result" style="font-size:0.86rem;"></div>
+      </div><!-- /admin-section-report-gst -->
 
       <!-- ── Reconcile with MyBillBook (cancellations / returns / rejections) ── -->
       <div id="admin-section-odoo-reconcile" class="admin-section">
@@ -12057,6 +12160,11 @@ Questions? We're always here!
       if (section === 'odoo-reconcile') recInit();
       if (section === 'sales-match')   svInit();
       if (section === 'stock-match')   smInit();
+      if (section === 'report-so')  rptInit('so');
+      if (section === 'report-po')  rptInit('po');
+      if (section === 'report-exp') rptInit('exp');
+      if (section === 'report-pl')  pl2Init();
+      if (section === 'report-gst') gst2Init();
       if (section === 'odoo-razorpay') rzbInit();
       if (section === 'razorpay-payments') rpayInit();
       if (section === 'razorpay-settlements') rsetInit();
@@ -12687,7 +12795,7 @@ Questions? We're always here!
       document.querySelectorAll('#admin-section-odoo-reports [data-rep]').forEach(b=>b.classList.remove('active'));
       if (el) el.classList.add('active');
       document.getElementById('or-name').style.display   = (rep==='customer-statement') ? '' : 'none';
-      document.getElementById('or-daterange').style.display = (rep==='pl'||rep==='gstr1'||rep==='razorpay-invoices') ? 'inline-flex' : 'none';
+      document.getElementById('or-daterange').style.display = (rep==='razorpay-invoices') ? 'inline-flex' : 'none';
       document.getElementById('or-result').innerHTML = '';
       document.getElementById('or-csv-btn').style.display = 'none';
       document.getElementById('or-pdf-btn').style.display = 'none';
@@ -12699,14 +12807,12 @@ Questions? We're always here!
       document.getElementById('or-csv-btn').style.display='none';
       const p={ action:_orRep };
       if (_orRep==='customer-statement') p.nameLike=document.getElementById('or-name').value.trim();
-      if (_orRep==='pl'||_orRep==='gstr1'||_orRep==='razorpay-invoices'){ p.from=document.getElementById('or-from').value; p.to=document.getElementById('or-to').value; }
+      if (_orRep==='razorpay-invoices'){ p.from=document.getElementById('or-from').value; p.to=document.getElementById('or-to').value; }
       let d; try { d=await adminPost('admin-odoo-reports', p); } catch(e){ res.innerHTML='<p style="color:#f87171">'+e.message+'</p>'; return; }
       if (!d.success){ res.innerHTML='<p style="color:#f87171">'+(d.error||'Failed')+'</p>'; return; }
       _orLast=d;
       if (_orRep==='customer-statement') orRenderStatement(d);
       else if (_orRep==='aged') orRenderAged(d);
-      else if (_orRep==='pl') orRenderPL(d);
-      else if (_orRep==='gstr1') orRenderGstr1(d);
       else if (_orRep==='stock') orRenderStock(d);
       else if (_orRep==='unsynced') orRenderUnsynced(d);
       else if (_orRep==='razorpay-invoices') orRenderRazorpayInvoices(d);
@@ -12730,19 +12836,6 @@ Questions? We're always here!
       if(!d.rows.length) h='<p style="color:var(--muted)">No outstanding receivables. 🎉</p>';
       document.getElementById('or-result').innerHTML=h;
     }
-    function orRenderPL(d){
-      const inc=d.rows.filter(r=>r.type.indexOf('income')===0), exp=d.rows.filter(r=>r.type.indexOf('expense')===0);
-      let h=`<div style="margin-bottom:0.6rem;color:var(--muted)">Period ${_e(d.from)} → ${_e(d.to)}</div><div class="admin-table-wrap"><table class="admin-table"><tbody>`;
-      h+='<tr style="background:rgba(212,175,55,0.08)"><td colspan="2"><b>Income</b></td></tr>';
-      inc.forEach(r=>h+=`<tr><td>${_e(r.code)} ${_e(r.name)}</td><td style="text-align:right">${_inr(-r.balance)}</td></tr>`);
-      h+=`<tr style="font-weight:700"><td>Total Revenue</td><td style="text-align:right">${_inr(d.revenue)}</td></tr>`;
-      h+='<tr style="background:rgba(212,175,55,0.08)"><td colspan="2"><b>Expenses &amp; COGS</b></td></tr>';
-      exp.forEach(r=>h+=`<tr><td>${_e(r.code)} ${_e(r.name)}</td><td style="text-align:right">${_inr(r.balance)}</td></tr>`);
-      h+=`<tr style="font-weight:700"><td>Total Expenses</td><td style="text-align:right">${_inr(d.expenses)}</td></tr>`;
-      h+=`<tr style="font-weight:700;border-top:2px solid var(--gold)"><td>NET ${d.net<0?'LOSS':'PROFIT'}</td><td style="text-align:right;color:${d.net<0?'#f87171':'#34d399'}">${_inr(d.net)}</td></tr>`;
-      h+='</tbody></table></div><div style="color:var(--muted);font-size:0.78rem;margin-top:0.5rem;">Note: COGS here is Purchases + Stock-Variation as booked in Odoo. Inventory-adjusted month-end COGS is set at close.</div>';
-      document.getElementById('or-result').innerHTML=h;
-    }
     function orRenderUnsynced(d){
       let h=`<div style="margin-bottom:0.6rem;color:var(--muted)">Sales recorded in <b>Odoo</b> but not in MyBillBook (entered via Direct Sales). While MyBillBook is your book of record, staff should <b>back-enter these into MyBillBook</b>.</div>`;
       if(!d.rows.length){ document.getElementById('or-result').innerHTML=h+'<p style="color:#34d399">✅ Nothing out of sync — all Odoo sales came from MyBillBook.</p>'; return; }
@@ -12762,15 +12855,6 @@ Questions? We're always here!
       d.rows.forEach(r=>{ h+=`<tr><td>${_e(r.sku)}</td><td>${_e(r.name)}</td><td style="text-align:right;${r.qty<0?'color:#f87171;font-weight:700':''}">${r.qty}</td><td style="text-align:right">${_inr(r.cost)}</td><td style="text-align:right">${_inr(r.value)}</td></tr>`; });
       h+='</tbody></table></div><div style="color:var(--muted);font-size:0.78rem;margin-top:0.5rem;">Live Odoo on-hand (opening + purchases − sales as synced). Negative rows = over-sold in MyBillBook; clean those to reconcile.</div>';
       if(!d.rows.length) h='<p style="color:var(--muted)">No stock on hand in Odoo.</p>';
-      document.getElementById('or-result').innerHTML=h;
-    }
-    function orRenderGstr1(d){
-      let h=`<div style="margin-bottom:0.6rem;color:var(--muted)">Period ${_e(d.from)} → ${_e(d.to)} · ${d.invoiceCount} invoices</div><div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Table</th><th>Description</th><th style="text-align:right">Value</th><th style="text-align:right">Tax</th></tr></thead><tbody>`;
-      h+=`<tr><td>4A</td><td>B2B (registered)</td><td style="text-align:right">${_inr(d.b2bTotal)}</td><td style="text-align:right">${_inr(d.taxAmount)}</td></tr>`;
-      h+=`<tr><td>7</td><td>B2C (unregistered)</td><td style="text-align:right">${_inr(d.b2cTotal)}</td><td style="text-align:right">—</td></tr>`;
-      h+=`<tr><td>8</td><td>Nil-rated / Exempt</td><td style="text-align:right">${_inr(d.exemptValue)}</td><td style="text-align:right">—</td></tr>`;
-      h+=`<tr style="font-weight:700;border-top:2px solid var(--gold)"><td colspan="2">Taxable value</td><td style="text-align:right">${_inr(d.taxableValue)}</td><td style="text-align:right">${_inr(d.taxAmount)}</td></tr>`;
-      h+='</tbody></table></div>';
       document.getElementById('or-result').innerHTML=h;
     }
     function orRenderRazorpayInvoices(d){
@@ -12797,10 +12881,8 @@ Questions? We're always here!
       if(!_orLast) return; let rows=[];
       if(_orRep==='customer-statement'){ rows.push(['Date','Document','Debit','Credit','Balance']); _orLast.lines.forEach(l=>rows.push([l.date,l.doc,l.debit,l.credit,l.balance])); rows.push(['','Totals',_orLast.totalInvoiced,_orLast.totalPaid,'Due '+_orLast.outstanding]); }
       else if(_orRep==='aged'){ rows.push(['Customer','0-30','31-60','61-90','90+','Total']); _orLast.rows.forEach(r=>rows.push([r.customer,r.d0_30,r.d31_60,r.d61_90,r.d90,r.total])); }
-      else if(_orRep==='pl'){ rows.push(['Code','Account','Type','Amount']); _orLast.rows.forEach(r=>rows.push([r.code,r.name,r.type,r.balance])); rows.push([],['','Revenue','',_orLast.revenue],['','Expenses','',_orLast.expenses],['','Net','',_orLast.net]); }
       else if(_orRep==='stock'){ rows.push(['SKU','Book','Category','Qty','Cost','Value']); _orLast.rows.forEach(r=>rows.push([r.sku,r.name,r.category,r.qty,r.cost,r.value])); rows.push([],['','','','','Total value',_orLast.totalValue]); }
       else if(_orRep==='unsynced'){ rows.push(['Odoo SO','Ref','Date','Customer','Amount','Invoiced']); _orLast.rows.forEach(r=>rows.push([r.so,r.ref,r.date,r.cust,r.total,r.invoiced?'yes':'no'])); }
-      else if(_orRep==='gstr1'){ rows.push(['Metric','Value']); rows.push(['Invoices',_orLast.invoiceCount],['Taxable',_orLast.taxableValue],['Tax',_orLast.taxAmount],['Exempt',_orLast.exemptValue],['B2B',_orLast.b2bTotal],['B2C',_orLast.b2cTotal]); }
       else if(_orRep==='razorpay-invoices'){ rows.push(['Type','Invoice','Date','Customer','Total','Tax','Paid','Test?']);
         _orLast.club.forEach(r=>rows.push(['Book Club',r.number,r.date,r.customer,r.total,r.tax,r.paid,r.isTest?'yes':'']));
         _orLast.subscriptions.forEach(r=>rows.push(['Author Subscription',r.number,r.date,r.customer,r.total,r.tax,r.paid,r.isTest?'yes':'']));
@@ -12854,25 +12936,6 @@ Questions? We're always here!
       if(!_orLast) return;
       if(_orRep==='customer-statement') return orStatementPdf();
       const d=_orLast;
-      if(_orRep==='pl'){
-        const rows=d.rows.map(r=>`<tr><td>${_e(r.code)}</td><td>${_e(r.name)}</td><td>${_e(r.type)}</td><td class="r">${_inr(r.balance)}</td></tr>`).join('');
-        const body='<table><thead><tr><th>Code</th><th>Account</th><th>Type</th><th class="r">Amount</th></tr></thead><tbody>'+rows
-          +'</tbody><tfoot><tr><td colspan="3">Revenue</td><td class="r">'+_inr(d.revenue)+'</td></tr>'
-          +'<tr><td colspan="3">Expenses</td><td class="r">'+_inr(d.expenses)+'</td></tr>'
-          +'<tr><td colspan="3">NET '+(d.net<0?'LOSS':'PROFIT')+'</td><td class="r" style="color:'+(d.net<0?'#C00000':'#2E7D32')+'">'+_inr(d.net)+'</td></tr></tfoot></table>';
-        return _printReport('PROFIT & LOSS STATEMENT', 'Period '+_e(d.from)+' to '+_e(d.to), body);
-      }
-      if(_orRep==='gstr1'){
-        const body='<table><tbody>'
-          +'<tr><td>Invoices</td><td class="r">'+d.invoiceCount+'</td></tr>'
-          +'<tr><td>Taxable Value</td><td class="r">'+_inr(d.taxableValue)+'</td></tr>'
-          +'<tr><td>Tax Amount</td><td class="r">'+_inr(d.taxAmount)+'</td></tr>'
-          +'<tr><td>Exempt Value</td><td class="r">'+_inr(d.exemptValue)+'</td></tr>'
-          +'<tr><td>B2B Total</td><td class="r">'+_inr(d.b2bTotal)+'</td></tr>'
-          +'<tr><td>B2C Total</td><td class="r">'+_inr(d.b2cTotal)+'</td></tr>'
-          +'</tbody></table>';
-        return _printReport('GSTR-1 SUMMARY', 'Period '+_e(d.from)+' to '+_e(d.to), body);
-      }
       if(_orRep==='aged'){
         const rows=d.rows.map(r=>`<tr><td>${_e(r.customer)}</td><td class="r">${_inr(r.d0_30)}</td><td class="r">${_inr(r.d31_60)}</td><td class="r">${_inr(r.d61_90)}</td><td class="r">${_inr(r.d90)}</td><td class="r">${_inr(r.total)}</td></tr>`).join('');
         const t=d.totals;
@@ -12900,6 +12963,222 @@ Questions? We're always here!
           +'</tbody><tfoot><tr><td colspan="3">Total</td><td class="r">'+_inr(d.subscriptionsTotal)+'</td><td colspan="2"></td></tr></tfoot></table>';
         return _printReport('RAZORPAY INVOICES — BOOK CLUB & SUBSCRIPTIONS', 'Period '+_e(d.from)+' to '+_e(d.to), body);
       }
+    }
+
+    // ── Detailed Reports (Sale Orders / Purchase Orders / Expenses) ────────────
+    // Generic filterable-table engine shared by all three: each column can be a
+    // free-text substring filter or a dropdown (values derived from loaded rows).
+    const _rpt = {};   // prefix -> { rows, columns, filtered }
+    const _RPT_DEF = {
+      so:  { action:'sale-orders-detail', title:'SALE ORDERS', totalLabel:'Total (all rows)',
+        columns: [
+          { key:'number', label:'SO Number', filter:'text' },
+          { key:'date', label:'Date', filter:'text' },
+          { key:'customer', label:'Customer', filter:'text' },
+          { key:'ref', label:'Reference', filter:'text' },
+          { key:'status', label:'Status', filter:'select' },
+          { key:'invoiced', label:'Invoiced', filter:'select' },
+          { key:'total', label:'Total', align:'right', format:v=>_inr(v) },
+        ] },
+      po:  { action:'purchase-orders-detail', title:'PURCHASE ORDERS', totalLabel:'Total (all rows)',
+        columns: [
+          { key:'number', label:'PO Number', filter:'text' },
+          { key:'date', label:'Date', filter:'text' },
+          { key:'vendor', label:'Vendor', filter:'text' },
+          { key:'ref', label:'Reference', filter:'text' },
+          { key:'status', label:'Status', filter:'select' },
+          { key:'invoiced', label:'Invoiced', filter:'select' },
+          { key:'total', label:'Total', align:'right', format:v=>_inr(v) },
+        ] },
+      exp: { action:'expenses-detail', title:'EXPENSES', totalLabel:'Total (all rows)',
+        columns: [
+          { key:'number', label:'Bill Number', filter:'text' },
+          { key:'date', label:'Date', filter:'text' },
+          { key:'vendor', label:'Vendor', filter:'text' },
+          { key:'category', label:'Category', filter:'select' },
+          { key:'status', label:'Status', filter:'select' },
+          { key:'paid', label:'Paid', filter:'select' },
+          { key:'total', label:'Total', align:'right', format:v=>_inr(v) },
+        ] },
+    };
+    function rptInit(prefix) {
+      const mr=_orMonthRange();
+      const f=document.getElementById('rpt-'+prefix+'-from'), t=document.getElementById('rpt-'+prefix+'-to');
+      if (f && !f.value) f.value=mr.from; if (t && !t.value) t.value=mr.to;
+    }
+    async function rptRun(prefix) {
+      const def = _RPT_DEF[prefix];
+      const from = document.getElementById('rpt-'+prefix+'-from').value;
+      const to = document.getElementById('rpt-'+prefix+'-to').value;
+      const tableEl = document.getElementById('rpt-'+prefix+'-table');
+      tableEl.innerHTML = '<p style="color:var(--muted)">⏳ Loading…</p>';
+      document.getElementById('rpt-'+prefix+'-csv-btn').style.display = 'none';
+      document.getElementById('rpt-'+prefix+'-pdf-btn').style.display = 'none';
+      let d; try { d = await adminPost('admin-odoo-reports', { action: def.action, from, to }); }
+      catch (e) { tableEl.innerHTML = '<p style="color:#f87171">'+e.message+'</p>'; return; }
+      if (!d.success) { tableEl.innerHTML = '<p style="color:#f87171">'+(d.error||'Failed')+'</p>'; return; }
+      _rpt[prefix] = { rows: d.rows, columns: def.columns, filtered: d.rows, total: d.total };
+      rptRenderFilters(prefix);
+      rptApplyFilters(prefix);
+      document.getElementById('rpt-'+prefix+'-csv-btn').style.display = '';
+      document.getElementById('rpt-'+prefix+'-pdf-btn').style.display = '';
+    }
+    function rptRenderFilters(prefix) {
+      const st = _rpt[prefix];
+      const el = document.getElementById('rpt-'+prefix+'-filters');
+      const inputStyle = 'padding:0.4rem 0.6rem;border-radius:6px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:var(--text);font-size:0.82rem;min-width:150px;';
+      el.innerHTML = st.columns.filter(c=>c.filter).map(c => {
+        if (c.filter === 'select') {
+          const vals = [...new Set(st.rows.map(r=>r[c.key]).filter(v=>v!=null && v!==''))].sort();
+          return `<select id="rpt-${prefix}-f-${c.key}" onchange="rptApplyFilters('${prefix}')" style="${inputStyle}">
+            <option value="">${_e(c.label)}: All</option>
+            ${vals.map(v=>`<option value="${_e(v)}">${_e(v)}</option>`).join('')}
+          </select>`;
+        }
+        return `<input id="rpt-${prefix}-f-${c.key}" placeholder="${_e(c.label)}…" oninput="rptApplyFilters('${prefix}')" style="${inputStyle}">`;
+      }).join('') + `<button class="admin-filter-btn" onclick="rptClearFilters('${prefix}')" style="padding:0.4rem 0.8rem;">✕ Clear filters</button>`;
+    }
+    function rptClearFilters(prefix) {
+      const st = _rpt[prefix];
+      st.columns.filter(c=>c.filter).forEach(c => { const el = document.getElementById('rpt-'+prefix+'-f-'+c.key); if (el) el.value = ''; });
+      rptApplyFilters(prefix);
+    }
+    function rptApplyFilters(prefix) {
+      const st = _rpt[prefix];
+      const active = {};
+      st.columns.filter(c=>c.filter).forEach(c => {
+        const el = document.getElementById('rpt-'+prefix+'-f-'+c.key);
+        if (el && el.value.trim()) active[c.key] = el.value.trim().toLowerCase();
+      });
+      st.filtered = st.rows.filter(r => Object.keys(active).every(k => String(r[k]==null?'':r[k]).toLowerCase().includes(active[k])));
+      rptRenderTable(prefix);
+    }
+    function rptRenderTable(prefix) {
+      const st = _rpt[prefix];
+      const el = document.getElementById('rpt-'+prefix+'-table');
+      const countEl = document.getElementById('rpt-'+prefix+'-count');
+      const filteredTotal = st.filtered.reduce((s,r)=> s + (typeof r.total==='number' ? r.total : 0), 0);
+      if (countEl) countEl.textContent = st.filtered.length + ' of ' + st.rows.length + ' rows shown · filtered total ' + _inr(filteredTotal);
+      let h = '<div class="admin-table-wrap"><table class="admin-table"><thead><tr>' + st.columns.map(c=>`<th${c.align==='right'?' style="text-align:right"':''}>${_e(c.label)}</th>`).join('') + '</tr></thead><tbody>';
+      st.filtered.forEach(r => { h += '<tr>' + st.columns.map(c => {
+        const v = c.format ? c.format(r[c.key], r) : _e(r[c.key]);
+        return `<td${c.align==='right'?' style="text-align:right"':''}>${v}</td>`;
+      }).join('') + '</tr>'; });
+      h += '</tbody></table></div>';
+      if (!st.filtered.length) h = '<p style="color:var(--muted)">No rows match the current filters.</p>';
+      el.innerHTML = h;
+    }
+    function rptExportCsv(prefix) {
+      const st = _rpt[prefix]; if (!st) return;
+      const rows = [st.columns.map(c=>c.label)];
+      st.filtered.forEach(r => rows.push(st.columns.map(c => r[c.key] == null ? '' : r[c.key])));
+      const csv = rows.map(r=>r.map(c=>`"${String(c==null?'':c).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+      const blob = new Blob([csv],{type:'text/csv'}), a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = `yfb-${prefix}-${Date.now()}.csv`; a.click(); URL.revokeObjectURL(a.href);
+    }
+    function rptExportPdf(prefix, title) {
+      const st = _rpt[prefix]; if (!st) return;
+      const thead = '<tr>' + st.columns.map(c=>`<th${c.align==='right'?' class="r"':''}>${_e(c.label)}</th>`).join('') + '</tr>';
+      const rows = st.filtered.map(r => '<tr>' + st.columns.map(c => {
+        const v = c.format ? c.format(r[c.key], r) : _e(r[c.key]);
+        return `<td${c.align==='right'?' class="r"':''}>${v}</td>`;
+      }).join('') + '</tr>').join('');
+      const body = '<table><thead>'+thead+'</thead><tbody>'+rows+'</tbody></table>';
+      _printReport(title, st.filtered.length+' of '+st.rows.length+' rows', body);
+    }
+
+    // ── P&L (standalone, under Odoo → Reports) ──────────────────────────────────
+    let _pl2Last = null;
+    function pl2Init() {
+      const mr=_orMonthRange(), f=document.getElementById('pl2-from'), t=document.getElementById('pl2-to');
+      if (f && !f.value) f.value=mr.from; if (t && !t.value) t.value=mr.to;
+    }
+    async function pl2Run() {
+      const from = document.getElementById('pl2-from').value, to = document.getElementById('pl2-to').value;
+      const res = document.getElementById('pl2-result'); res.innerHTML = '<p style="color:var(--muted)">⏳ Loading…</p>';
+      document.getElementById('pl2-csv-btn').style.display = 'none';
+      document.getElementById('pl2-pdf-btn').style.display = 'none';
+      let d; try { d = await adminPost('admin-odoo-reports', { action:'pl', from, to }); }
+      catch (e) { res.innerHTML = '<p style="color:#f87171">'+e.message+'</p>'; return; }
+      if (!d.success) { res.innerHTML = '<p style="color:#f87171">'+(d.error||'Failed')+'</p>'; return; }
+      _pl2Last = d;
+      const inc=d.rows.filter(r=>r.type.indexOf('income')===0), exp=d.rows.filter(r=>r.type.indexOf('expense')===0);
+      let h=`<div style="margin-bottom:0.6rem;color:var(--muted)">Period ${_e(d.from)} → ${_e(d.to)}</div><div class="admin-table-wrap"><table class="admin-table"><tbody>`;
+      h+='<tr style="background:rgba(212,175,55,0.08)"><td colspan="2"><b>Income</b></td></tr>';
+      inc.forEach(r=>h+=`<tr><td>${_e(r.code)} ${_e(r.name)}</td><td style="text-align:right">${_inr(-r.balance)}</td></tr>`);
+      h+=`<tr style="font-weight:700"><td>Total Revenue</td><td style="text-align:right">${_inr(d.revenue)}</td></tr>`;
+      h+='<tr style="background:rgba(212,175,55,0.08)"><td colspan="2"><b>Expenses &amp; COGS</b></td></tr>';
+      exp.forEach(r=>h+=`<tr><td>${_e(r.code)} ${_e(r.name)}</td><td style="text-align:right">${_inr(r.balance)}</td></tr>`);
+      h+=`<tr style="font-weight:700"><td>Total Expenses</td><td style="text-align:right">${_inr(d.expenses)}</td></tr>`;
+      h+=`<tr style="font-weight:700;border-top:2px solid var(--gold)"><td>NET ${d.net<0?'LOSS':'PROFIT'}</td><td style="text-align:right;color:${d.net<0?'#f87171':'#34d399'}">${_inr(d.net)}</td></tr>`;
+      h+='</tbody></table></div><div style="color:var(--muted);font-size:0.78rem;margin-top:0.5rem;">Note: COGS here is Purchases + Stock-Variation as booked in Odoo. Inventory-adjusted month-end COGS is set at close.</div>';
+      res.innerHTML = h;
+      document.getElementById('pl2-csv-btn').style.display = '';
+      document.getElementById('pl2-pdf-btn').style.display = '';
+    }
+    function pl2ExportCsv() {
+      if (!_pl2Last) return; const d=_pl2Last;
+      const rows=[['Code','Account','Type','Amount']];
+      d.rows.forEach(r=>rows.push([r.code,r.name,r.type,r.balance]));
+      rows.push([],['','Revenue','',d.revenue],['','Expenses','',d.expenses],['','Net','',d.net]);
+      const csv=rows.map(r=>r.map(c=>`"${String(c==null?'':c).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+      const blob=new Blob([csv],{type:'text/csv'}), a=document.createElement('a');
+      a.href=URL.createObjectURL(blob); a.download=`yfb-pl-${Date.now()}.csv`; a.click(); URL.revokeObjectURL(a.href);
+    }
+    function pl2Pdf() {
+      if (!_pl2Last) return; const d=_pl2Last;
+      const rows=d.rows.map(r=>`<tr><td>${_e(r.code)}</td><td>${_e(r.name)}</td><td>${_e(r.type)}</td><td class="r">${_inr(r.balance)}</td></tr>`).join('');
+      const body='<table><thead><tr><th>Code</th><th>Account</th><th>Type</th><th class="r">Amount</th></tr></thead><tbody>'+rows
+        +'</tbody><tfoot><tr><td colspan="3">Revenue</td><td class="r">'+_inr(d.revenue)+'</td></tr>'
+        +'<tr><td colspan="3">Expenses</td><td class="r">'+_inr(d.expenses)+'</td></tr>'
+        +'<tr><td colspan="3">NET '+(d.net<0?'LOSS':'PROFIT')+'</td><td class="r" style="color:'+(d.net<0?'#C00000':'#2E7D32')+'">'+_inr(d.net)+'</td></tr></tfoot></table>';
+      _printReport('PROFIT & LOSS STATEMENT', 'Period '+_e(d.from)+' to '+_e(d.to), body);
+    }
+
+    // ── GST / GSTR-1 (standalone, under Odoo → Reports) ─────────────────────────
+    let _gst2Last = null;
+    function gst2Init() {
+      const mr=_orMonthRange(), f=document.getElementById('gst2-from'), t=document.getElementById('gst2-to');
+      if (f && !f.value) f.value=mr.from; if (t && !t.value) t.value=mr.to;
+    }
+    async function gst2Run() {
+      const from = document.getElementById('gst2-from').value, to = document.getElementById('gst2-to').value;
+      const res = document.getElementById('gst2-result'); res.innerHTML = '<p style="color:var(--muted)">⏳ Loading…</p>';
+      document.getElementById('gst2-csv-btn').style.display = 'none';
+      document.getElementById('gst2-pdf-btn').style.display = 'none';
+      let d; try { d = await adminPost('admin-odoo-reports', { action:'gstr1', from, to }); }
+      catch (e) { res.innerHTML = '<p style="color:#f87171">'+e.message+'</p>'; return; }
+      if (!d.success) { res.innerHTML = '<p style="color:#f87171">'+(d.error||'Failed')+'</p>'; return; }
+      _gst2Last = d;
+      let h=`<div style="margin-bottom:0.6rem;color:var(--muted)">Period ${_e(d.from)} → ${_e(d.to)} · ${d.invoiceCount} invoices</div><div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Table</th><th>Description</th><th style="text-align:right">Value</th><th style="text-align:right">Tax</th></tr></thead><tbody>`;
+      h+=`<tr><td>4A</td><td>B2B (registered)</td><td style="text-align:right">${_inr(d.b2bTotal)}</td><td style="text-align:right">${_inr(d.taxAmount)}</td></tr>`;
+      h+=`<tr><td>7</td><td>B2C (unregistered)</td><td style="text-align:right">${_inr(d.b2cTotal)}</td><td style="text-align:right">—</td></tr>`;
+      h+=`<tr><td>8</td><td>Nil-rated / Exempt</td><td style="text-align:right">${_inr(d.exemptValue)}</td><td style="text-align:right">—</td></tr>`;
+      h+=`<tr style="font-weight:700;border-top:2px solid var(--gold)"><td colspan="2">Taxable value</td><td style="text-align:right">${_inr(d.taxableValue)}</td><td style="text-align:right">${_inr(d.taxAmount)}</td></tr>`;
+      h+='</tbody></table></div>';
+      res.innerHTML = h;
+      document.getElementById('gst2-csv-btn').style.display = '';
+      document.getElementById('gst2-pdf-btn').style.display = '';
+    }
+    function gst2ExportCsv() {
+      if (!_gst2Last) return; const d=_gst2Last;
+      const rows=[['Metric','Value']];
+      rows.push(['Invoices',d.invoiceCount],['Taxable',d.taxableValue],['Tax',d.taxAmount],['Exempt',d.exemptValue],['B2B',d.b2bTotal],['B2C',d.b2cTotal]);
+      const csv=rows.map(r=>r.map(c=>`"${String(c==null?'':c).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+      const blob=new Blob([csv],{type:'text/csv'}), a=document.createElement('a');
+      a.href=URL.createObjectURL(blob); a.download=`yfb-gstr1-${Date.now()}.csv`; a.click(); URL.revokeObjectURL(a.href);
+    }
+    function gst2Pdf() {
+      if (!_gst2Last) return; const d=_gst2Last;
+      const body='<table><tbody>'
+        +'<tr><td>Invoices</td><td class="r">'+d.invoiceCount+'</td></tr>'
+        +'<tr><td>Taxable Value</td><td class="r">'+_inr(d.taxableValue)+'</td></tr>'
+        +'<tr><td>Tax Amount</td><td class="r">'+_inr(d.taxAmount)+'</td></tr>'
+        +'<tr><td>Exempt Value</td><td class="r">'+_inr(d.exemptValue)+'</td></tr>'
+        +'<tr><td>B2B Total</td><td class="r">'+_inr(d.b2bTotal)+'</td></tr>'
+        +'<tr><td>B2C Total</td><td class="r">'+_inr(d.b2cTotal)+'</td></tr>'
+        +'</tbody></table>';
+      _printReport('GSTR-1 SUMMARY', 'Period '+_e(d.from)+' to '+_e(d.to), body);
     }
 
     // ── Helpers ──

@@ -331,10 +331,26 @@ exports.handler = async (event) => {
         [[['date_order','>=',from],['date_order','<=',to+' 23:59:59']],
          ['name','date_order','partner_id','client_order_ref','state','amount_total','invoice_ids']],
         { order:'date_order desc, id desc', limit: 3000 });
-      const rows = sos.map(s => ({ number: s.name, date: (s.date_order||'').slice(0,10),
-        customer: (s.partner_id&&s.partner_id[1])||'', ref: s.client_order_ref||'',
-        status: s.state, total: r2(s.amount_total), invoiced: (s.invoice_ids||[]).length ? 'yes' : 'no' }));
-      return json({ success:true, from, to, count: rows.length, rows, total: r2(rows.reduce((s,r)=>s+r.total,0)) });
+      // A reconciled cancellation (credit-noted invoice) leaves the SO's own state
+      // at 'sale' -- Odoo never flips it -- so without this check a reversed order
+      // still shows as a normal live sale. Flag it (status: 'reversed') rather
+      // than dropping it, so the report stays a complete audit trail; the row is
+      // still visible/exportable, just distinguishable and filterable.
+      const allInvIds = sos.flatMap(s => s.invoice_ids||[]);
+      const reversedIds = new Set();
+      if (allInvIds.length) {
+        const cns = await odoo.execKw('account.move','search_read',
+          [[['move_type','=','out_refund'],['state','=','posted'],['reversed_entry_id','in',allInvIds]], ['reversed_entry_id']], { limit: 20000 });
+        cns.forEach(c => { if (c.reversed_entry_id) reversedIds.add(c.reversed_entry_id[0]); });
+      }
+      const rows = sos.map(s => {
+        const reversed = (s.invoice_ids||[]).some(id => reversedIds.has(id));
+        return { number: s.name, date: (s.date_order||'').slice(0,10),
+          customer: (s.partner_id&&s.partner_id[1])||'', ref: s.client_order_ref||'',
+          status: reversed ? 'reversed' : s.state, total: r2(s.amount_total), invoiced: (s.invoice_ids||[]).length ? 'yes' : 'no' };
+      });
+      const liveTotal = r2(rows.filter(r=>r.status!=='reversed').reduce((s,r)=>s+r.total,0));
+      return json({ success:true, from, to, count: rows.length, rows, total: r2(rows.reduce((s,r)=>s+r.total,0)), liveTotal });
     }
 
     if (action === 'purchase-orders-detail') {

@@ -37,21 +37,39 @@ function prevPeriod(from, to) {
 // delivery/discount lines (product.type != 'product') same as the author-sales
 // refresh. Reversed-invoice exclusion mirrors the fix applied to that pipeline
 // and to the Sale Orders report -- an SO's own state never flips on reversal.
+//
+// IMPORTANT: dates come from each SO's own INVOICE (invoice_date), never from
+// sale.order.date_order. date_order is unreliable for MyBillBook-synced orders
+// -- a one-time historical bulk import stamped ~190 orders spanning months of
+// real activity onto a handful of sync-run days (119 of them landed on the
+// single date 2026-06-28), so date_order-based filtering silently collapses
+// weeks of sales onto the wrong day. invoice_date is the same field P&L and
+// Sales Match already rely on and is verified accurate (daily-varying, no
+// clustering). No pre-filter by date_order in the query -- SOs are fetched by
+// ref pattern only, then bucketed by resolved invoice_date in JS.
 async function liveSaleLines(odoo, from, to) {
   const sos = await odoo.execKw('sale.order','search_read',
-    [['&',['date_order','>=',from],['date_order','<=',to+' 23:59:59'],
-      '|',['client_order_ref','=like','sales:%'],['client_order_ref','=like','mbb:%']]],
-    { fields:['id','date_order','partner_id','invoice_ids'], limit: 10000 });
+    [['|',['client_order_ref','=like','sales:%'],['client_order_ref','=like','mbb:%']]],
+    { fields:['id','partner_id','invoice_ids'], limit: 10000 });
   const allInvIds = sos.flatMap(s => s.invoice_ids||[]);
+  const invs = allInvIds.length ? await odoo.execKw('account.move','search_read',
+    [[['id','in',allInvIds]]], { fields:['id','invoice_date','move_type','state'] }) : [];
+  const invById = {}; invs.forEach(i => invById[i.id] = i);
   const reversedIds = new Set();
   if (allInvIds.length) {
     const cns = await odoo.execKw('account.move','search_read',
       [[['move_type','=','out_refund'],['state','=','posted'],['reversed_entry_id','in',allInvIds]], ['reversed_entry_id']], { limit: 20000 });
     cns.forEach(c => { if (c.reversed_entry_id) reversedIds.add(c.reversed_entry_id[0]); });
   }
-  const live = sos.filter(s => !(s.invoice_ids||[]).some(id => reversedIds.has(id)));
-  const soById = {}; live.forEach(s => soById[s.id] = s);
-  const soIds = live.map(s => s.id);
+  const soMeta = {};
+  for (const s of sos) {
+    const invId = (s.invoice_ids||[]).find(id => invById[id] && invById[id].move_type==='out_invoice' && invById[id].state==='posted');
+    if (!invId || reversedIds.has(invId)) continue;
+    const date = invById[invId].invoice_date;
+    if (!date || date < from || date > to) continue;
+    soMeta[s.id] = { date, partnerId: s.partner_id ? s.partner_id[0] : null, partnerName: s.partner_id ? s.partner_id[1] : '' };
+  }
+  const soIds = Object.keys(soMeta).map(Number);
   const lines = soIds.length ? await odoo.execKw('sale.order.line','search_read',
     [[['order_id','in',soIds],['product_id','!=',false]], ['order_id','product_id','product_uom_qty','price_subtotal','name']], { limit: 30000 }) : [];
   const prodIds = [...new Set(lines.map(l => l.product_id[0]))];
@@ -61,10 +79,10 @@ async function liveSaleLines(odoo, from, to) {
   const out = [];
   for (const l of lines) {
     const prod = prodById[l.product_id[0]]; if (!prod || prod.type !== 'product') continue;
-    const so = soById[l.order_id[0]]; if (!so) continue;
+    const meta = soMeta[l.order_id[0]]; if (!meta) continue;
     out.push({
-      soId: so.id, date: (so.date_order||'').slice(0,10),
-      partnerId: so.partner_id ? so.partner_id[0] : null, partnerName: so.partner_id ? so.partner_id[1] : '',
+      soId: l.order_id[0], date: meta.date,
+      partnerId: meta.partnerId, partnerName: meta.partnerName,
       productId: prod.id, sku: prod.default_code||'', name: l.name || prod.name,
       category: (prod.categ_id && prod.categ_id[1]) || '',
       qty: l.product_uom_qty||0, amount: l.price_subtotal||0
@@ -379,28 +397,41 @@ exports.handler = async (event) => {
     }
 
     if (action === 'sale-orders-detail') {
+      // date_order is NOT reliable for MyBillBook-synced orders -- a one-time
+      // historical bulk import stamped ~190 orders spanning months onto a
+      // handful of sync-run days (119 landed on the single date 2026-06-28).
+      // Resolve each order's TRUE date from its own invoice's invoice_date
+      // instead (same field P&L/Sales Match rely on, verified accurate) --
+      // falling back to date_order only when there's no invoice yet (a draft
+      // quotation genuinely has no better date source). No pre-filter by
+      // date_order in the query; every SO is fetched and bucketed in JS.
       const sos = await odoo.execKw('sale.order','search_read',
-        [[['date_order','>=',from],['date_order','<=',to+' 23:59:59']],
-         ['name','date_order','partner_id','client_order_ref','state','amount_total','invoice_ids']],
-        { order:'date_order desc, id desc', limit: 3000 });
+        [[]], { fields:['name','date_order','partner_id','client_order_ref','state','amount_total','invoice_ids'], limit: 10000 });
+      const allInvIds = sos.flatMap(s => s.invoice_ids||[]);
+      const invs = allInvIds.length ? await odoo.execKw('account.move','search_read',
+        [[['id','in',allInvIds]]], { fields:['id','invoice_date','move_type'] }) : [];
+      const invById = {}; invs.forEach(i => invById[i.id] = i);
       // A reconciled cancellation (credit-noted invoice) leaves the SO's own state
       // at 'sale' -- Odoo never flips it -- so without this check a reversed order
       // still shows as a normal live sale. Flag it (status: 'reversed') rather
       // than dropping it, so the report stays a complete audit trail; the row is
       // still visible/exportable, just distinguishable and filterable.
-      const allInvIds = sos.flatMap(s => s.invoice_ids||[]);
       const reversedIds = new Set();
       if (allInvIds.length) {
         const cns = await odoo.execKw('account.move','search_read',
           [[['move_type','=','out_refund'],['state','=','posted'],['reversed_entry_id','in',allInvIds]], ['reversed_entry_id']], { limit: 20000 });
         cns.forEach(c => { if (c.reversed_entry_id) reversedIds.add(c.reversed_entry_id[0]); });
       }
-      const rows = sos.map(s => {
-        const reversed = (s.invoice_ids||[]).some(id => reversedIds.has(id));
-        return { number: s.name, date: (s.date_order||'').slice(0,10),
-          customer: (s.partner_id&&s.partner_id[1])||'', ref: s.client_order_ref||'',
-          status: reversed ? 'reversed' : s.state, total: r2(s.amount_total), invoiced: (s.invoice_ids||[]).length ? 'yes' : 'no' };
-      });
+      const rows = [];
+      for (const s of sos) {
+        const invId = (s.invoice_ids||[]).find(id => invById[id] && invById[id].move_type==='out_invoice');
+        const date = (invId && invById[invId].invoice_date) || (s.date_order||'').slice(0,10);
+        if (date < from || date > to) continue;
+        const reversed = invId && reversedIds.has(invId);
+        rows.push({ number: s.name, date, customer: (s.partner_id&&s.partner_id[1])||'', ref: s.client_order_ref||'',
+          status: reversed ? 'reversed' : s.state, total: r2(s.amount_total), invoiced: (s.invoice_ids||[]).length ? 'yes' : 'no' });
+      }
+      rows.sort((a,b) => b.date.localeCompare(a.date));
       const liveTotal = r2(rows.filter(r=>r.status!=='reversed').reduce((s,r)=>s+r.total,0));
       return json({ success:true, from, to, count: rows.length, rows, total: r2(rows.reduce((s,r)=>s+r.total,0)), liveTotal });
     }

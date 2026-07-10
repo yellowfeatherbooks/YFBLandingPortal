@@ -7105,11 +7105,11 @@
           </p>
         </div>
 
-        <!-- type tabs (sales live; PO/expenses later) -->
+        <!-- type tabs -->
         <div class="admin-filter-row" style="margin-bottom:0.8rem;">
           <button class="admin-filter-btn active" id="osync-tab-sales" onclick="osyncTab('sales',this)">📕 Sale Orders</button>
-          <button class="admin-filter-btn" onclick="osyncTab('purchase',this)" title="Coming later">📦 Purchase Orders</button>
-          <button class="admin-filter-btn" onclick="osyncTab('expense',this)" title="Coming later">💸 Expenses</button>
+          <button class="admin-filter-btn" onclick="osyncTab('purchase',this)">📦 Purchase Orders</button>
+          <button class="admin-filter-btn" onclick="osyncTab('expense',this)">💸 Expenses</button>
         </div>
 
         <!-- connection status -->
@@ -7153,7 +7153,7 @@
         </div>
 
         <div id="osync-soon-pane" style="display:none;color:var(--muted);font-size:0.9rem;padding:1rem;">
-          This sync type isn't built yet — it'll reuse the same upload → batch-sync flow as Sale Orders.
+          This sync type isn't built yet.
         </div>
 
         <!-- Odoo → Supabase (author attribution) -->

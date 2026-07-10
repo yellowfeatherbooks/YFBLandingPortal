@@ -510,12 +510,23 @@ exports.handler = async (event) => {
         const a = byPartner[l.partnerId] || (byPartner[l.partnerId] = { partnerId:l.partnerId, name:l.partnerName, revenue:0, orderIds:new Set() });
         a.revenue += l.amount; a.orderIds.add(l.soId); });
       const partnerIds = Object.keys(byPartner).map(Number);
+      // First-ever purchase date across ALL history (any live SO, not just this
+      // period), via each SO's invoice invoice_date -- date_order is unreliable
+      // (see liveSaleLines) and would misclassify nearly everyone as "new" since
+      // the bulk-import artifact dates are all recent.
       const firstDates = {};
       if (partnerIds.length) {
         const allSos = await odoo.execKw('sale.order','search_read',
           [[['partner_id','in',partnerIds],'|',['client_order_ref','=like','sales:%'],['client_order_ref','=like','mbb:%']]],
-          { fields:['partner_id','date_order','state'], limit: 20000 });
-        allSos.forEach(s => { if (s.state==='cancel' || !s.partner_id) return; const pid = s.partner_id[0]; const d=(s.date_order||'').slice(0,10);
+          { fields:['partner_id','invoice_ids','state'], limit: 20000 });
+        const invIds2 = allSos.flatMap(s => s.invoice_ids||[]);
+        const invs2 = invIds2.length ? await odoo.execKw('account.move','search_read',
+          [[['id','in',invIds2]]], { fields:['id','invoice_date','move_type'] }) : [];
+        const invById2 = {}; invs2.forEach(i => invById2[i.id] = i);
+        allSos.forEach(s => { if (s.state==='cancel' || !s.partner_id) return;
+          const invId = (s.invoice_ids||[]).find(id => invById2[id] && invById2[id].move_type==='out_invoice');
+          const d = invId && invById2[invId].invoice_date; if (!d) return;
+          const pid = s.partner_id[0];
           if (!firstDates[pid] || d < firstDates[pid]) firstDates[pid] = d; });
       }
       const rows = Object.values(byPartner).map(a => ({

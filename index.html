@@ -6046,6 +6046,9 @@
               <button class="admin-nav-item" data-section="report-gst" onclick="adminNav('report-gst',this)">
                 <span class="admin-nav-icon">🧾</span> GST
               </button>
+              <button class="admin-nav-item" data-section="report-sub" onclick="adminNav('report-sub',this)">
+                <span class="admin-nav-icon">💳</span> Memberships &amp; Subscriptions
+              </button>
             </div>
           </div>
         </div>
@@ -7181,16 +7184,9 @@
           <button class="admin-filter-btn" data-rep="aged" onclick="orPick('aged',this)">⏳ Aged Receivables</button>
           <button class="admin-filter-btn" data-rep="stock" onclick="orPick('stock',this)">📦 Stock on Hand</button>
           <button class="admin-filter-btn" data-rep="unsynced" onclick="orPick('unsynced',this)">⚠️ Not in MyBillBook</button>
-          <button class="admin-filter-btn" data-rep="razorpay-invoices" onclick="orPick('razorpay-invoices',this)">💳 Razorpay Invoices</button>
         </div>
         <div style="display:flex;gap:0.6rem;align-items:center;flex-wrap:wrap;margin-bottom:1rem;">
           <input id="or-name" placeholder="Customer name (e.g. Aman)…" style="padding:0.5rem 0.7rem;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:var(--text);min-width:220px;">
-          <span id="or-daterange" style="display:none;gap:0.4rem;align-items:center;">
-            <label style="color:var(--muted);font-size:0.82rem;">From</label>
-            <input type="date" id="or-from" style="padding:0.45rem;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:var(--text);color-scheme:dark;">
-            <label style="color:var(--muted);font-size:0.82rem;">To</label>
-            <input type="date" id="or-to" style="padding:0.45rem;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:var(--text);color-scheme:dark;">
-          </span>
           <button class="btn-primary" style="border:none;cursor:pointer;padding:0.55rem 1.1rem;border-radius:8px;" onclick="orRun()">▶ Run</button>
           <button id="or-csv-btn" style="display:none;cursor:pointer;padding:0.5rem 0.9rem;border-radius:8px;border:1px solid rgba(255,255,255,0.2);background:transparent;color:var(--text);" onclick="orExportCsv()">⬇ CSV</button>
           <button id="or-pdf-btn" style="display:none;cursor:pointer;padding:0.5rem 0.9rem;border-radius:8px;border:1px solid rgba(255,255,255,0.2);background:transparent;color:var(--text);" onclick="orPdf()">🖨️ PDF</button>
@@ -7278,6 +7274,22 @@
         </div>
         <div id="gst2-result" style="font-size:0.86rem;"></div>
       </div><!-- /admin-section-report-gst -->
+
+      <!-- ── Memberships & Subscriptions (standalone) ── -->
+      <div id="admin-section-report-sub" class="admin-section">
+        <div class="admin-section-header"><h2>💳 Memberships &amp; Subscriptions</h2></div>
+        <p style="font-size:0.8rem;color:var(--muted);margin:0 0 1rem;">Book Club memberships + Author Subscriptions — the two Razorpay-sourced taxable revenue streams, synced to Odoo as GST invoices.</p>
+        <div style="display:flex;gap:0.6rem;align-items:center;flex-wrap:wrap;margin-bottom:1rem;">
+          <label style="color:var(--muted);font-size:0.82rem;">From</label>
+          <input type="date" id="sub2-from" style="padding:0.45rem;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:var(--text);color-scheme:dark;">
+          <label style="color:var(--muted);font-size:0.82rem;">To</label>
+          <input type="date" id="sub2-to" style="padding:0.45rem;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:var(--text);color-scheme:dark;">
+          <button class="btn-primary" style="border:none;cursor:pointer;padding:0.55rem 1.1rem;border-radius:8px;" onclick="sub2Run()">▶ Run</button>
+          <button id="sub2-csv-btn" style="display:none;cursor:pointer;padding:0.5rem 0.9rem;border-radius:8px;border:1px solid rgba(255,255,255,0.2);background:transparent;color:var(--text);" onclick="sub2ExportCsv()">⬇ CSV</button>
+          <button id="sub2-pdf-btn" style="display:none;cursor:pointer;padding:0.5rem 0.9rem;border-radius:8px;border:1px solid rgba(255,255,255,0.2);background:transparent;color:var(--text);" onclick="sub2Pdf()">🖨️ PDF</button>
+        </div>
+        <div id="sub2-result" style="font-size:0.86rem;"></div>
+      </div><!-- /admin-section-report-sub -->
 
       <!-- ── Reconcile with MyBillBook (cancellations / returns / rejections) ── -->
       <div id="admin-section-odoo-reconcile" class="admin-section">
@@ -12216,6 +12228,7 @@ Questions? We're always here!
       if (section === 'report-exp') rptInit('exp');
       if (section === 'report-pl')  pl2Init();
       if (section === 'report-gst') gst2Init();
+      if (section === 'report-sub') sub2Init();
       if (section === 'odoo-razorpay') rzbInit();
       if (section === 'razorpay-payments') rpayInit();
       if (section === 'razorpay-settlements') rsetInit();
@@ -12836,9 +12849,6 @@ Questions? We're always here!
     function _orMonthRange() { const n=new Date(), p=x=>String(x).padStart(2,'0');
       return { from:`${n.getFullYear()}-${p(n.getMonth()+1)}-01`, to:`${n.getFullYear()}-${p(n.getMonth()+1)}-${p(n.getDate())}` }; }
     function orInit() {
-      const mr=_orMonthRange();
-      const f=document.getElementById('or-from'), t=document.getElementById('or-to');
-      if (f && !f.value) f.value=mr.from; if (t && !t.value) t.value=mr.to;
       orPick('customer-statement', document.querySelector('#admin-section-odoo-reports [data-rep="customer-statement"]'));
     }
     function orPick(rep, el) {
@@ -12846,7 +12856,6 @@ Questions? We're always here!
       document.querySelectorAll('#admin-section-odoo-reports [data-rep]').forEach(b=>b.classList.remove('active'));
       if (el) el.classList.add('active');
       document.getElementById('or-name').style.display   = (rep==='customer-statement') ? '' : 'none';
-      document.getElementById('or-daterange').style.display = (rep==='razorpay-invoices') ? 'inline-flex' : 'none';
       document.getElementById('or-result').innerHTML = '';
       document.getElementById('or-csv-btn').style.display = 'none';
       document.getElementById('or-pdf-btn').style.display = 'none';
@@ -12858,7 +12867,6 @@ Questions? We're always here!
       document.getElementById('or-csv-btn').style.display='none';
       const p={ action:_orRep };
       if (_orRep==='customer-statement') p.nameLike=document.getElementById('or-name').value.trim();
-      if (_orRep==='razorpay-invoices'){ p.from=document.getElementById('or-from').value; p.to=document.getElementById('or-to').value; }
       let d; try { d=await adminPost('admin-odoo-reports', p); } catch(e){ res.innerHTML='<p style="color:#f87171">'+e.message+'</p>'; return; }
       if (!d.success){ res.innerHTML='<p style="color:#f87171">'+(d.error||'Failed')+'</p>'; return; }
       _orLast=d;
@@ -12866,7 +12874,6 @@ Questions? We're always here!
       else if (_orRep==='aged') orRenderAged(d);
       else if (_orRep==='stock') orRenderStock(d);
       else if (_orRep==='unsynced') orRenderUnsynced(d);
-      else if (_orRep==='razorpay-invoices') orRenderRazorpayInvoices(d);
       document.getElementById('or-csv-btn').style.display='';
       document.getElementById('or-pdf-btn').style.display = !d.notFound ? '' : 'none';
     }
@@ -12908,36 +12915,12 @@ Questions? We're always here!
       if(!d.rows.length) h='<p style="color:var(--muted)">No stock on hand in Odoo.</p>';
       document.getElementById('or-result').innerHTML=h;
     }
-    function orRenderRazorpayInvoices(d){
-      const testN = d.subscriptions.concat(d.club).filter(x=>x.isTest).length;
-      let h=`<div style="display:flex;gap:0.8rem;flex-wrap:wrap;margin-bottom:0.9rem;">
-        <div class="admin-stat-card"><div class="admin-stat-num">${d.count}</div><div class="admin-stat-label">Invoices (${_e(d.from)} → ${_e(d.to)})</div></div>
-        <div class="admin-stat-card"><div class="admin-stat-num">${_inr(d.clubTotal)}</div><div class="admin-stat-label">Book Club total (${d.clubLiveCount} real)</div></div>
-        <div class="admin-stat-card"><div class="admin-stat-num">${_inr(d.subscriptionsTotal)}</div><div class="admin-stat-label">Author Subscription total (${d.subscriptionsLiveCount} real)</div></div>
-        ${testN?`<div class="admin-stat-card"><div class="admin-stat-num" style="color:#fbbf24">${testN}</div><div class="admin-stat-label">Test/cancelled (excluded from totals)</div></div>`:''}</div>`;
-      const tbl = (rows, title) => {
-        let t = `<div style="font-weight:700;margin-bottom:0.4rem;">${title} (${rows.length})</div>`;
-        if (!rows.length) return t + '<p style="color:var(--muted);font-size:0.82rem;margin:0 0 1rem;">None in this period.</p>';
-        t += '<div class="admin-table-wrap" style="margin-bottom:1.2rem;"><table class="admin-table"><thead><tr><th>Invoice</th><th>Date</th><th>Customer</th><th style="text-align:right">Total</th><th style="text-align:right">Tax</th><th>Paid</th></tr></thead><tbody>';
-        rows.forEach(r => { t += `<tr${r.isTest?' style="opacity:0.5"':''}><td>${_e(r.number)}</td><td>${_e(r.date)}</td><td>${_e(r.customer)}${r.isTest?' <span style="color:#fbbf24">(test)</span>':''}</td><td style="text-align:right">${_inr(r.total)}</td><td style="text-align:right">${_inr(r.tax)}</td><td>${_e(r.paid)}</td></tr>`; });
-        t += '</tbody></table></div>';
-        return t;
-      };
-      h += tbl(d.club, '🎖️ Book Club Memberships');
-      h += tbl(d.subscriptions, '✍️ Author Subscriptions');
-      if (!d.count) h += '<p style="color:var(--muted)">No Razorpay-sourced invoices in this period.</p>';
-      document.getElementById('or-result').innerHTML = h;
-    }
     function orExportCsv(){
       if(!_orLast) return; let rows=[];
       if(_orRep==='customer-statement'){ rows.push(['Date','Document','Debit','Credit','Balance']); _orLast.lines.forEach(l=>rows.push([l.date,l.doc,l.debit,l.credit,l.balance])); rows.push(['','Totals',_orLast.totalInvoiced,_orLast.totalPaid,'Due '+_orLast.outstanding]); }
       else if(_orRep==='aged'){ rows.push(['Customer','0-30','31-60','61-90','90+','Total']); _orLast.rows.forEach(r=>rows.push([r.customer,r.d0_30,r.d31_60,r.d61_90,r.d90,r.total])); }
       else if(_orRep==='stock'){ rows.push(['SKU','Book','Category','Qty','Cost','Value']); _orLast.rows.forEach(r=>rows.push([r.sku,r.name,r.category,r.qty,r.cost,r.value])); rows.push([],['','','','','Total value',_orLast.totalValue]); }
       else if(_orRep==='unsynced'){ rows.push(['Odoo SO','Ref','Date','Customer','Amount','Invoiced']); _orLast.rows.forEach(r=>rows.push([r.so,r.ref,r.date,r.cust,r.total,r.invoiced?'yes':'no'])); }
-      else if(_orRep==='razorpay-invoices'){ rows.push(['Type','Invoice','Date','Customer','Total','Tax','Paid','Test?']);
-        _orLast.club.forEach(r=>rows.push(['Book Club',r.number,r.date,r.customer,r.total,r.tax,r.paid,r.isTest?'yes':'']));
-        _orLast.subscriptions.forEach(r=>rows.push(['Author Subscription',r.number,r.date,r.customer,r.total,r.tax,r.paid,r.isTest?'yes':'']));
-        rows.push([],['','','','Club Total',_orLast.clubTotal],['','','','Subscription Total',_orLast.subscriptionsTotal]); }
       const csv=rows.map(r=>r.map(c=>`"${String(c==null?'':c).replace(/"/g,'""')}"`).join(',')).join('\r\n');
       const blob=new Blob([csv],{type:'text/csv'}), a=document.createElement('a');
       a.href=URL.createObjectURL(blob); a.download=`yfb-${_orRep}-${Date.now()}.csv`; a.click(); URL.revokeObjectURL(a.href);
@@ -13004,15 +12987,6 @@ Questions? We're always here!
         const rows=d.rows.map(r=>`<tr><td>${_e(r.so)}</td><td>${_e(r.ref)}</td><td>${_e(r.date)}</td><td>${_e(r.cust)||'—'}</td><td class="r">${_inr(r.total)}</td><td>${r.invoiced?'yes':'—'}</td></tr>`).join('');
         const body='<table><thead><tr><th>Odoo SO</th><th>Ref</th><th>Date</th><th>Customer</th><th class="r">Amount</th><th>Invoiced</th></tr></thead><tbody>'+rows+'</tbody></table>';
         return _printReport('SALES NOT IN MYBILLBOOK', '', body);
-      }
-      if(_orRep==='razorpay-invoices'){
-        const rowsFor=list=>list.map(r=>`<tr><td>${_e(r.number)}</td><td>${_e(r.date)}</td><td>${_e(r.customer)}${r.isTest?' (test)':''}</td><td class="r">${_inr(r.total)}</td><td class="r">${_inr(r.tax)}</td><td>${_e(r.paid)}</td></tr>`).join('');
-        const thead='<thead><tr><th>Invoice</th><th>Date</th><th>Customer</th><th class="r">Total</th><th class="r">Tax</th><th>Paid</th></tr></thead>';
-        const body='<div class="hd">Book Club Memberships ('+d.club.length+')</div><table>'+thead+'<tbody>'+(rowsFor(d.club)||'<tr><td colspan="6">None</td></tr>')
-          +'</tbody><tfoot><tr><td colspan="3">Total</td><td class="r">'+_inr(d.clubTotal)+'</td><td colspan="2"></td></tr></tfoot></table>'
-          +'<div class="hd" style="margin-top:16px;">Author Subscriptions ('+d.subscriptions.length+')</div><table>'+thead+'<tbody>'+(rowsFor(d.subscriptions)||'<tr><td colspan="6">None</td></tr>')
-          +'</tbody><tfoot><tr><td colspan="3">Total</td><td class="r">'+_inr(d.subscriptionsTotal)+'</td><td colspan="2"></td></tr></tfoot></table>';
-        return _printReport('RAZORPAY INVOICES — BOOK CLUB & SUBSCRIPTIONS', 'Period '+_e(d.from)+' to '+_e(d.to), body);
       }
     }
 
@@ -13231,6 +13205,63 @@ Questions? We're always here!
         +'<tr><td>B2C Total</td><td class="r">'+_inr(d.b2cTotal)+'</td></tr>'
         +'</tbody></table>';
       _printReport('GSTR-1 SUMMARY', 'Period '+_e(d.from)+' to '+_e(d.to), body);
+    }
+
+    // ── Memberships & Subscriptions (standalone, under Odoo → Reports) ─────────
+    let _sub2Last = null;
+    function sub2Init() {
+      const mr=_orMonthRange(), f=document.getElementById('sub2-from'), t=document.getElementById('sub2-to');
+      if (f && !f.value) f.value=mr.from; if (t && !t.value) t.value=mr.to;
+    }
+    async function sub2Run() {
+      const from = document.getElementById('sub2-from').value, to = document.getElementById('sub2-to').value;
+      const res = document.getElementById('sub2-result'); res.innerHTML = '<p style="color:var(--muted)">⏳ Loading…</p>';
+      document.getElementById('sub2-csv-btn').style.display = 'none';
+      document.getElementById('sub2-pdf-btn').style.display = 'none';
+      let d; try { d = await adminPost('admin-odoo-reports', { action:'razorpay-invoices', from, to }); }
+      catch (e) { res.innerHTML = '<p style="color:#f87171">'+e.message+'</p>'; return; }
+      if (!d.success) { res.innerHTML = '<p style="color:#f87171">'+(d.error||'Failed')+'</p>'; return; }
+      _sub2Last = d;
+      const testN = d.subscriptions.concat(d.club).filter(x=>x.isTest).length;
+      let h=`<div style="display:flex;gap:0.8rem;flex-wrap:wrap;margin-bottom:0.9rem;">
+        <div class="admin-stat-card"><div class="admin-stat-num">${d.count}</div><div class="admin-stat-label">Invoices (${_e(d.from)} → ${_e(d.to)})</div></div>
+        <div class="admin-stat-card"><div class="admin-stat-num">${_inr(d.clubTotal)}</div><div class="admin-stat-label">Book Club total (${d.clubLiveCount} real)</div></div>
+        <div class="admin-stat-card"><div class="admin-stat-num">${_inr(d.subscriptionsTotal)}</div><div class="admin-stat-label">Author Subscription total (${d.subscriptionsLiveCount} real)</div></div>
+        ${testN?`<div class="admin-stat-card"><div class="admin-stat-num" style="color:#fbbf24">${testN}</div><div class="admin-stat-label">Test/cancelled (excluded from totals)</div></div>`:''}</div>`;
+      const tbl = (rows, title) => {
+        let t = `<div style="font-weight:700;margin-bottom:0.4rem;">${title} (${rows.length})</div>`;
+        if (!rows.length) return t + '<p style="color:var(--muted);font-size:0.82rem;margin:0 0 1rem;">None in this period.</p>';
+        t += '<div class="admin-table-wrap" style="margin-bottom:1.2rem;"><table class="admin-table"><thead><tr><th>Invoice</th><th>Date</th><th>Customer</th><th style="text-align:right">Total</th><th style="text-align:right">Tax</th><th>Paid</th></tr></thead><tbody>';
+        rows.forEach(r => { t += `<tr${r.isTest?' style="opacity:0.5"':''}><td>${_e(r.number)}</td><td>${_e(r.date)}</td><td>${_e(r.customer)}${r.isTest?' <span style="color:#fbbf24">(test)</span>':''}</td><td style="text-align:right">${_inr(r.total)}</td><td style="text-align:right">${_inr(r.tax)}</td><td>${_e(r.paid)}</td></tr>`; });
+        t += '</tbody></table></div>';
+        return t;
+      };
+      h += tbl(d.club, '🎖️ Book Club Memberships');
+      h += tbl(d.subscriptions, '✍️ Author Subscriptions');
+      if (!d.count) h += '<p style="color:var(--muted)">No Razorpay-sourced invoices in this period.</p>';
+      res.innerHTML = h;
+      document.getElementById('sub2-csv-btn').style.display = '';
+      document.getElementById('sub2-pdf-btn').style.display = '';
+    }
+    function sub2ExportCsv() {
+      if (!_sub2Last) return; const d=_sub2Last;
+      const rows=[['Type','Invoice','Date','Customer','Total','Tax','Paid','Test?']];
+      d.club.forEach(r=>rows.push(['Book Club',r.number,r.date,r.customer,r.total,r.tax,r.paid,r.isTest?'yes':'']));
+      d.subscriptions.forEach(r=>rows.push(['Author Subscription',r.number,r.date,r.customer,r.total,r.tax,r.paid,r.isTest?'yes':'']));
+      rows.push([],['','','','Club Total',d.clubTotal],['','','','Subscription Total',d.subscriptionsTotal]);
+      const csv=rows.map(r=>r.map(c=>`"${String(c==null?'':c).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+      const blob=new Blob([csv],{type:'text/csv'}), a=document.createElement('a');
+      a.href=URL.createObjectURL(blob); a.download=`yfb-memberships-subscriptions-${Date.now()}.csv`; a.click(); URL.revokeObjectURL(a.href);
+    }
+    function sub2Pdf() {
+      if (!_sub2Last) return; const d=_sub2Last;
+      const rowsFor=list=>list.map(r=>`<tr><td>${_e(r.number)}</td><td>${_e(r.date)}</td><td>${_e(r.customer)}${r.isTest?' (test)':''}</td><td class="r">${_inr(r.total)}</td><td class="r">${_inr(r.tax)}</td><td>${_e(r.paid)}</td></tr>`).join('');
+      const thead='<thead><tr><th>Invoice</th><th>Date</th><th>Customer</th><th class="r">Total</th><th class="r">Tax</th><th>Paid</th></tr></thead>';
+      const body='<div class="hd">Book Club Memberships ('+d.club.length+')</div><table>'+thead+'<tbody>'+(rowsFor(d.club)||'<tr><td colspan="6">None</td></tr>')
+        +'</tbody><tfoot><tr><td colspan="3">Total</td><td class="r">'+_inr(d.clubTotal)+'</td><td colspan="2"></td></tr></tfoot></table>'
+        +'<div class="hd" style="margin-top:16px;">Author Subscriptions ('+d.subscriptions.length+')</div><table>'+thead+'<tbody>'+(rowsFor(d.subscriptions)||'<tr><td colspan="6">None</td></tr>')
+        +'</tbody><tfoot><tr><td colspan="3">Total</td><td class="r">'+_inr(d.subscriptionsTotal)+'</td><td colspan="2"></td></tr></tfoot></table>';
+      _printReport('MEMBERSHIPS & SUBSCRIPTIONS — BOOK CLUB & AUTHOR', 'Period '+_e(d.from)+' to '+_e(d.to), body);
     }
 
     // ── Sales Intelligence (Odoo) ────────────────────────────────────────────

@@ -21,6 +21,58 @@ async function verifyAdmin(email, adminKey) {
   return crypto.createHash('sha256').update(email + ':' + rows[0].password_hash).digest('hex') === adminKey;
 }
 
+// Shift [from,to] back to the immediately-preceding period of equal length,
+// e.g. for period-over-period comparisons in Sales Intelligence.
+function prevPeriod(from, to) {
+  const d1 = new Date(from+'T00:00:00'), d2 = new Date(to+'T00:00:00');
+  const days = Math.round((d2-d1)/86400000) + 1;
+  const prevTo = new Date(d1); prevTo.setDate(prevTo.getDate()-1);
+  const prevFrom = new Date(prevTo); prevFrom.setDate(prevFrom.getDate()-(days-1));
+  const iso = d => d.toISOString().slice(0,10);
+  return { from: iso(prevFrom), to: iso(prevTo) };
+}
+
+// Live (non-cancelled, non-reversed) MyBillBook + direct sale-order LINES in a
+// date range -- the shared building block for Sales Intelligence. Excludes
+// delivery/discount lines (product.type != 'product') same as the author-sales
+// refresh. Reversed-invoice exclusion mirrors the fix applied to that pipeline
+// and to the Sale Orders report -- an SO's own state never flips on reversal.
+async function liveSaleLines(odoo, from, to) {
+  const sos = await odoo.execKw('sale.order','search_read',
+    [['&',['date_order','>=',from],['date_order','<=',to+' 23:59:59'],
+      '|',['client_order_ref','=like','sales:%'],['client_order_ref','=like','mbb:%']]],
+    { fields:['id','date_order','partner_id','invoice_ids'], limit: 10000 });
+  const allInvIds = sos.flatMap(s => s.invoice_ids||[]);
+  const reversedIds = new Set();
+  if (allInvIds.length) {
+    const cns = await odoo.execKw('account.move','search_read',
+      [[['move_type','=','out_refund'],['state','=','posted'],['reversed_entry_id','in',allInvIds]], ['reversed_entry_id']], { limit: 20000 });
+    cns.forEach(c => { if (c.reversed_entry_id) reversedIds.add(c.reversed_entry_id[0]); });
+  }
+  const live = sos.filter(s => !(s.invoice_ids||[]).some(id => reversedIds.has(id)));
+  const soById = {}; live.forEach(s => soById[s.id] = s);
+  const soIds = live.map(s => s.id);
+  const lines = soIds.length ? await odoo.execKw('sale.order.line','search_read',
+    [[['order_id','in',soIds],['product_id','!=',false]], ['order_id','product_id','product_uom_qty','price_subtotal','name']], { limit: 30000 }) : [];
+  const prodIds = [...new Set(lines.map(l => l.product_id[0]))];
+  const prods = prodIds.length ? await odoo.execKw('product.product','search_read',
+    [[['id','in',prodIds]]], { fields:['id','default_code','name','categ_id','type'] }) : [];
+  const prodById = {}; prods.forEach(p => prodById[p.id] = p);
+  const out = [];
+  for (const l of lines) {
+    const prod = prodById[l.product_id[0]]; if (!prod || prod.type !== 'product') continue;
+    const so = soById[l.order_id[0]]; if (!so) continue;
+    out.push({
+      soId: so.id, date: (so.date_order||'').slice(0,10),
+      partnerId: so.partner_id ? so.partner_id[0] : null, partnerName: so.partner_id ? so.partner_id[1] : '',
+      productId: prod.id, sku: prod.default_code||'', name: l.name || prod.name,
+      category: (prod.categ_id && prod.categ_id[1]) || '',
+      qty: l.product_uom_qty||0, amount: l.price_subtotal||0
+    });
+  }
+  return out;
+}
+
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: cors, body: '' };
   if (event.httpMethod !== 'POST')    return json({ success:false, error:'Method Not Allowed' }, 405);
@@ -383,6 +435,85 @@ exports.handler = async (event) => {
           category: (firstLineId && lineById[firstLineId]) || '', status: b.state,
           total: r2(b.amount_total), paid: b.payment_state }; });
       return json({ success:true, from, to, count: rows.length, rows, total: r2(rows.reduce((s,r)=>s+r.total,0)) });
+    }
+
+    if (action === 'sales-intel-top-sellers') {
+      const curr = await liveSaleLines(odoo, from, to);
+      const pp = prevPeriod(from, to);
+      const prev = await liveSaleLines(odoo, pp.from, pp.to);
+      const bump = (map, l) => { const k = l.sku || ('name:'+l.name);
+        const a = map[k] || (map[k] = { sku:l.sku, name:l.name, category:l.category, qty:0, amount:0 });
+        a.qty += l.qty; a.amount += l.amount; };
+      const currAgg = {}, prevAgg = {};
+      curr.forEach(l => bump(currAgg, l));
+      prev.forEach(l => bump(prevAgg, l));
+      const allKeys = new Set([...Object.keys(currAgg), ...Object.keys(prevAgg)]);
+      const rows = [...allKeys].map(k => {
+        const c = currAgg[k] || {}; const p = prevAgg[k] || { qty:0, amount:0 };
+        const cQty = c.qty||0, cAmt = c.amount||0;
+        const pct = p.amount > 0 ? r2((cAmt-p.amount)/p.amount*100) : (cAmt>0 ? null : 0);
+        return { sku:(c.sku||p.sku)||'', name:(c.name||p.name)||'', category:(c.category||p.category)||'',
+          qty:r2(cQty), amount:r2(cAmt), prevQty:r2(p.qty), prevAmount:r2(p.amount), pctChange: pct };
+      }).filter(r => r.amount > 0 || r.prevAmount > 0).sort((a,b) => b.amount - a.amount);
+      return json({ success:true, from, to, prevFrom:pp.from, prevTo:pp.to, rows,
+        currTotal: r2(rows.reduce((s,r)=>s+r.amount,0)), prevTotal: r2(rows.reduce((s,r)=>s+r.prevAmount,0)) });
+    }
+
+    if (action === 'sales-intel-slow-movers') {
+      const prods = await odoo.execKw('product.product','search_read',
+        [[['type','=','product'],['qty_available','>',0]], ['default_code','name','qty_available','standard_price','categ_id']], { limit: 5000 });
+      const sold = await liveSaleLines(odoo, from, to);
+      const soldBySku = {};
+      sold.forEach(l => { if (!l.sku) return; soldBySku[l.sku] = (soldBySku[l.sku]||0) + l.qty; });
+      const rows = prods.map(p => { const sku = p.default_code || ''; const stockQty = r2(p.qty_available); const cost = r2(p.standard_price);
+        return { sku, name: p.name, category: (p.categ_id&&p.categ_id[1])||'', stockQty, cost,
+          tiedUpCapital: r2(stockQty*cost), soldQty: r2(soldBySku[sku] || 0) }; })
+        .filter(r => r.soldQty === 0).sort((a,b) => b.tiedUpCapital - a.tiedUpCapital);
+      return json({ success:true, from, to, rows, count: rows.length, totalTiedUp: r2(rows.reduce((s,r)=>s+r.tiedUpCapital,0)) });
+    }
+
+    if (action === 'sales-intel-customers') {
+      const curr = await liveSaleLines(odoo, from, to);
+      const byPartner = {};
+      curr.forEach(l => { if (!l.partnerId) return;
+        const a = byPartner[l.partnerId] || (byPartner[l.partnerId] = { partnerId:l.partnerId, name:l.partnerName, revenue:0, orderIds:new Set() });
+        a.revenue += l.amount; a.orderIds.add(l.soId); });
+      const partnerIds = Object.keys(byPartner).map(Number);
+      const firstDates = {};
+      if (partnerIds.length) {
+        const allSos = await odoo.execKw('sale.order','search_read',
+          [[['partner_id','in',partnerIds],'|',['client_order_ref','=like','sales:%'],['client_order_ref','=like','mbb:%']]],
+          { fields:['partner_id','date_order','state'], limit: 20000 });
+        allSos.forEach(s => { if (s.state==='cancel' || !s.partner_id) return; const pid = s.partner_id[0]; const d=(s.date_order||'').slice(0,10);
+          if (!firstDates[pid] || d < firstDates[pid]) firstDates[pid] = d; });
+      }
+      const rows = Object.values(byPartner).map(a => ({
+        customer: a.name, revenue: r2(a.revenue), orders: a.orderIds.size, avgOrderValue: r2(a.revenue / a.orderIds.size),
+        firstPurchase: firstDates[a.partnerId] || '', isNew: (firstDates[a.partnerId] || '') >= from ? 'new' : 'returning'
+      })).sort((a,b) => b.revenue - a.revenue);
+      const newCust = rows.filter(r=>r.isNew==='new'), returning = rows.filter(r=>r.isNew==='returning');
+      return json({ success:true, from, to, rows, totalCustomers: rows.length,
+        newCount: newCust.length, newRevenue: r2(newCust.reduce((s,r)=>s+r.revenue,0)),
+        returningCount: returning.length, returningRevenue: r2(returning.reduce((s,r)=>s+r.revenue,0)) });
+    }
+
+    if (action === 'sales-intel-trend') {
+      const curr = await liveSaleLines(odoo, from, to);
+      const pp = prevPeriod(from, to);
+      const prev = await liveSaleLines(odoo, pp.from, pp.to);
+      const byDay = {}, ordersByDay = {};
+      curr.forEach(l => { byDay[l.date] = (byDay[l.date]||0) + l.amount;
+        (ordersByDay[l.date] || (ordersByDay[l.date] = new Set())).add(l.soId); });
+      const days = Object.keys(byDay).sort();
+      const dailyRows = days.map(d => ({ date: d, revenue: r2(byDay[d]), orders: ordersByDay[d].size }));
+      const DOW = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+      const dowAmt = {};
+      curr.forEach(l => { const dow = new Date(l.date+'T00:00:00').getDay(); dowAmt[dow] = (dowAmt[dow]||0) + l.amount; });
+      const dowRows = DOW.map((name, i) => ({ day: name, revenue: r2(dowAmt[i]||0) })).sort((a,b)=>b.revenue-a.revenue);
+      const currTotal = r2(curr.reduce((s,l)=>s+l.amount,0));
+      const prevTotal = r2(prev.reduce((s,l)=>s+l.amount,0));
+      const growthPct = prevTotal > 0 ? r2((currTotal-prevTotal)/prevTotal*100) : null;
+      return json({ success:true, from, to, prevFrom:pp.from, prevTo:pp.to, dailyRows, dowRows, currTotal, prevTotal, growthPct });
     }
 
     return json({ success:false, error:'Unknown action' }, 400);

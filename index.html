@@ -6020,6 +6020,9 @@
           <button class="admin-nav-item" data-section="stock-match" onclick="adminNav('stock-match',this)">
             <span class="admin-nav-icon">🧮</span> Stock Match
           </button>
+          <button class="admin-nav-item" data-section="sales-intel" onclick="adminNav('sales-intel',this)">
+            <span class="admin-nav-icon">📊</span> Sales Intelligence
+          </button>
           <button class="admin-nav-item" data-section="odoo-reports" onclick="adminNav('odoo-reports',this)">
             <span class="admin-nav-icon">📄</span> Quick Reports
           </button>
@@ -7366,6 +7369,53 @@
         </button>
         <div id="sm-result" style="margin-top:1rem;font-size:0.85rem;"></div>
       </div><!-- /admin-section-stock-match -->
+
+      <!-- ── Sales Intelligence (Odoo) ── -->
+      <div id="admin-section-sales-intel" class="admin-section">
+        <div class="admin-section-header">
+          <h2>📊 Sales Intelligence</h2>
+          <div class="admin-filter-row">
+            <button class="admin-filter-btn" onclick="siSetDays(30,this)">30 Days</button>
+            <button class="admin-filter-btn active" onclick="siSetDays(60,this)">60 Days</button>
+            <button class="admin-filter-btn" onclick="siSetDays(90,this)">90 Days</button>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:1.25rem;">
+          <button class="admin-filter-btn active" id="si-tab-top" onclick="siSwitchTab('top',this)">🔥 Top Sellers &amp; Movers</button>
+          <button class="admin-filter-btn" id="si-tab-slow" onclick="siSwitchTab('slow',this)">🐌 Slow Movers</button>
+          <button class="admin-filter-btn" id="si-tab-cust" onclick="siSwitchTab('cust',this)">👥 Customers</button>
+          <button class="admin-filter-btn" id="si-tab-trend" onclick="siSwitchTab('trend',this)">📈 Trend</button>
+        </div>
+
+        <!-- Top Sellers & Movers -->
+        <div id="si-panel-top">
+          <div style="font-size:0.78rem;color:var(--muted);margin-bottom:1rem;">Best (and worst) performing books this period vs the equal-length period before it — spot what's accelerating and what's fading.</div>
+          <div id="si-top-stats" class="admin-stats"></div>
+          <div id="si-top-body"></div>
+        </div>
+
+        <!-- Slow Movers / Dead Stock -->
+        <div id="si-panel-slow" style="display:none;">
+          <div style="font-size:0.78rem;color:var(--muted);margin-bottom:1rem;">In-stock books with zero sales in this period — capital tied up in inventory that isn't moving. Candidates for a discount, bundle, or feature push.</div>
+          <div id="si-slow-stats" class="admin-stats"></div>
+          <div id="si-slow-body"></div>
+        </div>
+
+        <!-- Customers -->
+        <div id="si-panel-cust" style="display:none;">
+          <div style="font-size:0.78rem;color:var(--muted);margin-bottom:1rem;">Top customers by spend this period, and the new-vs-returning split.</div>
+          <div id="si-cust-stats" class="admin-stats"></div>
+          <div id="si-cust-body"></div>
+        </div>
+
+        <!-- Trend -->
+        <div id="si-panel-trend" style="display:none;">
+          <div style="font-size:0.78rem;color:var(--muted);margin-bottom:1rem;">Daily revenue trend and day-of-week pattern for this period, with growth vs the period before it.</div>
+          <div id="si-trend-stats" class="admin-stats"></div>
+          <div id="si-trend-body"></div>
+        </div>
+      </div><!-- /admin-section-sales-intel -->
 
       <!-- ── Backfill Razorpay charges → Odoo GST invoices ── -->
       <div id="admin-section-odoo-razorpay" class="admin-section">
@@ -12160,6 +12210,7 @@ Questions? We're always here!
       if (section === 'odoo-reconcile') recInit();
       if (section === 'sales-match')   svInit();
       if (section === 'stock-match')   smInit();
+      if (section === 'sales-intel')   siInit();
       if (section === 'report-so')  rptInit('so');
       if (section === 'report-po')  rptInit('po');
       if (section === 'report-exp') rptInit('exp');
@@ -13180,6 +13231,105 @@ Questions? We're always here!
         +'<tr><td>B2C Total</td><td class="r">'+_inr(d.b2cTotal)+'</td></tr>'
         +'</tbody></table>';
       _printReport('GSTR-1 SUMMARY', 'Period '+_e(d.from)+' to '+_e(d.to), body);
+    }
+
+    // ── Sales Intelligence (Odoo) ────────────────────────────────────────────
+    let _siDays = 60;
+    let _siLoaded = { top:false, slow:false, cust:false, trend:false };
+    function _siRange() {
+      const t = new Date(); const to = t.toISOString().slice(0,10);
+      const f = new Date(t); f.setDate(f.getDate() - (_siDays - 1));
+      return { from: f.toISOString().slice(0,10), to };
+    }
+    function _siPct(n) { if (n == null) return '<span style="color:#60a5fa;font-weight:700">NEW</span>';
+      const c = n < 0 ? '#f87171' : (n > 0 ? '#34d399' : 'var(--muted)');
+      return `<span style="color:${c};font-weight:700">${n>0?'+':''}${n}%</span>`; }
+    function siInit() {
+      _siLoaded = { top:false, slow:false, cust:false, trend:false };
+      siSwitchTab('top', document.getElementById('si-tab-top'));
+    }
+    function siSetDays(days, btn) {
+      _siDays = days;
+      _siLoaded = { top:false, slow:false, cust:false, trend:false };
+      document.querySelectorAll('#admin-section-sales-intel .admin-filter-row .admin-filter-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      const active = document.querySelector('[id^="si-tab-"].active');
+      if (active) siLoadTab(active.id.replace('si-tab-',''));
+    }
+    function siSwitchTab(tab, btn) {
+      ['top','slow','cust','trend'].forEach(t => {
+        document.getElementById('si-panel-'+t).style.display = t===tab ? 'block' : 'none';
+        const b = document.getElementById('si-tab-'+t); if (b) b.classList.toggle('active', t===tab);
+      });
+      if (!_siLoaded[tab]) siLoadTab(tab);
+    }
+    async function siLoadTab(tab) {
+      _siLoaded[tab] = true;
+      const { from, to } = _siRange();
+      const statsEl = document.getElementById('si-'+tab+'-stats'), bodyEl = document.getElementById('si-'+tab+'-body');
+      statsEl.innerHTML = ''; bodyEl.innerHTML = '<p style="color:var(--muted)">⏳ Loading…</p>';
+      const actionMap = { top:'sales-intel-top-sellers', slow:'sales-intel-slow-movers', cust:'sales-intel-customers', trend:'sales-intel-trend' };
+      let d; try { d = await adminPost('admin-odoo-reports', { action: actionMap[tab], from, to }); }
+      catch (e) { bodyEl.innerHTML = '<p style="color:#f87171">'+e.message+'</p>'; return; }
+      if (!d.success) { bodyEl.innerHTML = '<p style="color:#f87171">'+(d.error||'Failed')+'</p>'; return; }
+      if (tab==='top') siRenderTop(d, statsEl, bodyEl);
+      else if (tab==='slow') siRenderSlow(d, statsEl, bodyEl);
+      else if (tab==='cust') siRenderCust(d, statsEl, bodyEl);
+      else if (tab==='trend') siRenderTrend(d, statsEl, bodyEl);
+    }
+    function siRenderTop(d, statsEl, bodyEl) {
+      const growth = d.prevTotal > 0 ? Math.round((d.currTotal-d.prevTotal)/d.prevTotal*100*100)/100 : null;
+      statsEl.innerHTML = `
+        <div class="admin-stat-card"><div class="admin-stat-num">${_inr(d.currTotal)}</div><div class="admin-stat-label">Revenue this period</div></div>
+        <div class="admin-stat-card"><div class="admin-stat-num">${_inr(d.prevTotal)}</div><div class="admin-stat-label">Prior period (${_e(d.prevFrom)} → ${_e(d.prevTo)})</div></div>
+        <div class="admin-stat-card"><div class="admin-stat-num">${_siPct(growth)}</div><div class="admin-stat-label">Growth</div></div>`;
+      if (!d.rows.length) { bodyEl.innerHTML = '<p style="color:var(--muted)">No sales in this period.</p>'; return; }
+      let h = '<div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Book</th><th>SKU</th><th>Category</th><th style="text-align:right">Qty</th><th style="text-align:right">Revenue</th><th style="text-align:right">Prior Revenue</th><th style="text-align:right">Change</th></tr></thead><tbody>';
+      d.rows.slice(0,50).forEach(r => { h += `<tr><td>${_e(r.name)}</td><td>${_e(r.sku)}</td><td>${_e(r.category)}</td><td style="text-align:right">${r.qty}</td><td style="text-align:right">${_inr(r.amount)}</td><td style="text-align:right">${_inr(r.prevAmount)}</td><td style="text-align:right">${_siPct(r.pctChange)}</td></tr>`; });
+      h += '</tbody></table></div>';
+      if (d.rows.length > 50) h += `<div style="color:var(--muted);font-size:0.78rem;margin-top:0.5rem;">Showing top 50 of ${d.rows.length} by revenue.</div>`;
+      bodyEl.innerHTML = h;
+    }
+    function siRenderSlow(d, statsEl, bodyEl) {
+      statsEl.innerHTML = `
+        <div class="admin-stat-card"><div class="admin-stat-num" style="color:#fbbf24">${d.count}</div><div class="admin-stat-label">Slow-moving SKUs</div></div>
+        <div class="admin-stat-card"><div class="admin-stat-num" style="color:#f87171">${_inr(d.totalTiedUp)}</div><div class="admin-stat-label">Capital tied up</div></div>`;
+      if (!d.rows.length) { bodyEl.innerHTML = '<p style="color:#34d399">✅ Everything in stock has sold at least once this period.</p>'; return; }
+      let h = '<div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Book</th><th>SKU</th><th>Category</th><th style="text-align:right">Stock Qty</th><th style="text-align:right">Cost</th><th style="text-align:right">Tied-Up Capital</th></tr></thead><tbody>';
+      d.rows.slice(0,50).forEach(r => { h += `<tr><td>${_e(r.name)}</td><td>${_e(r.sku)}</td><td>${_e(r.category)}</td><td style="text-align:right">${r.stockQty}</td><td style="text-align:right">${_inr(r.cost)}</td><td style="text-align:right;font-weight:700">${_inr(r.tiedUpCapital)}</td></tr>`; });
+      h += '</tbody></table></div>';
+      if (d.rows.length > 50) h += `<div style="color:var(--muted);font-size:0.78rem;margin-top:0.5rem;">Showing top 50 of ${d.rows.length} by capital tied up.</div>`;
+      bodyEl.innerHTML = h;
+    }
+    function siRenderCust(d, statsEl, bodyEl) {
+      statsEl.innerHTML = `
+        <div class="admin-stat-card"><div class="admin-stat-num">${d.totalCustomers}</div><div class="admin-stat-label">Customers</div></div>
+        <div class="admin-stat-card"><div class="admin-stat-num" style="color:#60a5fa">${d.newCount}</div><div class="admin-stat-label">New (${_inr(d.newRevenue)})</div></div>
+        <div class="admin-stat-card"><div class="admin-stat-num" style="color:#34d399">${d.returningCount}</div><div class="admin-stat-label">Returning (${_inr(d.returningRevenue)})</div></div>`;
+      if (!d.rows.length) { bodyEl.innerHTML = '<p style="color:var(--muted)">No sales in this period.</p>'; return; }
+      let h = '<div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Customer</th><th style="text-align:right">Orders</th><th style="text-align:right">Revenue</th><th style="text-align:right">Avg Order</th><th>First Purchase</th><th>Type</th></tr></thead><tbody>';
+      d.rows.slice(0,50).forEach(r => { h += `<tr><td>${_e(r.customer)}</td><td style="text-align:right">${r.orders}</td><td style="text-align:right">${_inr(r.revenue)}</td><td style="text-align:right">${_inr(r.avgOrderValue)}</td><td>${_e(r.firstPurchase)||'—'}</td><td><span style="color:${r.isNew==='new'?'#60a5fa':'#34d399'}">${r.isNew}</span></td></tr>`; });
+      h += '</tbody></table></div>';
+      if (d.rows.length > 50) h += `<div style="color:var(--muted);font-size:0.78rem;margin-top:0.5rem;">Showing top 50 of ${d.rows.length} by revenue.</div>`;
+      bodyEl.innerHTML = h;
+    }
+    function siRenderTrend(d, statsEl, bodyEl) {
+      statsEl.innerHTML = `
+        <div class="admin-stat-card"><div class="admin-stat-num">${_inr(d.currTotal)}</div><div class="admin-stat-label">Revenue this period</div></div>
+        <div class="admin-stat-card"><div class="admin-stat-num">${_inr(d.prevTotal)}</div><div class="admin-stat-label">Prior period (${_e(d.prevFrom)} → ${_e(d.prevTo)})</div></div>
+        <div class="admin-stat-card"><div class="admin-stat-num">${_siPct(d.growthPct)}</div><div class="admin-stat-label">Growth</div></div>`;
+      let h = '<div style="font-weight:700;margin-bottom:0.4rem;">📅 Daily revenue</div>';
+      if (!d.dailyRows.length) h += '<p style="color:var(--muted);font-size:0.82rem;">No sales in this period.</p>';
+      else {
+        h += '<div class="admin-table-wrap" style="margin-bottom:1.2rem;max-height:340px;overflow-y:auto;"><table class="admin-table"><thead><tr><th>Date</th><th style="text-align:right">Orders</th><th style="text-align:right">Revenue</th></tr></thead><tbody>';
+        [...d.dailyRows].reverse().forEach(r => { h += `<tr><td>${_e(r.date)}</td><td style="text-align:right">${r.orders}</td><td style="text-align:right">${_inr(r.revenue)}</td></tr>`; });
+        h += '</tbody></table></div>';
+      }
+      h += '<div style="font-weight:700;margin-bottom:0.4rem;">📆 By day of week</div>';
+      h += '<div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Day</th><th style="text-align:right">Total Revenue</th></tr></thead><tbody>';
+      d.dowRows.forEach(r => { h += `<tr><td>${_e(r.day)}</td><td style="text-align:right">${_inr(r.revenue)}</td></tr>`; });
+      h += '</tbody></table></div>';
+      bodyEl.innerHTML = h;
     }
 
     // ── Helpers ──

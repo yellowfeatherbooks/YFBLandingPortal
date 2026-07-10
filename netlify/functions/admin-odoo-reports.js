@@ -275,9 +275,16 @@ exports.handler = async (event) => {
       const all = rows.map(map);
       const subs = all.filter(x => x.type === 'subscription');
       const club = all.filter(x => x.type === 'club');
+      // Totals count only real, posted, non-test invoices (excludes the batch of
+      // cancelled webhook/flow-test invoices from 2026-06-21 and similar) -- those
+      // still appear in the row lists (dimmed/flagged) for visibility, just not summed.
+      const isLive = x => !x.isTest && x.state === 'posted';
       return json({ success:true, from, to, count: all.length,
-        subscriptions: subs, club, subscriptionsTotal: r2(subs.reduce((s,x)=>s+x.total,0)),
-        clubTotal: r2(club.reduce((s,x)=>s+x.total,0)) });
+        subscriptions: subs, club,
+        subscriptionsTotal: r2(subs.filter(isLive).reduce((s,x)=>s+x.total,0)),
+        clubTotal: r2(club.filter(isLive).reduce((s,x)=>s+x.total,0)),
+        subscriptionsLiveCount: subs.filter(isLive).length,
+        clubLiveCount: club.filter(isLive).length });
     }
 
     if (action === 'month-close') {

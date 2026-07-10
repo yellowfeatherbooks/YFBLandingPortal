@@ -12777,9 +12777,9 @@ Questions? We're always here!
       const testN = d.subscriptions.concat(d.club).filter(x=>x.isTest).length;
       let h=`<div style="display:flex;gap:0.8rem;flex-wrap:wrap;margin-bottom:0.9rem;">
         <div class="admin-stat-card"><div class="admin-stat-num">${d.count}</div><div class="admin-stat-label">Invoices (${_e(d.from)} → ${_e(d.to)})</div></div>
-        <div class="admin-stat-card"><div class="admin-stat-num">${_inr(d.clubTotal)}</div><div class="admin-stat-label">Book Club total</div></div>
-        <div class="admin-stat-card"><div class="admin-stat-num">${_inr(d.subscriptionsTotal)}</div><div class="admin-stat-label">Author Subscription total</div></div>
-        ${testN?`<div class="admin-stat-card"><div class="admin-stat-num" style="color:#fbbf24">${testN}</div><div class="admin-stat-label">Flagged test</div></div>`:''}</div>`;
+        <div class="admin-stat-card"><div class="admin-stat-num">${_inr(d.clubTotal)}</div><div class="admin-stat-label">Book Club total (${d.clubLiveCount} real)</div></div>
+        <div class="admin-stat-card"><div class="admin-stat-num">${_inr(d.subscriptionsTotal)}</div><div class="admin-stat-label">Author Subscription total (${d.subscriptionsLiveCount} real)</div></div>
+        ${testN?`<div class="admin-stat-card"><div class="admin-stat-num" style="color:#fbbf24">${testN}</div><div class="admin-stat-label">Test/cancelled (excluded from totals)</div></div>`:''}</div>`;
       const tbl = (rows, title) => {
         let t = `<div style="font-weight:700;margin-bottom:0.4rem;">${title} (${rows.length})</div>`;
         if (!rows.length) return t + '<p style="color:var(--muted);font-size:0.82rem;margin:0 0 1rem;">None in this period.</p>';

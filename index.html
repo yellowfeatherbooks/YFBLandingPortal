@@ -6756,10 +6756,10 @@
               style="width:100%;background:linear-gradient(135deg,#25D366,#1da851);color:#fff;border:none;border-radius:10px;padding:0.85rem;font-size:0.95rem;font-weight:700;cursor:pointer;font-family:inherit;transition:opacity 0.15s;">
               📣 Launch Campaign
             </button>
-            <button disabled title="Send to all direct customers at once — use with caution"
-              style="width:100%;margin-top:0.5rem;background:rgba(255,255,255,0.04);color:var(--muted);border:1px dashed rgba(255,255,255,0.15);border-radius:10px;padding:0.7rem;font-size:0.82rem;font-weight:600;cursor:not-allowed;font-family:inherit;">
-              ⚡ Bulk Campaign — All Direct Customers (2,799)
-              <span style="display:block;font-size:0.68rem;font-weight:400;margin-top:0.2rem;">Available when ready — sends to all without page selection</span>
+            <button id="wac-bulk-btn" onclick="wacBulkCampaignAll()" title="Send to all direct customers at once — bypasses per-page review, use with caution"
+              style="width:100%;margin-top:0.5rem;background:rgba(201,146,42,0.08);color:var(--gold);border:1px dashed rgba(201,146,42,0.35);border-radius:10px;padding:0.7rem;font-size:0.82rem;font-weight:600;cursor:pointer;font-family:inherit;">
+              ⚡ Bulk Campaign — All Direct Customers
+              <span style="display:block;font-size:0.68rem;font-weight:400;margin-top:0.2rem;color:var(--muted);">Loads the full list fresh and sends to everyone — no page-by-page review</span>
             </button>
           </div>
 
@@ -10072,6 +10072,62 @@ Questions? We're always here!
     }
     function wacIncludesDirect() {
       return document.getElementById('wac-seg-direct').checked;
+    }
+
+    // Bulk send to EVERY direct customer, bypassing the page-by-page review UI.
+    // Fetches the full list fresh (paginated -- Supabase caps a single query's
+    // rows, so this loops rather than requesting one giant page), targets ONLY
+    // the direct-customer segment (unchecks Shopify segments so a stray checkbox
+    // doesn't fold in Guests/Members/Authors too), then hands off to the exact
+    // same wacSendCampaign() pipeline the reviewed flow uses -- same batching,
+    // same confirmation dialog, same per-batch error handling. Nothing here
+    // reinvents the send path; it only automates the recipient selection step.
+    async function wacBulkCampaignAll() {
+      const message = document.getElementById('wac-message').value.trim();
+      if (!message) { alert('Please write a campaign message first (Step 2) before launching a bulk send.'); return; }
+
+      const btn = document.getElementById('wac-bulk-btn');
+      const originalHTML = btn.innerHTML;
+      btn.disabled = true; btn.style.cursor = 'not-allowed';
+      btn.innerHTML = '⏳ Loading full direct customer list…';
+
+      try {
+        const blResult = await adminPost('admin-wa-campaign', { action: 'get-blacklist' });
+        const blacklist = new Set(blResult.phones || []);
+
+        let allPhones = [];
+        let page = 1;
+        let total = Infinity;
+        const PAGE_SIZE = 500;
+        while ((page - 1) * PAGE_SIZE < total) {
+          const d = await adminPost('admin-wa-campaign', { action: 'get-direct-customers', page, limit: PAGE_SIZE });
+          if (!d.success) throw new Error(d.error || 'Failed to load direct customers');
+          total = d.total || 0;
+          (d.customers || []).forEach(c => { if (c.phone && !blacklist.has(c.phone)) allPhones.push(c.phone); });
+          btn.innerHTML = `⏳ Loaded ${Math.min(page * PAGE_SIZE, total)} of ${total}…`;
+          page++;
+        }
+        allPhones = [...new Set(allPhones)];
+        if (!allPhones.length) throw new Error('No direct customers with WhatsApp numbers found (or all are blacklisted).');
+
+        // Target direct customers ONLY -- uncheck Shopify segments so this button
+        // never silently folds in Guests/Members/Authors too.
+        document.getElementById('wac-seg-guest').checked  = false;
+        document.getElementById('wac-seg-member').checked = false;
+        document.getElementById('wac-seg-author').checked = false;
+        document.getElementById('wac-seg-direct').checked = true;
+        _wacAllRecipients = [];
+        _wacDirectSelected = new Set(allPhones);
+        _wacBlacklist = blacklist;
+
+        btn.innerHTML = originalHTML;
+        await wacSendCampaign();   // shows its own "This will send real messages" confirmation
+      } catch (e) {
+        alert('Could not start bulk campaign: ' + e.message);
+      } finally {
+        btn.disabled = false; btn.style.cursor = 'pointer';
+        if (btn.innerHTML.indexOf('Loading') !== -1 || btn.innerHTML.indexOf('Loaded') !== -1) btn.innerHTML = originalHTML;
+      }
     }
 
     async function wacSendCampaign() {

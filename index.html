@@ -9862,12 +9862,17 @@ Questions? We're always here!
       const selDirect  = _wacDirectSelected.size;
       summary.textContent = `${selShopify + selDirect} selected (${selShopify} Shopify · ${selDirect} direct)`;
 
-      // Shopify customers section
-      let html = '';
+      // Shopify customers section (built separately, appended AFTER direct rows below --
+      // its own nav-less block used to render first, pushing the actively-paginated
+      // Direct rows below ~195 unrelated Shopify rows. Paging through Direct customers
+      // then only ever showed this unchanged Shopify block at the top of the scroll
+      // area, looking exactly like "same names every page" even though the underlying
+      // pagination was working correctly).
+      let shopifyHtml = '';
       if (_wacAllRecipients.length) {
-        html += `<div style="font-size:0.7rem;font-weight:700;color:var(--muted);padding:0.4rem 0.6rem;background:rgba(255,255,255,0.03);border-radius:6px;margin-bottom:0.4rem;">
+        shopifyHtml += `<div style="font-size:0.7rem;font-weight:700;color:var(--muted);padding:0.4rem 0.6rem;background:rgba(255,255,255,0.03);border-radius:6px;margin-bottom:0.4rem;">
           🛍️ Shopify Customers (${_wacAllRecipients.length})</div>`;
-        html += _wacAllRecipients.map((c,i) => {
+        shopifyHtml += _wacAllRecipients.map((c,i) => {
           const isBlacklisted = _wacBlacklist.has(c.phone);
           const isChecked     = !isBlacklisted && c._checked !== false;
           const tagClass      = c.isMember ? 'wac-tag-member' : c.isAuthor ? 'wac-tag-author' : 'wac-tag-guest';
@@ -9885,7 +9890,9 @@ Questions? We're always here!
         }).join('');
       }
 
-      // Direct customers paginated section — nav goes into sticky #wac-direct-nav, rows into scrollable list
+      // Direct customers paginated section — nav goes into sticky #wac-direct-nav, rows
+      // go FIRST in the scrollable list (right below the nav they belong to).
+      let html = '';
       const navEl = document.getElementById('wac-direct-nav');
       if (wacIncludesDirect() && _wacDirectTotal > 0) {
         const totalPages = Math.ceil(_wacDirectTotal / _wacDirectPageSize);
@@ -9937,6 +9944,7 @@ Questions? We're always here!
         navEl.innerHTML = '';
       }
 
+      html += shopifyHtml;
       list.innerHTML = html || '<div style="color:var(--muted);font-size:0.82rem;padding:0.5rem;">No recipients found.</div>';
     }
 

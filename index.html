@@ -9941,15 +9941,27 @@ Questions? We're always here!
     }
 
     // ── Direct customer pagination ──────────────────────────────────────────
+    // Stale-response guard: each call to wacLoadDirectPage stamps a sequence
+    // number; if a NEWER page request has since been issued by the time this
+    // one resolves, its (out-of-order) response is discarded instead of
+    // overwriting the correctly-ordered, more recent one. Without this, rapid
+    // Prev/Next/jump clicks race real network latency -- an earlier page's
+    // slower response can land after a later page's faster one and silently
+    // repaint the wrong (stale) customer names, making it look like paging
+    // does nothing (same names keep showing no matter how many times you click).
+    let _wacDirectReqSeq = 0;
     async function wacLoadDirectPage(page) {
+      const mySeq = ++_wacDirectReqSeq;
       const data = await adminPost('admin-wa-campaign', {
         action: 'get-direct-customers', page, limit: _wacDirectPageSize
       });
+      if (mySeq !== _wacDirectReqSeq) return false;   // superseded by a newer page request -- discard
       _wacDirectTotal = data.total || 0;
       _wacDirectRows  = data.customers || [];
       // Do NOT auto-select — admin must manually choose per page
       document.getElementById('wac-direct-count-label').textContent =
         `(${_wacDirectTotal} customers · page ${page} of ${Math.ceil(_wacDirectTotal/_wacDirectPageSize)})`;
+      return true;
     }
 
     async function wacDirectPageNav(dir) {
@@ -9958,8 +9970,8 @@ Questions? We're always here!
       if (newPage === _wacDirectPage) return;
       _wacDirectPage = newPage;
       document.getElementById('wac-recipients-list').innerHTML = '<div style="color:var(--muted);font-size:0.82rem;padding:0.5rem;">⏳ Loading page ' + newPage + '…</div>';
-      await wacLoadDirectPage(newPage);
-      wacRenderRecipients();
+      const applied = await wacLoadDirectPage(newPage);
+      if (applied) wacRenderRecipients();
     }
 
     async function wacDirectJumpToPage() {
@@ -9971,8 +9983,8 @@ Questions? We're always here!
       if (target === _wacDirectPage) return;
       _wacDirectPage  = target;
       document.getElementById('wac-recipients-list').innerHTML = '<div style="color:var(--muted);font-size:0.82rem;padding:0.5rem;">⏳ Loading page ' + target + '…</div>';
-      await wacLoadDirectPage(target);
-      wacRenderRecipients();
+      const applied = await wacLoadDirectPage(target);
+      if (applied) wacRenderRecipients();
     }
 
     function wacDirectFilterRows(query) {

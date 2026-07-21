@@ -1458,6 +1458,22 @@
     }
     .book-modal-desc::-webkit-scrollbar { width: 4px; }
     .book-modal-desc::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    .bm-recs-label {
+      font-size: 0.7rem; color: var(--muted); text-transform: uppercase;
+      letter-spacing: 0.08em; margin: 0 0 0.6rem;
+    }
+    .bm-recs-strip { display: flex; gap: 0.75rem; overflow-x: auto; padding-bottom: 4px; }
+    .bm-rec-card {
+      flex: 0 0 auto; width: 92px; cursor: pointer; text-align: center;
+    }
+    .bm-rec-card img {
+      width: 92px; height: 130px; object-fit: cover; border-radius: 8px;
+      border: 1px solid var(--border); margin-bottom: 0.4rem;
+    }
+    .bm-rec-card .bm-rec-title {
+      font-size: 0.72rem; color: var(--cream); line-height: 1.3;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
     .book-modal-actions {
       display: flex;
       gap: 0.75rem;
@@ -2153,7 +2169,7 @@
     .fab-state-box .state-icon { font-size: 3rem; margin-bottom: 1rem; }
     .fab-state-box h3 { font-family: 'Playfair Display', serif; font-size: 1.3rem; color: var(--cream); margin-bottom: 0.5rem; }
     .fab-state-box p { font-size: 0.88rem; line-height: 1.65; }
-    #fab-request-modal {
+    #fab-request-modal, #cc-complaint-modal, #cc-track-modal {
       position: fixed;
       top: 64px; left: 0; right: 0; bottom: 0;  /* below nav only — sidebar stays visible */
       z-index: 98;
@@ -2164,18 +2180,18 @@
       opacity: 0; pointer-events: none;
       transition: opacity 0.25s;
     }
-    #fab-request-modal.open { opacity: 1; pointer-events: all; }
+    #fab-request-modal.open, #cc-complaint-modal.open, #cc-track-modal.open { opacity: 1; pointer-events: all; }
     /* Offset beside sidebars so they stay fully visible */
     @media (min-width: 769px) {
-      body.guest-mode  #fab-request-modal { left: 220px; }
-      body.author-mode #fab-request-modal { left: 240px; }
-      body.member-mode #fab-request-modal { left: 0; }
+      body.guest-mode  #fab-request-modal, body.guest-mode  #cc-complaint-modal, body.guest-mode  #cc-track-modal { left: 220px; }
+      body.author-mode #fab-request-modal, body.author-mode #cc-complaint-modal, body.author-mode #cc-track-modal { left: 240px; }
+      body.member-mode #fab-request-modal, body.member-mode #cc-complaint-modal, body.member-mode #cc-track-modal { left: 0; }
     }
     @media (max-width: 768px) {
-      #fab-request-modal { top: calc(64px + 48px); }
+      #fab-request-modal, #cc-complaint-modal, #cc-track-modal { top: calc(64px + 48px); }
     }
     .fab-modal-card { background: var(--navy2); border: 1px solid var(--border); border-radius: 18px; padding: 1.25rem 1.5rem; width: 100%; max-width: 480px; max-height: 92vh; overflow-y: auto; transform: translateY(24px); transition: transform 0.3s ease; display: flex; flex-direction: column; }
-    #fab-request-modal.open .fab-modal-card { transform: translateY(0); }
+    #fab-request-modal.open .fab-modal-card, #cc-complaint-modal.open .fab-modal-card, #cc-track-modal.open .fab-modal-card { transform: translateY(0); }
     .fab-modal-title { font-family: 'Playfair Display', serif; font-size: 1.15rem; margin-bottom: 0.2rem; }
     .fab-modal-subtitle { font-size: 0.78rem; color: var(--muted); margin-bottom: 1rem; }
     .fab-modal-book-info { background: rgba(201,146,42,0.06); border: 1px solid rgba(201,146,42,0.15); border-radius: 10px; padding: 0.75rem 1rem; margin-bottom: 1rem; }
@@ -3402,6 +3418,7 @@
     .abadge-paid       { background: rgba(74,222,128,0.15);  color: #4ade80; }
     .abadge-pending    { background: rgba(251,191,36,0.15);  color: #fbbf24; }
     .abadge-refunded   { background: rgba(248,113,113,0.15); color: #f87171; }
+    .abadge-closed     { background: rgba(148,163,184,0.15); color: #94a3b8; }
 
     /* Action buttons */
     .admin-btn {
@@ -3620,6 +3637,11 @@
       border: 1px solid rgba(251,191,36,0.25);
     }
     .admin-btn-warning:hover { background: rgba(251,191,36,0.22); }
+    .admin-btn-info {
+      background: rgba(96,165,250,0.12); color: #60a5fa;
+      border: 1px solid rgba(96,165,250,0.3);
+    }
+    .admin-btn-info:hover { background: rgba(96,165,250,0.22); }
     .admin-modal-actions .admin-btn { padding: 0.5rem 1.1rem; font-size: 0.78rem; }
     .admin-table tr.clickable-row { cursor: pointer; }
     .admin-table tr.clickable-row:hover td { background: rgba(212,175,55,0.06); }
@@ -3980,18 +4002,20 @@
 </head>
 <body class="guest-mode">
 
-  <!-- ══ ANDROID APP BANNER ══ -->
-  <div id="android-app-banner" role="banner" aria-label="Download our Android app">
+  <!-- ══ APP BANNER (Android via Play Store / iOS via App Store) ══ -->
+  <div id="android-app-banner" role="banner" aria-label="Download our app">
     <div class="aab-inner">
       <img class="aab-icon" src="Logo (Yellow Feather Books).jpg" alt="Yellow Feather Books App" />
       <div class="aab-text">
         <div class="aab-title">Yellow Feather Books App</div>
         <div class="aab-sub">📚 Better experience · Book Club · AI Search</div>
       </div>
-      <a class="aab-btn" href="https://play.google.com/store/apps/details?id=in.yellowfeatherbookstore.app" target="_blank" rel="noopener">
-        <!-- Play Store icon -->
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M3.18 23.76a2 2 0 0 0 2.09-.21l12.09-6.98-3.09-3.09L3.18 23.76zm16.64-10.93L16.9 11.1l-3.45 3.46 3.44 3.44 2.93-1.69a1.74 1.74 0 0 0 0-3.48zM3.07.26A1.74 1.74 0 0 0 2 1.83v20.34a1.74 1.74 0 0 0 1.07 1.57l.12.06 11.38-11.38v-.26L3.19.2 3.07.26zm10.38 10.84L3.07.26l.12-.06 9.78 5.65-3.44 3.45 3.44 3.44-3.44 3.44 3.44 3.44-9.78 5.65-.12-.06 10.38-10.38v-.26l.01-.23z"/></svg>
-        Install Free
+      <a class="aab-btn" id="aab-link" href="https://play.google.com/store/apps/details?id=in.yellowfeatherbookstore.app" target="_blank" rel="noopener">
+        <span id="aab-link-icon">
+          <!-- Play Store icon -->
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M3.18 23.76a2 2 0 0 0 2.09-.21l12.09-6.98-3.09-3.09L3.18 23.76zm16.64-10.93L16.9 11.1l-3.45 3.46 3.44 3.44 2.93-1.69a1.74 1.74 0 0 0 0-3.48zM3.07.26A1.74 1.74 0 0 0 2 1.83v20.34a1.74 1.74 0 0 0 1.07 1.57l.12.06 11.38-11.38v-.26L3.19.2 3.07.26zm10.38 10.84L3.07.26l.12-.06 9.78 5.65-3.44 3.45 3.44 3.44-3.44 3.44 3.44 3.44-9.78 5.65-.12-.06 10.38-10.38v-.26l.01-.23z"/></svg>
+        </span>
+        <span id="aab-link-text">Install Free</span>
       </a>
       <button class="aab-close" onclick="dismissAppBanner()" aria-label="Close">✕</button>
     </div>
@@ -4164,15 +4188,16 @@
       <button onclick="closeMobileDrawer();(readerToken||isBookClubMember)?openOrdersPanel():openLoginModal();">🙋&nbsp; My Account</button>
       <button onclick="closeMobileDrawer();showMobilePanel('bookclub',document.querySelector('[data-panel=bookclub]'))">🎖️&nbsp; Book Club</button>
       <button onclick="closeMobileDrawer();fabOpenRequest({title:'',author:'',publisher:'',source:''});">📬&nbsp; Request a Book</button>
+      <button onclick="closeMobileDrawer();ccOpenComplaint();">🎫&nbsp; Customer Care</button>
       <div class="drawer-section-label">More</div>
       <button onclick="closeMobileDrawer();showAuthorLogin();">✍️&nbsp; Author's Space</button>
     </nav>
     <div class="mobile-drawer-contact">
       <a href="tel:+919400448000">📞&nbsp; +91 94004 48000</a>
       <a href="https://wa.link/dlyvtp" target="_blank">💬&nbsp; Chat on WhatsApp</a>
-      <a href="https://play.google.com/store/apps/details?id=in.yellowfeatherbookstore.app" target="_blank" rel="noopener" style="display:flex;align-items:center;justify-content:center;gap:0.45rem;margin-top:0.5rem;padding:0.55rem 1rem;background:rgba(201,146,42,0.15);border:1px solid rgba(201,146,42,0.4);border-radius:10px;color:var(--gold);font-size:0.85rem;font-weight:700;text-decoration:none;">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M3.18 23.76a2 2 0 0 0 2.09-.21l12.09-6.98-3.09-3.09L3.18 23.76zm16.64-10.93L16.9 11.1l-3.45 3.46 3.44 3.44 2.93-1.69a1.74 1.74 0 0 0 0-3.48zM3.07.26A1.74 1.74 0 0 0 2 1.83v20.34a1.74 1.74 0 0 0 1.07 1.57l.12.06 11.38-11.38v-.26L3.19.2 3.07.26zm10.38 10.84L3.07.26l.12-.06 9.78 5.65-3.44 3.45 3.44 3.44-3.44 3.44 3.44 3.44-9.78 5.65-.12-.06 10.38-10.38v-.26l.01-.23z"/></svg>
-        📱 Download Android App
+      <a href="https://play.google.com/store/apps/details?id=in.yellowfeatherbookstore.app" target="_blank" rel="noopener" id="drawer-app-link" style="display:flex;align-items:center;justify-content:center;gap:0.45rem;margin-top:0.5rem;padding:0.55rem 1rem;background:rgba(201,146,42,0.15);border:1px solid rgba(201,146,42,0.4);border-radius:10px;color:var(--gold);font-size:0.85rem;font-weight:700;text-decoration:none;">
+        <span id="drawer-app-link-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M3.18 23.76a2 2 0 0 0 2.09-.21l12.09-6.98-3.09-3.09L3.18 23.76zm16.64-10.93L16.9 11.1l-3.45 3.46 3.44 3.44 2.93-1.69a1.74 1.74 0 0 0 0-3.48zM3.07.26A1.74 1.74 0 0 0 2 1.83v20.34a1.74 1.74 0 0 0 1.07 1.57l.12.06 11.38-11.38v-.26L3.19.2 3.07.26zm10.38 10.84L3.07.26l.12-.06 9.78 5.65-3.44 3.45 3.44 3.44-3.44 3.44 3.44 3.44-9.78 5.65-.12-.06 10.38-10.38v-.26l.01-.23z"/></svg></span>
+        <span id="drawer-app-link-text">📱 Download Android App</span>
       </a>
     </div>
   </div>
@@ -4195,13 +4220,14 @@
       <div class="ds-section-label">Community</div>
       <button class="ds-nav-link" onclick="closeSearch();closeFindABook();closeGuestCart();closeIframePanel();closeAuthorLogin();handleBookClubNav()">🎖️&nbsp; Book Club</button>
       <a href="#" class="ds-nav-link" onclick="event.preventDefault();closeSearch();closeFindABook();closeGuestCart();closeBcLoginPanel();showAuthorLogin();">✍️&nbsp; Author's Space</a>
+      <button class="ds-nav-link" onclick="closeSearch();closeFindABook();closeGuestCart();closeIframePanel();closeAuthorLogin();closeBcLoginPanel();ccOpenComplaint()">🎫&nbsp; Customer Care</button>
     </div>
     <div id="desktop-sidebar-footer">
       <a href="tel:+919400448000">📞&nbsp; +91 94004 48000</a>
       <a href="https://wa.link/dlyvtp" target="_blank">💬&nbsp; WhatsApp</a>
-      <a href="https://play.google.com/store/apps/details?id=in.yellowfeatherbookstore.app" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:0.4rem;margin-top:0.35rem;padding:0.45rem 0.6rem;background:rgba(201,146,42,0.12);border:1px solid rgba(201,146,42,0.3);border-radius:8px;color:var(--gold);font-size:0.78rem;font-weight:600;text-decoration:none;justify-content:center;transition:background 0.2s;" onmouseover="this.style.background='rgba(201,146,42,0.22)'" onmouseout="this.style.background='rgba(201,146,42,0.12)'">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M3.18 23.76a2 2 0 0 0 2.09-.21l12.09-6.98-3.09-3.09L3.18 23.76zm16.64-10.93L16.9 11.1l-3.45 3.46 3.44 3.44 2.93-1.69a1.74 1.74 0 0 0 0-3.48zM3.07.26A1.74 1.74 0 0 0 2 1.83v20.34a1.74 1.74 0 0 0 1.07 1.57l.12.06 11.38-11.38v-.26L3.19.2 3.07.26zm10.38 10.84L3.07.26l.12-.06 9.78 5.65-3.44 3.45 3.44 3.44-3.44 3.44 3.44 3.44-9.78 5.65-.12-.06 10.38-10.38v-.26l.01-.23z"/></svg>
-        Get Android App
+      <a href="https://play.google.com/store/apps/details?id=in.yellowfeatherbookstore.app" target="_blank" rel="noopener" id="sidebar-app-link" style="display:flex;align-items:center;gap:0.4rem;margin-top:0.35rem;padding:0.45rem 0.6rem;background:rgba(201,146,42,0.12);border:1px solid rgba(201,146,42,0.3);border-radius:8px;color:var(--gold);font-size:0.78rem;font-weight:600;text-decoration:none;justify-content:center;transition:background 0.2s;" onmouseover="this.style.background='rgba(201,146,42,0.22)'" onmouseout="this.style.background='rgba(201,146,42,0.12)'">
+        <span id="sidebar-app-link-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M3.18 23.76a2 2 0 0 0 2.09-.21l12.09-6.98-3.09-3.09L3.18 23.76zm16.64-10.93L16.9 11.1l-3.45 3.46 3.44 3.44 2.93-1.69a1.74 1.74 0 0 0 0-3.48zM3.07.26A1.74 1.74 0 0 0 2 1.83v20.34a1.74 1.74 0 0 0 1.07 1.57l.12.06 11.38-11.38v-.26L3.19.2 3.07.26zm10.38 10.84L3.07.26l.12-.06 9.78 5.65-3.44 3.45 3.44 3.44-3.44 3.44 3.44 3.44-9.78 5.65-.12-.06 10.38-10.38v-.26l.01-.23z"/></svg></span>
+        <span id="sidebar-app-link-text">Get Android App</span>
       </a>
     </div>
   </div>
@@ -4602,51 +4628,22 @@
       <h2>Yellow Feather Books</h2>
       <p>Your one-stop destination for Malayalam literature</p>
     </div>
-    <div class="mhp-cards">
-
-      <!-- Book Club -->
-      <div class="mhp-card club" onclick="showMobilePanel('bookclub', document.querySelector('[data-panel=bookclub]'))">
-        <div class="mhp-discount-badge"><span class="db-pct"><span class="db-upto">upto</span>25%</span><span class="db-label">DISCOUNT</span></div>
-        <div class="mhp-card-row">
-          <div class="mhp-card-icon">🏆</div>
-          <span class="mhp-card-tag">Book Club</span>
-        </div>
-        <div class="mhp-card-title">Join &amp; Save on Every Order</div>
-        <ul class="mhp-card-perks">
-          <li>Attractive discounts on all purchases</li>
-          <li>Surprise gifts &amp; member deals</li>
-          <li>Early access to new titles</li>
-          <li>High speed delivery across India</li>
-        </ul>
-        <div class="mhp-card-price">₹99 / year</div>
-        <button class="mhp-card-cta" onclick="event.stopPropagation();handleBookClubNav()">Join Now →</button>
-      </div>
-
-      <!-- Author's Space -->
-      <div class="mhp-card author" onclick="showAuthorLogin()">
-        <div class="mhp-discount-badge"><span class="db-pct"><span class="db-upto">upto</span>25%</span><span class="db-label">DISCOUNT</span></div>
-        <div class="mhp-card-row">
-          <div class="mhp-card-icon">✍️</div>
-          <span class="mhp-card-tag">For Authors</span>
-        </div>
-        <div class="mhp-card-title">List Your Book &amp; Reach Readers</div>
-        <ul class="mhp-card-perks">
-          <li class="mhp-perk-highlight">🎁 Free 1-year Book Club membership</li>
-          <li>3 flexible listing plans</li>
-          <li>Reach thousands of readers</li>
-          <li>Instagram &amp; digital promotion</li>
-          <li>Author dashboard &amp; analytics</li>
-        </ul>
-        <div class="mhp-card-price">Plans from ₹99 / month · Cancel anytime</div>
-        <span class="mhp-card-cta" onclick="event.stopPropagation(); showAuthorLogin()">Get Started →</span>
-      </div>
-
-    </div>
     <div class="mhp-stats">
       <div class="mhp-stat"><div class="num">1500+</div><div class="lbl">Books Available</div></div>
       <div class="mhp-stat"><div class="num">11</div><div class="lbl">Collections</div></div>
       <div class="mhp-stat"><div class="num">3</div><div class="lbl">Author Plans</div></div>
       <div class="mhp-stat"><div class="num">🇮🇳</div><div class="lbl">Pan India Delivery</div></div>
+    </div>
+    <div id="featured-books-section" style="padding:0 0 1.25rem;">
+      <div style="font-size:0.95rem;font-weight:700;color:var(--gold);margin-bottom:0.75rem;">🌟 Featured Books</div>
+      <div id="featured-books-grid" class="browse-books-grid">
+        <div class="skeleton"><div class="skeleton-cover"></div><div class="skeleton-line"></div><div class="skeleton-line short"></div></div>
+        <div class="skeleton"><div class="skeleton-cover"></div><div class="skeleton-line"></div><div class="skeleton-line short"></div></div>
+        <div class="skeleton"><div class="skeleton-cover"></div><div class="skeleton-line"></div><div class="skeleton-line short"></div></div>
+        <div class="skeleton"><div class="skeleton-cover"></div><div class="skeleton-line"></div><div class="skeleton-line short"></div></div>
+        <div class="skeleton"><div class="skeleton-cover"></div><div class="skeleton-line"></div><div class="skeleton-line short"></div></div>
+        <div class="skeleton"><div class="skeleton-cover"></div><div class="skeleton-line"></div><div class="skeleton-line short"></div></div>
+      </div>
     </div>
   </div>
 
@@ -4677,50 +4674,6 @@
       <h1 style="font-size:clamp(1.8rem,5vw,3rem);margin-bottom:0.5rem;">Discover Stories That <em>Move Your Soul</em></h1>
       <p style="font-size:clamp(0.88rem,1.8vw,1rem);color:rgba(245,240,232,0.6);margin-bottom:0;">Your one-stop destination for the finest Malayalam books.</p>
 
-      <!-- ── Promo cards ── -->
-      <div class="hero-promo-cards">
-
-        <!-- Book Club -->
-        <div class="hero-promo-card club" onclick="handleBookClubNav()">
-          <div class="mhp-discount-badge"><span class="db-pct"><span class="db-upto">upto</span>25%</span><span class="db-label">DISCOUNT</span></div>
-          <div class="hpc-icon">🏆</div>
-          <span class="hpc-tag">Book Club</span>
-          <div class="hpc-title">Join &amp; Save on Every Order</div>
-          <ul class="hpc-perks">
-            <li>Attractive discounts on all purchases</li>
-            <li>Surprise gifts</li>
-            <li>Exclusive member-only deals</li>
-            <li>Early access to new titles</li>
-            <li>High speed delivery</li>
-            <li>Member dashboard</li>
-            <li>News letter</li>
-          </ul>
-          <div class="hpc-price">₹99 / year</div>
-          <button class="hpc-cta" id="club-btn" onclick="event.stopPropagation(); handleBookClubNav()">Join Now →</button>
-          <a href="/club-terms.html" class="hpc-tc-link" target="_blank" rel="noopener">Terms &amp; Conditions</a>
-        </div>
-
-        <!-- Author Portal -->
-        <div class="hero-promo-card author" onclick="showAuthorLogin()" style="cursor:pointer;">
-          <div class="mhp-discount-badge"><span class="db-pct"><span class="db-upto">upto</span>25%</span><span class="db-label">DISCOUNT</span></div>
-          <div class="hpc-icon">✍️</div>
-          <span class="hpc-tag">For Authors</span>
-          <div class="hpc-title">List Your Book &amp; Reach Readers</div>
-          <ul class="hpc-perks">
-            <li>3 flexible listing plans</li>
-            <li>Reach thousands of readers</li>
-            <li>Signed copy &amp; event support</li>
-            <li>Digital posters</li>
-            <li>Instagram collaboration</li>
-            <li>Author dashboard</li>
-            <li>Online pre-launch</li>
-          </ul>
-          <div class="hpc-price">Plans starting ₹99 / month &nbsp;·&nbsp; Cancel anytime</div>
-          <span class="hpc-cta" id="author-btn" onclick="event.stopPropagation(); showAuthorLogin()">Get Started →</span>
-          <a href="/author-terms.html" class="hpc-tc-link" target="_blank" rel="noopener">Terms &amp; Conditions</a>
-        </div>
-
-      </div>
       <div class="hero-stats">
         <div class="hero-stat">
           <div class="num" id="stat-books">1500+</div>
@@ -5101,11 +5054,11 @@
       <div class="footer-col footer-app-col">
         <h4>Get the App</h4>
         <p style="font-size:0.8rem;color:var(--muted);margin-bottom:0.75rem;line-height:1.6;">Shop books, manage your Book Club membership and AI-search — all in one app.</p>
-        <a class="app-store-badge" href="https://play.google.com/store/apps/details?id=in.yellowfeatherbookstore.app" target="_blank" rel="noopener">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="color:var(--gold)"><path d="M3.18 23.76a2 2 0 0 0 2.09-.21l12.09-6.98-3.09-3.09L3.18 23.76zm16.64-10.93L16.9 11.1l-3.45 3.46 3.44 3.44 2.93-1.69a1.74 1.74 0 0 0 0-3.48zM3.07.26A1.74 1.74 0 0 0 2 1.83v20.34a1.74 1.74 0 0 0 1.07 1.57l.12.06 11.38-11.38v-.26L3.19.2 3.07.26zm10.38 10.84L3.07.26l.12-.06 9.78 5.65-3.44 3.45 3.44 3.44-3.44 3.44 3.44 3.44-9.78 5.65-.12-.06 10.38-10.38v-.26l.01-.23z"/></svg>
-          Google Play
+        <a class="app-store-badge" href="https://play.google.com/store/apps/details?id=in.yellowfeatherbookstore.app" target="_blank" rel="noopener" id="footer-app-link">
+          <span id="footer-app-link-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="color:var(--gold)"><path d="M3.18 23.76a2 2 0 0 0 2.09-.21l12.09-6.98-3.09-3.09L3.18 23.76zm16.64-10.93L16.9 11.1l-3.45 3.46 3.44 3.44 2.93-1.69a1.74 1.74 0 0 0 0-3.48zM3.07.26A1.74 1.74 0 0 0 2 1.83v20.34a1.74 1.74 0 0 0 1.07 1.57l.12.06 11.38-11.38v-.26L3.19.2 3.07.26zm10.38 10.84L3.07.26l.12-.06 9.78 5.65-3.44 3.45 3.44 3.44-3.44 3.44 3.44 3.44-9.78 5.65-.12-.06 10.38-10.38v-.26l.01-.23z"/></svg></span>
+          <span id="footer-app-link-text">Google Play</span>
         </a>
-        <div style="font-size:0.72rem;color:var(--muted);margin-top:0.5rem;">Android · Free download</div>
+        <div id="footer-app-link-sub" style="font-size:0.72rem;color:var(--muted);margin-top:0.5rem;">Android · Free download</div>
       </div>
       <div class="footer-col">
         <h4>Contact Us</h4>
@@ -5460,6 +5413,72 @@
         <h3>Request Sent!</h3>
         <p>We&rsquo;ve received your request for <strong id="fab-success-book-title"></strong>. Our team will reach out once we source it.</p>
         <button class="fab-btn-modal-submit" style="margin-top:1.25rem;max-width:200px;" onclick="fabCloseModal()">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ CUSTOMER CARE MODAL ══ -->
+  <div id="cc-complaint-modal" onclick="ccHandleOverlayClick(event)">
+    <div class="fab-modal-card">
+      <div id="cc-form-view">
+        <div class="fab-modal-title">Customer Care</div>
+        <div class="fab-modal-subtitle">Tell us what went wrong and our team will get back to you.</div>
+        <div id="cc-form-err" style="display:none;color:#f87171;font-size:0.8rem;margin-bottom:0.5rem;"></div>
+        <div class="fab-form-row">
+          <div class="fab-form-group" style="margin-bottom:0;"><label>Your Name *</label><input type="text" id="cc-name" class="fab-form-input" placeholder="Full name"/></div>
+          <div class="fab-form-group" style="margin-bottom:0;"><label>Email Address *</label><input type="email" id="cc-email" class="fab-form-input" placeholder="you@example.com"/></div>
+        </div>
+        <div class="fab-form-row">
+          <div class="fab-form-group" style="margin-bottom:0;"><label>Phone Number</label><input type="tel" id="cc-phone" class="fab-form-input" placeholder="+91 98765 43210"/></div>
+          <div class="fab-form-group" style="margin-bottom:0;"><label>Order Number</label><input type="text" id="cc-order-number" class="fab-form-input" placeholder="If applicable"/></div>
+        </div>
+        <div class="fab-form-group">
+          <label>Category</label>
+          <select id="cc-category" class="fab-form-input">
+            <option>Order Issue</option>
+            <option>Delivery</option>
+            <option>Payment</option>
+            <option>Product Quality</option>
+            <option>Subscription</option>
+            <option selected>Other</option>
+          </select>
+        </div>
+        <div class="fab-form-group"><label>Subject *</label><input type="text" id="cc-subject" class="fab-form-input" placeholder="Brief summary of the issue"/></div>
+        <div class="fab-form-group"><label>Message *</label><textarea id="cc-message" class="fab-form-input" placeholder="Describe the issue in detail…"></textarea></div>
+        <div class="fab-modal-actions">
+          <button class="fab-btn-modal-cancel" onclick="ccCloseModal()">Cancel</button>
+          <button class="fab-btn-modal-submit" id="cc-submit-btn" onclick="ccSubmitComplaint()">Submit</button>
+        </div>
+        <p style="text-align:center;margin-top:0.9rem;font-size:0.78rem;">
+          <a href="javascript:void(0)" onclick="ccOpenTrack()" style="color:var(--gold);">Already submitted a ticket? Track it →</a>
+        </p>
+      </div>
+      <div id="cc-success-view" class="fab-modal-success" style="display:none;">
+        <div style="font-size:3rem;margin-bottom:0.75rem;">🎫</div>
+        <h3>Ticket Submitted!</h3>
+        <p>Your reference is <strong id="cc-success-ticket-id"></strong>. Our team will review it and reach out by email.</p>
+        <button class="fab-btn-modal-submit" style="margin-top:1.25rem;max-width:200px;" onclick="ccCloseModal()">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ TRACK MY COMPLAINT MODAL ══ -->
+  <div id="cc-track-modal" onclick="ccHandleTrackOverlayClick(event)">
+    <div class="fab-modal-card">
+      <div id="cc-track-form-view">
+        <div class="fab-modal-title">Track My Complaint</div>
+        <div class="fab-modal-subtitle">Enter the email you submitted your ticket with.</div>
+        <div id="cc-track-err" style="display:none;color:#f87171;font-size:0.8rem;margin-bottom:0.5rem;"></div>
+        <div class="fab-form-group"><label>Email Address *</label><input type="email" id="cc-track-email" class="fab-form-input" placeholder="you@example.com"/></div>
+        <div class="fab-modal-actions">
+          <button class="fab-btn-modal-cancel" onclick="ccCloseTrackModal()">Cancel</button>
+          <button class="fab-btn-modal-submit" id="cc-track-btn" onclick="ccFetchTickets()">Find My Tickets</button>
+        </div>
+      </div>
+      <div id="cc-track-results-view" style="display:none;">
+        <div class="fab-modal-title">My Tickets</div>
+        <div id="cc-track-results"></div>
+        <button class="fab-btn-modal-cancel" style="margin-top:0.9rem;" onclick="ccCloseTrackModal()">Close</button>
       </div>
     </div>
   </div>
@@ -5960,6 +5979,9 @@
       <button class="admin-nav-item" data-section="signed-requests" onclick="adminNav('signed-requests',this)">
         <span class="admin-nav-icon">✒️</span> Signed Copies
       </button>
+      <button class="admin-nav-item" data-section="complaints" onclick="adminNav('complaints',this)">
+        <span class="admin-nav-icon">🎫</span> Customer Care
+      </button>
 
       <!-- ── Shopify group (catalog/inventory only) ── -->
       <div class="admin-nav-group">
@@ -5979,10 +6001,16 @@
           <button class="admin-nav-item" data-section="stock-summary" onclick="adminNav('stock-summary',this)">
             <span class="admin-nav-icon">📚</span> Stock Summary
           </button>
+          <button class="admin-nav-item" data-section="missing-covers" onclick="adminNav('missing-covers',this)">
+            <span class="admin-nav-icon">🖼️</span> Missing Covers
+          </button>
         </div>
       </div>
 
       <!-- Marketing / tools (not Shopify-specific) -->
+      <button class="admin-nav-item" data-section="featured" onclick="adminNav('featured',this)">
+        <span class="admin-nav-icon">🌟</span> Featured Books
+      </button>
       <button class="admin-nav-item" data-section="flash" onclick="adminNav('flash',this)">
         <span class="admin-nav-icon">⚡</span> Flash Sale
       </button>
@@ -6436,6 +6464,22 @@
         <div id="admin-book-reqs-body"></div>
       </div>
 
+      <!-- ── Customer Care ── -->
+      <div id="admin-section-complaints" class="admin-section">
+        <div class="admin-section-header">
+          <h2>🎫 Customer Care</h2>
+          <div class="admin-filter-row">
+            <button class="admin-filter-btn active" onclick="adminFilterComplaints('all',this)">All</button>
+            <button class="admin-filter-btn" onclick="adminFilterComplaints('open',this)">Open</button>
+            <button class="admin-filter-btn" onclick="adminFilterComplaints('in_progress',this)">In Progress</button>
+            <button class="admin-filter-btn" onclick="adminFilterComplaints('resolved',this)">Resolved</button>
+            <button class="admin-filter-btn" onclick="adminFilterComplaints('closed',this)">Closed</button>
+          </div>
+        </div>
+        <div id="admin-complaints-stats" class="admin-stats"></div>
+        <div id="admin-complaints-body"></div>
+      </div>
+
       <!-- ── Signed Copy Requests ── -->
       <div id="admin-section-signed-requests" class="admin-section">
 
@@ -6522,6 +6566,34 @@
       </div><!-- /admin-section-tags -->
 
       <!-- ── Flash Sale ── -->
+      <div id="admin-section-featured" class="admin-section">
+        <div class="admin-section-header">
+          <h2>🌟 Featured Books</h2>
+        </div>
+
+        <!-- Current books -->
+        <div class="tag-mgmt-card">
+          <h3>📚 Current Featured Books &nbsp;<span id="featured-count-badge" style="font-size:0.8rem;font-weight:400;color:var(--muted)">(0 / 20)</span></h3>
+          <p style="font-size:0.85rem;color:var(--muted);margin-bottom:1rem;">These books appear right on the homepage when it loads, above everything else. Changes take effect immediately after saving.</p>
+          <div id="featured-current-books"></div>
+          <div style="display:flex;align-items:center;gap:1rem;margin-top:1rem;flex-wrap:wrap;">
+            <button class="tag-sync-btn" id="featured-save-btn" onclick="adminSaveFeaturedBooks()">💾 Save Changes</button>
+            <span id="featured-save-status" style="font-size:0.82rem;"></span>
+          </div>
+        </div>
+
+        <!-- Search & add -->
+        <div class="tag-mgmt-card">
+          <h3>🔍 Add Books to Featured</h3>
+          <div class="book-tag-search-row">
+            <input type="text" id="featured-search-input" placeholder="Search by book title…"
+              onkeydown="if(event.key==='Enter') adminSearchFeaturedBooks()" />
+            <button class="book-tag-search-btn" onclick="adminSearchFeaturedBooks()">🔍 Search</button>
+          </div>
+          <div id="featured-search-results"></div>
+        </div>
+      </div><!-- /admin-section-featured -->
+
       <div id="admin-section-flash" class="admin-section">
         <div class="admin-section-header">
           <h2>⚡ Flash Sale Books</h2>
@@ -7090,6 +7162,7 @@
             <option value="draft">Draft</option>
             <option value="oos">Out of stock</option>
             <option value="digital">Digital (no shipping ⚠️)</option>
+            <option value="vendorreview">Vendor needs review ⚠️</option>
           </select>
           <button class="admin-filter-btn" onclick="adminLoadStockSummary()" style="background:rgba(212,175,55,0.1);border-color:var(--gold);color:var(--gold);">🔄 Refresh</button>
           <button class="admin-filter-btn" id="stk-fix-digital" onclick="stkFixAllDigital()" style="background:rgba(248,113,113,0.1);border-color:#f87171;color:#f87171;">🚚 Fix digital → Physical</button>
@@ -7098,6 +7171,16 @@
         </div>
         <div id="stk-body"></div>
       </div><!-- /admin-section-stock-summary -->
+
+      <!-- ── Missing Covers ── -->
+      <div id="admin-section-missing-covers" class="admin-section">
+        <div class="admin-section-header">
+          <h2>🖼️ Missing Covers</h2>
+          <button class="admin-filter-btn active" onclick="adminLoadMissingCovers()">🔄 Refresh</button>
+        </div>
+        <div id="mc-stats" class="admin-stats"></div>
+        <div id="mc-body"></div>
+      </div><!-- /admin-section-missing-covers -->
 
       <!-- ── Odoo Sync ── -->
       <div id="admin-section-odoo-sync" class="admin-section">
@@ -7526,6 +7609,9 @@
       <button class="admin-mob-tab" data-section="signed-requests" onclick="adminNav('signed-requests',this)">
         <span class="tab-icon">✒️</span>Signed
       </button>
+      <button class="admin-mob-tab" data-section="complaints" onclick="adminNav('complaints',this)">
+        <span class="tab-icon">🎫</span>Care
+      </button>
       <button class="admin-mob-tab" data-section="tags" onclick="adminNav('tags',this)">
         <span class="tab-icon">🏷️</span>Tags
       </button>
@@ -7807,9 +7893,15 @@
           <div class="book-modal-desc" id="bm-desc">Loading details…</div>
         </div>
       </div>
+      <div id="bm-recs-section" style="display:none;padding:0 2rem 1.25rem;">
+        <div class="bm-recs-label">📚 Readers Also Loved</div>
+        <div class="bm-recs-strip" id="bm-recs-strip"></div>
+      </div>
       <div class="book-modal-actions">
         <button class="bm-add-btn" id="bm-add-btn" onclick="bmAddToCart()">🛒 Add to Cart</button>
         <button class="bm-view-btn" id="bm-cart-btn" onclick="closeBookModal();openCartPanel()">🛍️ View Cart</button>
+        <button class="bm-view-btn" id="bm-share-btn" onclick="bmShareBook(this)">🔗 Share</button>
+        <button class="bm-view-btn" id="bm-close-btn" onclick="closeBookModal()">✕ Close</button>
       </div>
     </div>
   </div>
@@ -8089,9 +8181,10 @@
           <div class="hint">Use this at checkout on yellowfeatherbookstore.in to get 10% off</div>
           <button class="bc-copy-btn" onclick="copyClubCode()">Copy Code</button>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-top:1rem;">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.75rem;margin-top:1rem;">
           <button onclick="closeBookClubModal();showFindABook();" style="background:linear-gradient(135deg,#1a1a4e,#2a2a6e);border:1px solid rgba(201,146,42,0.4);color:#F5B800;font-family:Inter,sans-serif;padding:0.75rem 0.5rem;border-radius:10px;cursor:pointer;font-size:0.82rem;font-weight:600;line-height:1.3;">✨<br/>Global Book Search</button>
           <button onclick="closeBookClubModal();fabOpenRequest({title:'',author:'',publisher:'',source:''});" style="background:linear-gradient(135deg,#1a1a4e,#2a2a6e);border:1px solid rgba(201,146,42,0.4);color:#F5B800;font-family:Inter,sans-serif;padding:0.75rem 0.5rem;border-radius:10px;cursor:pointer;font-size:0.82rem;font-weight:600;line-height:1.3;">📬<br/>Request a Book</button>
+          <button onclick="closeBookClubModal();ccOpenComplaint();" style="background:linear-gradient(135deg,#1a1a4e,#2a2a6e);border:1px solid rgba(201,146,42,0.4);color:#F5B800;font-family:Inter,sans-serif;padding:0.75rem 0.5rem;border-radius:10px;cursor:pointer;font-size:0.82rem;font-weight:600;line-height:1.3;">🎫<br/>Customer Care</button>
         </div>
         <button onclick="closeBookClubModal()" style="width:100%;background:none;border:1px solid var(--border);color:var(--muted);font-family:Inter,sans-serif;padding:0.7rem;border-radius:10px;cursor:pointer;font-size:0.85rem;margin-top:0.5rem;">
           Close
@@ -8120,6 +8213,7 @@
       <button class="msb-item" id="msb-btn-prebook"  onclick="msbNav('prebook')"  style="display:none;"><span class="msb-item-icon">✍️</span> Pre-Book Signed</button>
       <button class="msb-item" id="msb-btn-ai-search" onclick="msbNav('ai-search')"><span class="msb-item-icon">✨</span> Global Book Search</button>
       <button class="msb-item" id="msb-btn-req-book" onclick="msbNav('req-book')"> <span class="msb-item-icon">📬</span> Request a Book</button>
+      <button class="msb-item" id="msb-btn-complaint" onclick="ccOpenComplaint()"><span class="msb-item-icon">🎫</span> Customer Care</button>
     </div>
     <div class="msb-bottom">
       <button class="msb-item logout" onclick="logoutReader()"><span class="msb-item-icon">🚪</span> Logout</button>
@@ -8161,6 +8255,7 @@
       <button class="orders-tab"        id="tab-btn-prebook"   onclick="switchOrdersTab('prebook')"  style="display:none;">✍️ Pre-Book Signed</button>
       <button class="orders-tab"        id="tab-btn-ai-search" onclick="switchOrdersTab('ai-search');">✨ Global Book Search</button>
       <button class="orders-tab"        id="tab-btn-req-book"  onclick="switchOrdersTab('req-book');">📬 Request a Book</button>
+      <button class="orders-tab"        id="tab-btn-complaint" onclick="ccOpenComplaint();">🎫 Customer Care</button>
     </div>
 
     <!-- Orders tab -->
@@ -8445,14 +8540,17 @@
     };
 
     // ── Fetch collection by GID (supports cursor pagination) ──
-    async function fetchCollection(collectionKey, count = 16, after = null) {
+    async function fetchCollection(collectionKey, count = 16, after = null, recent = false) {
       const gid = COLLECTIONS[collectionKey];
       if (!gid) return { products: [], hasNextPage: false, endCursor: null };
+      // Classics + genre browsing show newest-added-first; Trending/Best Sellers
+      // etc. keep Shopify's own curated/manual collection order.
+      const sortArgs = recent ? 'sortKey: CREATED, reverse: true' : 'sortKey: COLLECTION_DEFAULT';
       const query = `
         query GetCollection($id: ID!, $first: Int!, $after: String) {
           collection(id: $id) {
             handle
-            products(first: $first, sortKey: COLLECTION_DEFAULT, after: $after) {
+            products(first: $first, ${sortArgs}, after: $after) {
               pageInfo { hasNextPage endCursor }
               edges {
                 node {
@@ -8497,8 +8595,56 @@
       }
     }
 
+    // ── Fetch a single product by handle (for shareable #book/<handle> links) ──
+    async function fetchProductByHandle(handle) {
+      const query = `
+        query GetProductByHandle($handle: String!) {
+          productByHandle(handle: $handle) {
+            id title handle vendor availableForSale description
+            priceRange { minVariantPrice { amount currencyCode } }
+            compareAtPriceRange { minVariantPrice { amount } }
+            images(first: 1) { edges { node { url altText } } }
+            variants(first: 1) { edges { node { id availableForSale } } }
+          }
+        }
+      `;
+      try {
+        const res = await fetch(API_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Shopify-Storefront-Access-Token': STOREFRONT_TOKEN
+          },
+          body: JSON.stringify({ query, variables: { handle } })
+        });
+        const json = await res.json();
+        return json?.data?.productByHandle || null;
+      } catch(e) {
+        console.error('fetchProductByHandle error for', handle, e.message);
+        return null;
+      }
+    }
+
     // ── Global book store for wishlist / cart ──
     const _books = {};
+
+    // ── Map a Shopify product node into the shape cached in _books ──
+    function _mapProductNode(p) {
+      const price    = parseFloat(p.priceRange?.minVariantPrice?.amount || 0).toFixed(0);
+      const compare  = parseFloat(p.compareAtPriceRange?.minVariantPrice?.amount || 0).toFixed(0);
+      return {
+        id:           p.id,
+        title:        p.title,
+        vendor:       p.vendor || '',
+        price,
+        comparePrice: compare,
+        imgUrl:       p.images?.edges?.[0]?.node?.url || '',
+        handle:       p.handle,
+        variantId:    p.variants?.edges?.[0]?.node?.id || null,
+        description:  p.description || '',
+        inStock:      p.availableForSale !== false
+      };
+    }
 
     // ── Render a single book card ──
     function renderBookCard(p) {
@@ -8506,10 +8652,9 @@
       const price    = parseFloat(p.priceRange?.minVariantPrice?.amount || 0).toFixed(0);
       const compare  = parseFloat(p.compareAtPriceRange?.minVariantPrice?.amount || 0).toFixed(0);
       const showOrig = compare && parseFloat(compare) > parseFloat(price);
-      const url      = `${STORE_URL}/products/${p.handle}`;
       const variantId = p.variants?.edges?.[0]?.node?.id || null;
       const inStock   = p.availableForSale !== false;
-      _books[p.id] = { id: p.id, title: p.title, vendor: p.vendor || '', price, comparePrice: compare, imgUrl, handle: p.handle, variantId, description: p.description || '', inStock };
+      _books[p.id] = _mapProductNode(p);
       const wl = isWishlisted(p.id);
       return `
         <div class="book-card${inStock ? '' : ' sold-out'}" onclick="openBookModal('${p.id}')" style="cursor:pointer;">
@@ -8570,7 +8715,7 @@
       const el = document.getElementById('carousel-' + carouselId);
       const skelHtml = Array(3).fill(`<div class="skeleton"><div class="skeleton-cover"></div><div class="skeleton-line"></div><div class="skeleton-line short"></div></div>`).join('');
       el.insertAdjacentHTML('beforeend', skelHtml);
-      const { products, hasNextPage, endCursor } = await fetchCollection(s.key, 16, s.cursor);
+      const { products, hasNextPage, endCursor } = await fetchCollection(s.key, 16, s.cursor, s.recent);
       el.querySelectorAll('.skeleton').forEach(sk => sk.remove());
       s.cursor = endCursor;
       s.hasNextPage = hasNextPage;
@@ -12284,11 +12429,14 @@ Questions? We're always here!
       if (section === 'subscriptions') adminLoadSubscriptions();
       if (section === 'orders')          adminOrdersTab('online');
       if (section === 'book-requests')   adminLoadBookReqs();
+      if (section === 'complaints')      adminLoadComplaints();
       if (section === 'signed-requests') { adminLoadSignedReqs(); adminLoadSignedAvailable(); }
+      if (section === 'featured')        adminLoadFeaturedBooks();
       if (section === 'flash')           adminLoadFlashSale();
       if (section === 'wa-campaign')      wacInit();
       if (section === 'abandoned-carts') adminLoadAbandonedCarts();
       if (section === 'stock-summary')   adminLoadStockSummary();
+      if (section === 'missing-covers')  adminLoadMissingCovers();
       if (section === 'intelligence')    intelInit();
       if (section === 'add-book')    { ssResetAddBookForm(); abBuildTagGrid(); abLoadMetafields(); }
       if (section === 'sales-team')  adminLoadSalesTeam();
@@ -13609,7 +13757,8 @@ Questions? We're always here!
       const s = (status || '').toLowerCase().replace(/ /g, '_');
       const cls = { under_review: 'abadge-review', listed: 'abadge-listed', approved: 'abadge-approved',
         rejected: 'abadge-rejected', active: 'abadge-active', cancelled: 'abadge-cancelled',
-        cancelling: 'abadge-cancelling', paid: 'abadge-paid', pending: 'abadge-pending', refunded: 'abadge-refunded' };
+        cancelling: 'abadge-cancelling', paid: 'abadge-paid', pending: 'abadge-pending', refunded: 'abadge-refunded',
+        open: 'abadge-pending', in_progress: 'abadge-approved', resolved: 'abadge-listed', closed: 'abadge-closed' };
       return `<span class="abadge ${cls[s] || 'abadge-review'}">${status || '—'}</span>`;
     }
     function adminLoading(el, msg) {
@@ -13623,6 +13772,9 @@ Questions? We're always here!
     // Normalize a title for clean Shopify ↔ BillBook matching: drop non-breaking /
     // zero-width spaces, collapse runs of whitespace, trim ends.
     function _stkCleanTitle(t){ return String(t==null?'':t).replace(/[ ​‌‍﻿]/g,' ').replace(/\s+/g,' ').trim(); }
+    // A vendor is "needs review" when it's empty or still the generic self-pub placeholder
+    // rather than the book's real publisher.
+    function _stkVendorNeedsReview(v){ const s = String(v||'').trim(); return !s || /^yellow feather\b/i.test(s); }
     function stkCleanTitleField(){
       const el = document.getElementById('stk-e-title');
       const cleaned = _stkCleanTitle(el.value);
@@ -13643,6 +13795,194 @@ Questions? We're always here!
         stkRender();
       } catch(e) {
         body.innerHTML = '<div style="padding:2rem;color:#f87171;">' + _stkEsc(e.message) + '</div>';
+      }
+    }
+
+    // ── Missing Covers ──
+    var _mcProducts = [];
+    // Shared cover-attach UI (mc-candidates / mc-upload-*) is reused from both the
+    // Missing Covers list and the Stock Summary edit modal — this flag tells
+    // adminAttachCover/adminAttachCoverBase64 which one to refresh on success.
+    var _coverAttachMode   = 'missing-covers'; // 'missing-covers' | 'stock-summary'
+    var _coverAttachStkIdx = null;
+    async function adminLoadMissingCovers() {
+      const body = document.getElementById('mc-body');
+      adminLoading(body, 'Scanning catalog for missing covers… this can take a few seconds');
+      try {
+        const data = await adminPost('admin-missing-covers', {});
+        if (!data.success) { adminError(body, data.error); return; }
+        _mcProducts = data.products || [];
+        mcRenderList();
+      } catch(e) { adminError(body, e.message); }
+    }
+
+    // Re-renders the table/stats from the current in-memory _mcProducts —
+    // used after a local removal too, so attaching one cover doesn't force
+    // a full re-scan of the whole catalog just to update the list.
+    function mcRenderList() {
+      const body  = document.getElementById('mc-body');
+      const stats = document.getElementById('mc-stats');
+      stats.innerHTML = `<div class="admin-stat-card"><div class="admin-stat-num" style="color:#f87171">${_mcProducts.length}</div><div class="admin-stat-label">Missing Cover</div></div>`;
+      if (!_mcProducts.length) { body.innerHTML = '<p class="admin-empty">Every book has a cover. 🎉</p>'; return; }
+      body.innerHTML = `<div class="admin-table-wrap"><table class="admin-table">
+        <thead><tr><th>Title</th><th>Author</th></tr></thead>
+        <tbody>${_mcProducts.map((p, i) => `<tr class="clickable-row" onclick="openMissingCoverModal(${i})">
+          <td><strong>${p.title}</strong></td>
+          <td class="muted">${p.vendor || '—'}</td>
+        </tr>`).join('')}</tbody>
+      </table></div>`;
+    }
+
+    function openMissingCoverModal(idx) {
+      const p = _mcProducts[idx];
+      if (!p) return;
+      _coverAttachMode = 'missing-covers';
+      document.getElementById('admin-modal-title').textContent = '🖼️ ' + p.title;
+      document.getElementById('admin-modal-details').innerHTML =
+        _modalRow('Title', p.title) +
+        _modalRow('Author', p.vendor) +
+        `<div id="mc-candidates" style="margin-top:1rem;"></div>` +
+        `<div id="mc-upload-section" style="margin-top:1rem;border-top:1px solid var(--border);padding-top:1rem;">
+          <p style="font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin:0 0 0.5rem">Or upload your own</p>
+          <input type="file" accept="image/*" id="mc-upload-input" style="display:none;" onchange="mcProcessUpload('${p.id}',this)" />
+          <button class="admin-btn" style="background:rgba(255,255,255,0.07);color:var(--muted)" onclick="document.getElementById('mc-upload-input').click()">📤 Choose a File…</button>
+          <div id="mc-upload-preview" style="margin-top:0.75rem;"></div>
+        </div>`;
+      document.getElementById('admin-modal-actions').innerHTML =
+        `<button class="admin-btn admin-btn-info" id="mc-find-btn" onclick="adminFindCover('${p.id}','${p.title.replace(/'/g,"\\'")}','${(p.vendor||'').replace(/'/g,"\\'")}',this)">🔍 Find Cover Online</button>
+         <button class="admin-btn" style="background:rgba(255,255,255,0.07);color:var(--muted)" onclick="closeAdminModal()">Close</button>`;
+      document.getElementById('admin-record-modal').classList.add('open');
+    }
+
+    // Crop/scale an uploaded image to a standard 1000x1500 portrait (cover-fit,
+    // matching how every book-cover container on the site already displays
+    // images regardless of source size), composite the brand logo into the
+    // top-left corner, and produce a base64 JPEG ready to attach. Entirely
+    // client-side (Canvas) — no server-side image library needed.
+    const MC_CANVAS_W = 1000, MC_CANVAS_H = 1500;
+    const MC_LOGO_SIZE = 180, MC_LOGO_MARGIN = 30;
+
+    function _mcLoadImage(src) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload  = () => resolve(img);
+        img.onerror = reject;
+        img.src = src;
+      });
+    }
+
+    async function mcProcessUpload(productId, inputEl) {
+      const file = inputEl.files && inputEl.files[0];
+      const previewEl = document.getElementById('mc-upload-preview');
+      if (!file) return;
+      if (!file.type.startsWith('image/')) { previewEl.innerHTML = `<p style="color:#f87171;font-size:0.82rem;">Please choose an image file.</p>`; return; }
+
+      previewEl.innerHTML = `<p style="color:var(--muted);font-size:0.85rem;">Processing…</p>`;
+      try {
+        const dataUrl = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload  = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+        const img  = await _mcLoadImage(dataUrl);
+        const logo = await _mcLoadImage('yfb2.png');
+
+        const canvas = document.createElement('canvas');
+        canvas.width = MC_CANVAS_W; canvas.height = MC_CANVAS_H;
+        const ctx = canvas.getContext('2d');
+
+        // Cover-fit: scale so the image fully covers the canvas, center-cropping overflow.
+        const scale  = Math.max(MC_CANVAS_W / img.width, MC_CANVAS_H / img.height);
+        const drawW  = img.width * scale, drawH = img.height * scale;
+        const offX   = (MC_CANVAS_W - drawW) / 2, offY = (MC_CANVAS_H - drawH) / 2;
+        ctx.drawImage(img, offX, offY, drawW, drawH);
+
+        // Brand logo, top-left corner.
+        ctx.drawImage(logo, MC_LOGO_MARGIN, MC_LOGO_MARGIN, MC_LOGO_SIZE, MC_LOGO_SIZE);
+
+        const jpegDataUrl = canvas.toDataURL('image/jpeg', 0.92);
+        const base64 = jpegDataUrl.split(',')[1];
+
+        previewEl.innerHTML = `<div style="text-align:center;">
+          <img src="${jpegDataUrl}" style="width:140px;height:210px;object-fit:cover;border-radius:8px;border:1px solid var(--border);margin-bottom:0.5rem;" />
+          <br/><button class="admin-btn admin-btn-approve" id="mc-upload-use-btn">✅ Use This Cover</button>
+        </div>`;
+        // Assigned via JS (not an inline onclick) — the base64 payload is too large to embed in an HTML attribute.
+        document.getElementById('mc-upload-use-btn').onclick = function() { adminAttachCoverBase64(productId, base64, this); };
+      } catch(e) {
+        previewEl.innerHTML = `<p style="color:#f87171;font-size:0.82rem;">Could not process that image: ${e.message || 'unknown error'}</p>`;
+      }
+    }
+
+    // Cover was successfully attached — update whichever UI is currently using
+    // the shared mc-* elements (Missing Covers list, or the Stock Summary edit modal).
+    function _onCoverAttached(productId, newImageUrl) {
+      if (_coverAttachMode === 'stock-summary') {
+        const idx = _coverAttachStkIdx;
+        if (idx != null && _stkProducts[idx]) _stkProducts[idx].image = newImageUrl || _stkProducts[idx].image;
+        setTimeout(() => { closeStockEdit(); stkRender(); }, 700);
+      } else {
+        _mcProducts = _mcProducts.filter(p => String(p.id) !== String(productId));
+        mcRenderList();
+        setTimeout(closeAdminModal, 700);
+      }
+    }
+
+    async function adminAttachCoverBase64(productId, base64, btn) {
+      btn.disabled = true; btn.textContent = 'Uploading…';
+      try {
+        const data = await adminPost('admin-attach-cover', { productId, imageBase64: base64 });
+        if (!data.success) { alert('Could not attach cover: ' + data.error); btn.disabled = false; btn.textContent = '✅ Use This Cover'; return; }
+        document.getElementById('mc-upload-preview').innerHTML = `<p style="color:#4ade80;font-size:0.85rem;font-weight:600;">✅ Cover attached!</p>`;
+        _onCoverAttached(productId, data.imageUrl);
+      } catch(e) {
+        alert('Could not attach cover: ' + e.message);
+        btn.disabled = false; btn.textContent = '✅ Use This Cover';
+      }
+    }
+
+    async function adminFindCover(productId, title, vendor, btn) {
+      const candidatesEl = document.getElementById('mc-candidates');
+      btn.disabled = true; const original = btn.textContent; btn.textContent = 'Searching…';
+      candidatesEl.innerHTML = '';
+      try {
+        const data = await adminPost('admin-cover-lookup', { title, vendor });
+        if (!data.success) { candidatesEl.innerHTML = `<p style="color:#f87171;font-size:0.82rem;">${data.error}</p>`; return; }
+        const candidates = data.candidates || [];
+        if (!candidates.length) {
+          candidatesEl.innerHTML = `<p style="color:var(--muted);font-size:0.82rem;">No cover found online for this title. Try adjusting the title/author in Shopify first.</p>`;
+          return;
+        }
+        candidatesEl.innerHTML = `<p style="font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin:0 0 0.5rem">Pick a cover to attach</p>
+          <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
+            ${candidates.map((c, i) => `
+              <div style="text-align:center;cursor:pointer;" onclick="adminAttachCover('${productId}','${c.imageUrl.replace(/'/g,"\\'")}',this)">
+                <img src="${c.imageUrl}" style="width:100px;height:140px;object-fit:cover;border-radius:8px;border:1px solid var(--border);margin-bottom:0.3rem;" />
+                <div style="font-size:0.7rem;color:var(--muted);">${c.source}</div>
+              </div>
+            `).join('')}
+          </div>`;
+      } catch(e) {
+        candidatesEl.innerHTML = `<p style="color:#f87171;font-size:0.82rem;">${e.message}</p>`;
+      } finally {
+        btn.disabled = false; btn.textContent = original;
+      }
+    }
+
+    async function adminAttachCover(productId, imageUrl, el) {
+      const candidatesEl = document.getElementById('mc-candidates');
+      candidatesEl.style.opacity = '0.5'; candidatesEl.style.pointerEvents = 'none';
+      try {
+        const data = await adminPost('admin-attach-cover', { productId, imageUrl });
+        if (!data.success) { alert('Could not attach cover: ' + data.error); candidatesEl.style.opacity = ''; candidatesEl.style.pointerEvents = ''; return; }
+        candidatesEl.style.opacity = '';
+        candidatesEl.innerHTML = `<p style="color:#4ade80;font-size:0.85rem;font-weight:600;">✅ Cover attached!</p>`;
+        _onCoverAttached(productId, data.imageUrl);
+      } catch(e) {
+        alert('Could not attach cover: ' + e.message);
+        candidatesEl.style.opacity = ''; candidatesEl.style.pointerEvents = '';
       }
     }
 
@@ -13673,26 +14013,29 @@ Questions? We're always here!
       const q = (document.getElementById('stk-search').value || '').toLowerCase().trim();
       const filter = document.getElementById('stk-filter').value;
       const rows = _stkProducts.filter(function(p){
-        if (q && !((p.title||'').toLowerCase().includes(q) || (p.author||'').toLowerCase().includes(q))) return false;
+        if (q && !((p.title||'').toLowerCase().includes(q) || (p.author||'').toLowerCase().includes(q) || (p.vendor||'').toLowerCase().includes(q))) return false;
         if (filter === 'active' && p.status !== 'ACTIVE') return false;
         if (filter === 'draft'  && p.status !== 'DRAFT')  return false;
         if (filter === 'oos'    && (p.stock||0) > 0)      return false;
         if (filter === 'digital' && p.requiresShipping)   return false;
+        if (filter === 'vendorreview' && !_stkVendorNeedsReview(p.vendor)) return false;
         return true;
       });
       document.getElementById('stk-count').textContent = rows.length + ' of ' + _stkProducts.length + ' books';
       if (!rows.length) { body.innerHTML = '<div style="padding:2rem;text-align:center;color:var(--muted);">No matching books.</div>'; return; }
       const h = ['<div class="admin-table-wrap"><table class="admin-table"><thead><tr>',
-        '<th>Book</th><th>Author</th><th>Stock</th><th>MRP</th><th>Sale</th><th>Type</th><th>Status</th><th>Collections</th><th></th>',
+        '<th>Book</th><th>Author</th><th>Vendor</th><th>Stock</th><th>MRP</th><th>Sale</th><th>Type</th><th>Status</th><th>Collections</th><th></th>',
         '</tr></thead><tbody>'];
       rows.forEach(function(p){
         const idx = _stkProducts.indexOf(p);
         const sb  = (p.stock||0) <= 0 ? 'no-stock' : ((p.stock||0) <= 3 ? 'low-stock' : 'in-stock');
         const stCls = p.status === 'ACTIVE' ? 'abadge-active' : (p.status === 'DRAFT' ? 'abadge-pending' : 'abadge-rejected');
         const cols = (p.collections||[]).map(function(c){ return '<span style="display:inline-block;background:rgba(212,175,55,0.12);color:var(--gold);border-radius:4px;padding:0.05rem 0.4rem;font-size:0.68rem;margin:0.1rem;">' + _stkEsc(c.title) + '</span>'; }).join('') || '<span class="muted">—</span>';
+        const vendorReview = _stkVendorNeedsReview(p.vendor);
         h.push('<tr>',
           '<td><div style="display:flex;align-items:center;gap:0.5rem;min-width:200px;">' + (p.image ? '<img src="' + _stkEsc(p.image) + '" style="width:30px;height:42px;object-fit:cover;border-radius:3px;flex-shrink:0;" />' : '') + '<span>' + _stkEsc(p.title) + '</span></div></td>',
           '<td>' + _stkEsc(p.author || '—') + '</td>',
+          '<td' + (vendorReview ? ' style="color:#fbbf24;"' : '') + '>' + _stkEsc(p.vendor || '—') + (vendorReview ? ' ⚠️' : '') + '</td>',
           '<td><span class="stock-badge ' + sb + '">' + (p.stock||0) + '</span></td>',
           '<td class="muted">' + (p.compareAtPrice ? '₹' + p.compareAtPrice : '—') + '</td>',
           '<td>' + (p.price ? '₹' + p.price : '—') + '</td>',
@@ -13758,10 +14101,26 @@ Questions? We're always here!
       }).join('');
       const card = document.getElementById('stk-edit-card');
       card.dataset.idx = idx;
+      _coverAttachMode   = 'stock-summary';
+      _coverAttachStkIdx = idx;
       card.innerHTML =
         '<h2 style="font-size:1.05rem;margin-bottom:0.2rem;">Edit — ' + _stkEsc(p.title) + '</h2>' +
         '<p style="margin-bottom:1rem;">' + _stkEsc(p.author || '') + '</p>' +
+        '<div style="display:flex;gap:1rem;align-items:flex-start;margin-bottom:1rem;padding-bottom:1rem;border-bottom:1px solid var(--border);">' +
+          '<img src="' + _stkEsc(p.image || '') + '" style="width:70px;height:98px;object-fit:cover;border-radius:6px;border:1px solid var(--border);flex-shrink:0;" onerror="this.style.opacity=0" />' +
+          '<div style="flex:1;min-width:0;">' +
+            '<label class="sf-label">Cover Image</label>' +
+            '<div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:0.3rem;">' +
+              '<button class="admin-btn admin-btn-info" id="mc-find-btn" onclick="adminFindCover(\'' + p.id + '\',\'' + _stkEsc(p.title).replace(/'/g,"\\'") + '\',\'' + _stkEsc(p.author||'').replace(/'/g,"\\'") + '\',this)" style="font-size:0.75rem;padding:0.4rem 0.7rem;">🔍 Find Online</button>' +
+              '<input type="file" accept="image/*" id="mc-upload-input" style="display:none;" onchange="mcProcessUpload(\'' + p.id + '\',this)" />' +
+              '<button class="admin-btn" style="background:rgba(255,255,255,0.07);color:var(--muted);font-size:0.75rem;padding:0.4rem 0.7rem;" onclick="document.getElementById(\'mc-upload-input\').click()">📤 Upload</button>' +
+            '</div>' +
+            '<div id="mc-candidates" style="margin-top:0.6rem;"></div>' +
+            '<div id="mc-upload-preview" style="margin-top:0.6rem;"></div>' +
+          '</div>' +
+        '</div>' +
         '<div style="margin-bottom:0.8rem;"><label class="sf-label">Title</label><div style="display:flex;gap:0.4rem;"><input id="stk-e-title" class="sf-input" style="flex:1;" value="' + _stkEsc(p.title || '') + '" /><button class="admin-filter-btn" type="button" onclick="stkCleanTitleField()" title="Strip extra/invisible spaces" style="white-space:nowrap;">✨ Clean</button></div><div id="stk-e-title-hint" class="muted" style="font-size:0.7rem;margin-top:0.2rem;"></div></div>' +
+        '<div style="margin-bottom:0.8rem;"><label class="sf-label">Vendor / Publisher</label><input id="stk-e-vendor" class="sf-input" value="' + _stkEsc(p.vendor || '') + '" placeholder="e.g. DC Books" />' + (_stkVendorNeedsReview(p.vendor) ? '<div class="muted" style="font-size:0.7rem;margin-top:0.2rem;color:#fbbf24;">⚠️ Still generic — check the cover for the real publisher</div>' : '') + '</div>' +
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:0.7rem;">' +
           '<div><label class="sf-label">Sale Price (₹)</label><input id="stk-e-price" type="number" class="sf-input" value="' + _stkEsc(p.price || '') + '" /></div>' +
           '<div><label class="sf-label">MRP (₹)</label><input id="stk-e-mrp" type="number" class="sf-input" value="' + _stkEsc(p.compareAtPrice || '') + '" /></div>' +
@@ -13795,6 +14154,7 @@ Questions? We're always here!
       const status = document.getElementById('stk-e-status').value;
       const reqShip = document.getElementById('stk-e-ship').checked;
       const titleVal = document.getElementById('stk-e-title').value;
+      const vendorVal = document.getElementById('stk-e-vendor').value;
       const smartIds = {};
       document.querySelectorAll('.stk-col-chk[data-smart="1"]').forEach(function(c){ smartIds[c.value] = true; });
       const checked = {};
@@ -13813,11 +14173,13 @@ Questions? We're always here!
       if (status !== p.status) payload.status = status;
       if (reqShip !== p.requiresShipping) payload.requiresShipping = reqShip;
       if (titleVal.trim() && titleVal.trim() !== (p.title || '')) payload.title = titleVal.trim();
+      if (vendorVal.trim() !== (p.vendor || '')) payload.vendor = vendorVal.trim();
       if (addCollectionIds.length)    payload.addCollectionIds = addCollectionIds;
       if (removeCollectionIds.length) payload.removeCollectionIds = removeCollectionIds;
 
       const nothing = !('salePrice' in payload) && !('mrp' in payload) && !('stock' in payload) &&
                       !('status' in payload) && !('requiresShipping' in payload) && !('title' in payload) &&
+                      !('vendor' in payload) &&
                       !addCollectionIds.length && !removeCollectionIds.length;
       if (nothing) { closeStockEdit(); return; }
 
@@ -13835,6 +14197,7 @@ Questions? We're always here!
         if ('status' in payload)      p.status         = payload.status;
         if ('requiresShipping' in payload) p.requiresShipping = payload.requiresShipping;
         if ('title' in payload)       p.title          = payload.title;
+        if ('vendor' in payload)      p.vendor         = payload.vendor;
         if (addCollectionIds.length || removeCollectionIds.length) {
           p.collections = _stkCollections.filter(function(c){ return checked[c.id]; }).map(function(c){ return { id: c.id, title: c.title, handle: c.handle }; });
         }
@@ -13846,6 +14209,153 @@ Questions? We're always here!
     }
     function adminError(el, msg) {
       el.innerHTML = `<div style="padding:2rem;text-align:center;color:#f87171;font-size:0.85rem;">⚠️ ${msg}</div>`;
+    }
+
+    // ── Featured Books Admin ──
+    var _adminFeaturedBooks  = [];   // books currently featured (being edited)
+    var _featuredSearchCache = [];   // latest Shopify search results (avoids JSON in onclick)
+
+    async function adminLoadFeaturedBooks() {
+      const el = document.getElementById('featured-current-books');
+      if (!el) return;
+      el.innerHTML = '<div style="color:var(--muted);font-size:0.85rem;padding:0.5rem 0;">Loading…</div>';
+      try {
+        const res  = await fetch('/.netlify/functions/admin-featured-books');
+        const data = await res.json();
+        _adminFeaturedBooks = data.books || [];
+        renderAdminFeaturedBooks();
+      } catch(e) {
+        el.innerHTML = '<div style="color:#f87171;font-size:0.85rem;">Failed to load. Try again.</div>';
+      }
+    }
+
+    function renderAdminFeaturedBooks() {
+      const el      = document.getElementById('featured-current-books');
+      const countEl = document.getElementById('featured-count-badge');
+      if (countEl) countEl.textContent = `(${_adminFeaturedBooks.length} / 20)`;
+      if (!_adminFeaturedBooks.length) {
+        el.innerHTML = '<div style="color:var(--muted);font-size:0.85rem;padding:0.75rem 0;">No books added yet. Search below and add up to 20 books.</div>';
+        return;
+      }
+      el.innerHTML = `<div class="flash-admin-grid">${_adminFeaturedBooks.map((b, i) => `
+        <div class="flash-admin-card">
+          <img class="flash-admin-cover" src="${b.imgUrl || ''}" onerror="this.style.opacity=0" />
+          <div class="flash-admin-info">
+            <div class="flash-admin-title" title="${b.title}">${b.title}</div>
+            <div class="flash-admin-meta">₹${b.price}${b.comparePrice && parseFloat(b.comparePrice) > parseFloat(b.price) ? ` &nbsp;<span style="text-decoration:line-through;opacity:0.45;font-size:0.7rem;">₹${b.comparePrice}</span>` : ''}</div>
+            <div class="flash-admin-handle">${b.handle}</div>
+            ${b.stock != null ? `<div style="font-size:0.72rem;font-weight:600;margin-top:2px;color:${b.stock === 0 ? '#f87171' : b.stock <= 3 ? '#facc15' : '#4ade80'};">
+              ${b.stock === 0 ? '⚠️ Out of Stock' : b.stock <= 3 ? `⚠️ Low Stock (${b.stock})` : `✅ Stock: ${b.stock}`}
+            </div>` : ''}
+          </div>
+          <button class="flash-remove-btn" onclick="adminRemoveFeaturedBook(${i})">✕ Remove</button>
+        </div>`).join('')}
+      </div>`;
+    }
+
+    function adminRemoveFeaturedBook(index) {
+      _adminFeaturedBooks.splice(index, 1);
+      renderAdminFeaturedBooks();
+      document.getElementById('featured-save-status').textContent = '';
+    }
+
+    async function adminSearchFeaturedBooks() {
+      const q = (document.getElementById('featured-search-input').value || '').trim();
+      if (!q) return;
+      const resultsEl = document.getElementById('featured-search-results');
+      resultsEl.innerHTML = '<div style="color:var(--muted);font-size:0.85rem;padding:0.5rem 0;">Searching…</div>';
+      try {
+        const data = await sfFetch(`
+          query SearchFeatured($q: String!) {
+            products(first: 10, query: $q, sortKey: RELEVANCE) {
+              edges { node {
+                id title vendor handle totalInventory
+                images(first: 1) { edges { node { url } } }
+                priceRange          { minVariantPrice { amount } }
+                compareAtPriceRange { minVariantPrice { amount } }
+                variants(first: 1)  { edges { node { id } } }
+              } }
+            }
+          }`, { q });
+
+        const nodes = data?.data?.products?.edges?.map(e => e.node) || [];
+        if (!nodes.length) {
+          resultsEl.innerHTML = '<div style="color:var(--muted);font-size:0.85rem;padding:0.5rem 0;">No books found.</div>';
+          return;
+        }
+
+        // Cache results so onclick can reference by index (no JSON stringification in HTML)
+        _featuredSearchCache = nodes.map(p => ({
+          id:           p.id,
+          handle:       p.handle,
+          title:        p.title,
+          vendor:       p.vendor || '',
+          imgUrl:       p.images?.edges?.[0]?.node?.url || '',
+          price:        parseFloat(p.priceRange?.minVariantPrice?.amount || 0).toFixed(0),
+          comparePrice: parseFloat(p.compareAtPriceRange?.minVariantPrice?.amount || 0).toFixed(0),
+          variantId:    p.variants?.edges?.[0]?.node?.id || null,
+          stock:        p.totalInventory ?? null
+        }));
+
+        resultsEl.innerHTML = `<div class="flash-admin-grid" style="margin-top:0.75rem;">` +
+          _featuredSearchCache.map((b, i) => {
+            const isAdded  = _adminFeaturedBooks.some(x => x.handle === b.handle);
+            const maxed    = _adminFeaturedBooks.length >= 20;
+            const action   = isAdded  ? '<span style="color:#34d399;font-size:0.72rem;font-weight:700;">✓ Added</span>'
+                           : maxed    ? '<span style="color:var(--muted);font-size:0.72rem;">Max 20 reached</span>'
+                           : `<button class="flash-add-btn" onclick="adminAddFeaturedBook(${i})">+ Add</button>`;
+            return `
+              <div class="flash-admin-card">
+                <img class="flash-admin-cover" src="${b.imgUrl}" onerror="this.style.opacity=0" />
+                <div class="flash-admin-info">
+                  <div class="flash-admin-title" title="${b.title}">${b.title}</div>
+                  <div class="flash-admin-meta">₹${b.price}${b.comparePrice && parseFloat(b.comparePrice) > parseFloat(b.price) ? ` &nbsp;<span style="text-decoration:line-through;opacity:0.45;font-size:0.7rem;">₹${b.comparePrice}</span>` : ''}</div>
+                  <div class="flash-admin-handle">${b.handle}</div>
+                  ${b.stock != null ? `<div style="font-size:0.72rem;font-weight:600;margin-top:2px;color:${b.stock === 0 ? '#f87171' : b.stock <= 3 ? '#facc15' : '#4ade80'};">
+                    ${b.stock === 0 ? '⚠️ Out of Stock' : b.stock <= 3 ? `⚠️ Low Stock (${b.stock})` : `✅ Stock: ${b.stock}`}
+                  </div>` : ''}
+                </div>
+                ${action}
+              </div>`;
+          }).join('') + '</div>';
+      } catch(e) {
+        resultsEl.innerHTML = '<div style="color:#f87171;font-size:0.85rem;">Search failed. Try again.</div>';
+      }
+    }
+
+    function adminAddFeaturedBook(idx) {
+      const book = _featuredSearchCache[idx];
+      if (!book) return;
+      if (_adminFeaturedBooks.length >= 20) { alert('Maximum 20 books allowed in Featured Books.'); return; }
+      if (_adminFeaturedBooks.some(b => b.handle === book.handle)) return;
+      _adminFeaturedBooks.push(book);
+      renderAdminFeaturedBooks();
+      // Re-render search results to flip button → "✓ Added"
+      adminSearchFeaturedBooks();
+      document.getElementById('featured-save-status').textContent = '';
+    }
+
+    async function adminSaveFeaturedBooks() {
+      const btn      = document.getElementById('featured-save-btn');
+      const statusEl = document.getElementById('featured-save-status');
+      btn.disabled = true; btn.textContent = '⏳ Saving…';
+      statusEl.style.color = 'var(--muted)'; statusEl.textContent = '';
+      try {
+        const data = await adminPost('admin-featured-books', { books: _adminFeaturedBooks });
+        if (data.success) {
+          // Bust the frontend cache so visitors see the new featured books immediately
+          try { localStorage.removeItem('yfb_featured_books_v1'); } catch(e) {}
+          statusEl.style.color = '#34d399';
+          statusEl.textContent = '✓ Saved! Featured books updated.';
+        } else {
+          statusEl.style.color = '#f87171';
+          statusEl.textContent = data.error || 'Save failed.';
+        }
+      } catch(e) {
+        statusEl.style.color = '#f87171';
+        statusEl.textContent = 'Save failed. Try again.';
+      }
+      btn.disabled = false; btn.textContent = '💾 Save Changes';
     }
 
     // ── Flash Sale Admin ──
@@ -15281,6 +15791,49 @@ Questions? We're always here!
       adminLoadBookReqs(filter);
     }
 
+    // ── Customer Care (complaints) ──
+    var _allComplaints = [];
+    var _adminComplaintsFilter = 'all';
+    async function adminLoadComplaints(status) {
+      const body  = document.getElementById('admin-complaints-body');
+      const stats = document.getElementById('admin-complaints-stats');
+      adminLoading(body);
+      const s = status || _adminComplaintsFilter || 'all';
+      try {
+        const data = await adminPost('admin-complaints', { status: s });
+        if (!data.success) { adminError(body, data.error); return; }
+        _allComplaints = data.complaints || [];
+        const open       = _allComplaints.filter(c => c.status === 'open').length;
+        const inProgress = _allComplaints.filter(c => c.status === 'in_progress').length;
+        const resolved   = _allComplaints.filter(c => c.status === 'resolved').length;
+        const closed     = _allComplaints.filter(c => c.status === 'closed').length;
+        stats.innerHTML = `
+          <div class="admin-stat-card"><div class="admin-stat-num">${_allComplaints.length}</div><div class="admin-stat-label">Total</div></div>
+          <div class="admin-stat-card"><div class="admin-stat-num" style="color:#f59e0b">${open}</div><div class="admin-stat-label">Open</div></div>
+          <div class="admin-stat-card"><div class="admin-stat-num" style="color:#60a5fa">${inProgress}</div><div class="admin-stat-label">In Progress</div></div>
+          <div class="admin-stat-card"><div class="admin-stat-num" style="color:#10b981">${resolved}</div><div class="admin-stat-label">Resolved</div></div>
+          <div class="admin-stat-card"><div class="admin-stat-num" style="color:#94a3b8">${closed}</div><div class="admin-stat-label">Closed</div></div>`;
+        if (!_allComplaints.length) { body.innerHTML = '<p class="admin-empty">No customer care tickets found.</p>'; return; }
+        body.innerHTML = `<div class="admin-table-wrap"><table class="admin-table">
+          <thead><tr><th>Date</th><th>Name</th><th>Email</th><th>Category</th><th>Subject</th><th>Status</th></tr></thead>
+          <tbody>${_allComplaints.map((c, i) => `<tr class="clickable-row" onclick="openComplaintModal(${i})">
+            <td class="muted">${c.created_at ? c.created_at.slice(0,10) : '—'}</td>
+            <td><strong>${c.name || '—'}</strong></td>
+            <td class="muted">${c.email}</td>
+            <td class="muted">${c.category || '—'}</td>
+            <td>${c.subject}</td>
+            <td>${statusBadge(c.status)}</td>
+          </tr>`).join('')}</tbody>
+        </table></div>`;
+      } catch(e) { adminError(body, e.message); }
+    }
+    function adminFilterComplaints(filter, btn) {
+      _adminComplaintsFilter = filter;
+      document.querySelectorAll('#admin-section-complaints .admin-filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      adminLoadComplaints(filter);
+    }
+
     // ── Signed Copy Requests ──
     var _allSignedReqs = [];
     async function adminLoadSignedReqs(status) {
@@ -15568,6 +16121,87 @@ Questions? We're always here!
         closeAdminModal();
         if (table === 'book_requests')        adminLoadBookReqs(_adminBookReqsFilter);
         if (table === 'signed_copy_requests') adminLoadSignedReqs(_adminSignedReqsFilter);
+      } catch(e) { alert(e.message); btn.disabled = false; }
+    }
+
+    function _complaintActionBtns(id, status) {
+      const btn = (label, newStatus, cls) => `<button class="admin-btn ${cls}" onclick="adminUpdateComplaintModal('${id}','${newStatus}',this)">${label}</button>`;
+      let actions = '';
+      if (status === 'open') {
+        actions = btn('▶️ Start Progress', 'in_progress', 'admin-btn-info') +
+                  btn('✅ Resolve', 'resolved', 'admin-btn-approve') +
+                  btn('🔒 Close', 'closed', 'admin-btn-danger');
+      } else if (status === 'in_progress') {
+        actions = btn('✅ Resolve', 'resolved', 'admin-btn-approve') +
+                  btn('🔒 Close', 'closed', 'admin-btn-danger') +
+                  btn('🔄 Back to Open', 'open', 'admin-btn-warning');
+      } else if (status === 'resolved') {
+        actions = btn('🔄 Reopen', 'in_progress', 'admin-btn-warning') +
+                  btn('🔒 Close', 'closed', 'admin-btn-danger');
+      } else if (status === 'closed') {
+        actions = btn('🔄 Reopen', 'open', 'admin-btn-warning');
+      }
+      return actions + `<button class="admin-btn" style="background:rgba(255,255,255,0.07);color:var(--muted)" onclick="closeAdminModal()">Close</button>`;
+    }
+
+    function openComplaintModal(idx) {
+      const c = _allComplaints[idx];
+      if (!c) return;
+      document.getElementById('admin-modal-title').textContent = '🎫 Complaint #' + c.id;
+      document.getElementById('admin-modal-details').innerHTML =
+        `<p style="font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin:0 0 0.4rem">Customer</p>` +
+        _modalRow('Name',    c.name)                      +
+        _modalRow('Email',   c.email)                     +
+        _modalRow('Phone',   c.phone)                     +
+        _modalRow('Order #', c.order_number)              +
+        _modalRow('Date',    fmtDate(c.created_at))       +
+        `<p style="font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin:1rem 0 0.4rem">Complaint</p>` +
+        _modalRow('Category', c.category)                 +
+        _modalRow('Subject',  c.subject)                  +
+        _modalRow('Message',  c.message)                  +
+        `<p style="font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin:1rem 0 0.4rem">Status</p>` +
+        _modalRow('Current Status', statusBadge(c.status)) +
+        (c.resolved_by ? _modalRow('Resolved By', c.resolved_by) + _modalRow('Resolved At', fmtDate(c.resolved_at)) : '') +
+        `<div class="fab-form-group" style="margin-top:0.75rem;">
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <label>Resolution Note</label>
+            <button class="admin-btn admin-btn-info" style="padding:0.25rem 0.6rem;font-size:0.7rem;" id="cc-draft-btn" onclick="adminDraftResolution(${c.id},this)">✨ Draft with AI</button>
+          </div>
+          <textarea id="cc-admin-resolution" class="fab-form-input">${c.resolution || ''}</textarea></div>`;
+      document.getElementById('admin-modal-actions').innerHTML = _complaintActionBtns(c.id, c.status);
+      document.getElementById('admin-record-modal').classList.add('open');
+    }
+
+    async function adminDraftResolution(id, btn) {
+      const c = _allComplaints.find(x => x.id === id);
+      if (!c) return;
+      btn.disabled = true; const original = btn.textContent; btn.textContent = 'Drafting…';
+      try {
+        const data = await adminPost('admin-draft-resolution', {
+          subject: c.subject, category: c.category, message: c.message,
+          customerName: c.name, orderNumber: c.order_number
+        });
+        if (!data.success) { alert('Could not draft a reply: ' + data.error); return; }
+        document.getElementById('cc-admin-resolution').value = data.draft;
+      } catch(e) {
+        alert('Could not draft a reply: ' + e.message);
+      } finally {
+        btn.disabled = false; btn.textContent = original;
+      }
+    }
+
+    async function adminUpdateComplaintModal(id, newStatus, btn) {
+      const resolution = document.getElementById('cc-admin-resolution').value.trim();
+      if (newStatus === 'resolved' && !resolution) {
+        alert('Please add a resolution note before marking as resolved.');
+        return;
+      }
+      btn.disabled = true; btn.textContent = '…';
+      try {
+        const data = await adminPost('admin-update-complaint', { id, status: newStatus, resolution });
+        if (!data.success) { alert('Update failed: ' + data.error); btn.disabled = false; return; }
+        closeAdminModal();
+        adminLoadComplaints(_adminComplaintsFilter);
       } catch(e) { alert(e.message); btn.disabled = false; }
     }
 
@@ -16713,6 +17347,21 @@ Questions? We're always here!
     // ── Book Detail Modal ──
     var _bmProductId = null;
 
+    // Open a book modal from a shareable #book/<handle> link — checks the cache
+    // first (collection/search/wishlist may have already loaded it), else fetches.
+    async function openBookModalByHandle(handle) {
+      const cached = Object.values(_books).find(b => b.handle === handle);
+      if (cached) { openBookModal(cached.id); return; }
+      const product = await fetchProductByHandle(handle);
+      if (!product) {
+        console.warn('No product found for handle', handle);
+        history.replaceState(null, '', location.pathname);
+        return;
+      }
+      _books[product.id] = _mapProductNode(product);
+      openBookModal(product.id);
+    }
+
     function openBookModal(productId) {
       const book = _books[productId];
       if (!book) return;
@@ -16752,6 +17401,9 @@ Questions? We're always here!
           .catch(() => { if (_bmProductId === productId) descEl.textContent = 'No description available.'; });
       }
 
+      // Readers Also Loved — AI-picked, cached server-side
+      loadBookRecommendations(productId, book);
+
       // Add to Cart button state
       const addBtn = document.getElementById('bm-add-btn');
       addBtn.onclick = bmAddToCart;
@@ -16766,16 +17418,86 @@ Questions? We're always here!
 
       document.getElementById('book-modal').classList.add('active');
       document.body.style.overflow = 'hidden';
+
+      // Make the currently-open book shareable via the URL bar.
+      if (book.handle) history.pushState(null, '', '#book/' + encodeURIComponent(book.handle));
     }
 
-    function closeBookModal() {
+    async function loadBookRecommendations(productId, book) {
+      const section = document.getElementById('bm-recs-section');
+      const strip   = document.getElementById('bm-recs-strip');
+      section.style.display = 'none';
+      strip.innerHTML = '';
+      if (!book.handle) return;
+
+      let handles = [];
+      try {
+        const res  = await fetch('/.netlify/functions/book-recommendations', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ handle: book.handle, title: book.title, description: book.description })
+        });
+        const data = await res.json();
+        handles = Array.isArray(data.handles) ? data.handles : [];
+      } catch(e) { return; }
+
+      if (_bmProductId !== productId || !handles.length) return;
+
+      const recBooks = [];
+      for (const h of handles) {
+        const cached = Object.values(_books).find(b => b.handle === h);
+        if (cached) { recBooks.push(cached); continue; }
+        const product = await fetchProductByHandle(h);
+        if (product) { _books[product.id] = _mapProductNode(product); recBooks.push(_books[product.id]); }
+      }
+      if (_bmProductId !== productId || !recBooks.length) return;
+
+      strip.innerHTML = recBooks.map(b => `
+        <div class="bm-rec-card" onclick="openBookModal('${b.id}')">
+          ${b.imgUrl ? `<img src="${b.imgUrl}" alt="${b.title.replace(/"/g,'&quot;')}" />` : `<div class="book-modal-cover-placeholder" style="width:92px;height:130px;"></div>`}
+          <div class="bm-rec-title">${b.title}</div>
+        </div>
+      `).join('');
+      section.style.display = 'block';
+    }
+
+    function closeBookModal(fromPopstate) {
       document.getElementById('book-modal').classList.remove('active');
       document.body.style.overflow = '';
       _bmProductId = null;
+      if (!fromPopstate && location.hash.indexOf('#book/') === 0) {
+        history.pushState(null, '', location.pathname);
+      }
     }
 
     function handleBookModalBgClick(e) {
       if (e.target === document.getElementById('book-modal')) closeBookModal();
+    }
+
+    // Back/forward navigation while a book is open should close it, not leave
+    // the page in a state where the URL no longer matches the open modal.
+    window.addEventListener('popstate', function() {
+      if (document.getElementById('book-modal').classList.contains('active') &&
+          location.hash.indexOf('#book/') !== 0) {
+        closeBookModal(true);
+      }
+    });
+
+    function bmShareBook(btn) {
+      const book = _books[_bmProductId];
+      if (!book || !book.handle) return;
+      const url = location.origin + location.pathname + '#book/' + encodeURIComponent(book.handle);
+      if (navigator.share) {
+        navigator.share({ title: book.title, url }).catch(() => {});
+      } else {
+        const original = btn.textContent;
+        navigator.clipboard.writeText(url).then(() => {
+          btn.textContent = 'Copied! ✓';
+          setTimeout(() => btn.textContent = original, 2000);
+        }).catch(() => {
+          btn.textContent = 'Copy failed';
+          setTimeout(() => btn.textContent = original, 2000);
+        });
+      }
     }
 
     async function bmAddToCart() {
@@ -17449,12 +18171,17 @@ Questions? We're always here!
     }
     function _setBrowseCache(key, html) { try { localStorage.setItem('yfb_browse_' + _BROWSE_VER + key, JSON.stringify(html)); } catch(e) {} }
 
+    // These pills are curated business selections (Shopify's own manual/best-selling
+    // order matters) — every other pill (genres + Classics) shows newest-added-first.
+    const NON_RECENT_BROWSE_KEYS = ['best-sellers', 'trending', 'just-arrived', 'offer-zone'];
+
     async function loadBrowseCollection(key, pillEl) {
       if (_browseState.loading) return;
       // update active pill
       document.querySelectorAll('.browse-pill').forEach(p => p.classList.remove('active'));
       if (pillEl) pillEl.classList.add('active');
 
+      const recent = !NON_RECENT_BROWSE_KEYS.includes(key);
       _browseState.key = key;
       _browseState.cursor = null;
       _browseState.hasNextPage = false;
@@ -17470,7 +18197,7 @@ Questions? We're always here!
         // Silent background refresh — only update cache if we get real books
         _browseState.loading = true;
         try {
-          const { products, hasNextPage, endCursor } = await fetchCollection(key, 16);
+          const { products, hasNextPage, endCursor } = await fetchCollection(key, 16, null, recent);
           if (products.length > 0) {
             _browseState.cursor = endCursor; _browseState.hasNextPage = hasNextPage;
             const html = products.map(p => renderBookCard(p)).join('');
@@ -17488,7 +18215,7 @@ Questions? We're always here!
       btn.style.display = 'none';
 
       try {
-        const { products, hasNextPage, endCursor } = await fetchCollection(key, 16);
+        const { products, hasNextPage, endCursor } = await fetchCollection(key, 16, null, true);
         _browseState.cursor      = endCursor;
         _browseState.hasNextPage = hasNextPage;
         if (products.length > 0) {
@@ -17515,7 +18242,7 @@ Questions? We're always here!
       const btn = document.getElementById('browse-load-more');
       btn.textContent = 'Loading…'; btn.disabled = true;
       try {
-        const { products, hasNextPage, endCursor } = await fetchCollection(_browseState.key, 16, _browseState.cursor);
+        const { products, hasNextPage, endCursor } = await fetchCollection(_browseState.key, 16, _browseState.cursor, !NON_RECENT_BROWSE_KEYS.includes(_browseState.key));
         _browseState.cursor      = endCursor;
         _browseState.hasNextPage = hasNextPage;
         document.getElementById('browse-books-grid').insertAdjacentHTML('beforeend', products.map(p => renderBookCard(p)).join(''));
@@ -17669,25 +18396,72 @@ Questions? We're always here!
       // to avoid saturating Shopify rate limits alongside the orders fetch
       const first = carousels.slice(0, 3);
       const rest  = carousels.slice(3);
+      const recentKeys = ['classics']; // newest-added-first; others keep Shopify's curated order
       await Promise.all(first.map(async (c) => {
         try {
-          const { products, hasNextPage, endCursor } = await fetchCollection(c.key, 16);
+          const recent = recentKeys.includes(c.key);
+          const { products, hasNextPage, endCursor } = await fetchCollection(c.key, 16, null, recent);
           renderCarousel(c.id, products);
-          _carouselState[c.id] = { key: c.key, cursor: endCursor, hasNextPage, loading: false };
+          _carouselState[c.id] = { key: c.key, cursor: endCursor, hasNextPage, loading: false, recent };
           setupCarouselPagination(c.id);
         } catch(e) { console.error('carousel load failed:', c.key, e.message); }
       }));
       await Promise.all(rest.map(async (c) => {
         try {
-          const { products, hasNextPage, endCursor } = await fetchCollection(c.key, 16);
+          const recent = recentKeys.includes(c.key);
+          const { products, hasNextPage, endCursor } = await fetchCollection(c.key, 16, null, recent);
           renderCarousel(c.id, products);
-          _carouselState[c.id] = { key: c.key, cursor: endCursor, hasNextPage, loading: false };
+          _carouselState[c.id] = { key: c.key, cursor: endCursor, hasNextPage, loading: false, recent };
           setupCarouselPagination(c.id);
         } catch(e) { console.error('carousel load failed:', c.key, e.message); }
       }));
     }
 
+    // ── Featured Books (admin-curated, shown on initial page load) ──
+    const FEATURED_CACHE_KEY = 'yfb_featured_books_v1';
+    const FEATURED_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+    async function loadFeaturedBooksData() {
+      try {
+        const cached = JSON.parse(localStorage.getItem(FEATURED_CACHE_KEY) || 'null');
+        if (cached && cached.ts && (Date.now() - cached.ts) < FEATURED_CACHE_TTL && Array.isArray(cached.books)) {
+          return cached.books.filter(b => b && b.id);
+        }
+      } catch(e) {}
+
+      const res  = await fetch('/.netlify/functions/admin-featured-books');
+      const data = await res.json();
+      const books = (data.books || []).filter(b => b && b.id);
+      try { localStorage.setItem(FEATURED_CACHE_KEY, JSON.stringify({ ts: Date.now(), books })); } catch(e) {}
+      return books;
+    }
+
+    async function renderFeaturedBooksSection() {
+      // Section is visible with skeleton placeholders from first paint (no
+      // network wait) — only hide it if admin genuinely configured 0 books.
+      try {
+        const books = await loadFeaturedBooksData();
+        if (!books.length) { document.getElementById('featured-books-section').style.display = 'none'; return; }
+        // admin-featured-books stores the flat {imgUrl,price,comparePrice,...} shape
+        // (same as flash-sale) — renderBookCard() expects a raw Shopify node shape,
+        // so adapt each one rather than duplicating the card template here.
+        const nodes = books.map(b => ({
+          id: b.id, title: b.title, vendor: b.vendor, handle: b.handle,
+          availableForSale: b.stock !== 0,
+          images: { edges: b.imgUrl ? [{ node: { url: b.imgUrl } }] : [] },
+          priceRange: { minVariantPrice: { amount: b.price } },
+          compareAtPriceRange: { minVariantPrice: { amount: b.comparePrice } },
+          variants: { edges: b.variantId ? [{ node: { id: b.variantId } }] : [] }
+        }));
+        document.getElementById('featured-books-grid').innerHTML = nodes.map(n => renderBookCard(n)).join('');
+      } catch(e) {
+        console.error('renderFeaturedBooksSection failed:', e.message);
+        document.getElementById('featured-books-section').style.display = 'none';
+      }
+    }
+
     loadAll().catch(err => console.error('loadAll failed:', err));
+    renderFeaturedBooksSection();
     refreshCartCount();
 
     // ── Book Club: check membership and set session state ──
@@ -19584,6 +20358,105 @@ Questions? We're always here!
       } catch(err) { alert('Could not send request: ' + err.message); }
       finally { btn.disabled = false; btn.textContent = 'Send Request'; }
     }
+
+    function ccOpenComplaint() {
+      document.getElementById('cc-form-err').style.display = 'none';
+      document.getElementById('cc-name').value = '';
+      document.getElementById('cc-email').value = '';
+      document.getElementById('cc-phone').value = '';
+      document.getElementById('cc-order-number').value = '';
+      document.getElementById('cc-category').value = 'Other';
+      document.getElementById('cc-subject').value = '';
+      document.getElementById('cc-message').value = '';
+      document.getElementById('cc-form-view').style.display    = 'block';
+      document.getElementById('cc-success-view').style.display = 'none';
+      document.getElementById('cc-complaint-modal').classList.add('open');
+    }
+    function ccCloseModal() { document.getElementById('cc-complaint-modal').classList.remove('open'); }
+    function ccHandleOverlayClick(e) { if (e.target === document.getElementById('cc-complaint-modal')) ccCloseModal(); }
+    async function ccSubmitComplaint() {
+      const name         = document.getElementById('cc-name').value.trim();
+      const email        = document.getElementById('cc-email').value.trim();
+      const phone        = document.getElementById('cc-phone').value.trim();
+      const order_number = document.getElementById('cc-order-number').value.trim();
+      const category     = document.getElementById('cc-category').value;
+      const subject      = document.getElementById('cc-subject').value.trim();
+      const message      = document.getElementById('cc-message').value.trim();
+      const website       = ''; // honeypot kept empty (a real input gets autofilled and silently dropped server-side)
+      const errEl = document.getElementById('cc-form-err');
+      errEl.style.display = 'none';
+      if (!name || !email || !subject || !message) {
+        errEl.textContent = 'Please fill in your name, email, subject and message.';
+        errEl.style.display = 'block';
+        return;
+      }
+      const btn = document.getElementById('cc-submit-btn');
+      btn.disabled = true; btn.textContent = 'Submitting…';
+      try {
+        const res = await fetch('/.netlify/functions/submit-complaint', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, phone, order_number, category, subject, message, website })
+        });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        document.getElementById('cc-form-view').style.display    = 'none';
+        document.getElementById('cc-success-view').style.display = 'block';
+        document.getElementById('cc-success-ticket-id').textContent = '#' + data.id;
+      } catch(err) {
+        errEl.textContent = 'Could not submit your complaint: ' + err.message;
+        errEl.style.display = 'block';
+      }
+      finally { btn.disabled = false; btn.textContent = 'Submit'; }
+    }
+
+    function ccOpenTrack() {
+      ccCloseModal();
+      document.getElementById('cc-track-err').style.display = 'none';
+      document.getElementById('cc-track-email').value = '';
+      document.getElementById('cc-track-form-view').style.display    = 'block';
+      document.getElementById('cc-track-results-view').style.display = 'none';
+      document.getElementById('cc-track-modal').classList.add('open');
+    }
+    function ccCloseTrackModal() { document.getElementById('cc-track-modal').classList.remove('open'); }
+    function ccHandleTrackOverlayClick(e) { if (e.target === document.getElementById('cc-track-modal')) ccCloseTrackModal(); }
+    async function ccFetchTickets() {
+      const email = document.getElementById('cc-track-email').value.trim();
+      const errEl = document.getElementById('cc-track-err');
+      errEl.style.display = 'none';
+      if (!email) { errEl.textContent = 'Please enter your email address.'; errEl.style.display = 'block'; return; }
+      const btn = document.getElementById('cc-track-btn');
+      btn.disabled = true; btn.textContent = 'Searching…';
+      try {
+        const res  = await fetch('/.netlify/functions/check-complaint-status', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+        const data    = await res.json();
+        const tickets = Array.isArray(data.tickets) ? data.tickets : [];
+        const resultsEl = document.getElementById('cc-track-results');
+        if (!tickets.length) {
+          resultsEl.innerHTML = `<p style="color:var(--muted);font-size:0.85rem;">No tickets found for this email.</p>`;
+        } else {
+          resultsEl.innerHTML = tickets.map(t => `
+            <div style="border:1px solid var(--border);border-radius:10px;padding:0.75rem 0.9rem;margin-bottom:0.6rem;">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:0.5rem;">
+                <strong style="font-size:0.85rem;">#${t.id} &middot; ${fabEscHtml(t.subject)}</strong>
+                ${statusBadge(t.status)}
+              </div>
+              <div style="color:var(--muted);font-size:0.75rem;margin-top:0.2rem;">${fabEscHtml(t.category)} &middot; ${fmtDate(t.created_at)}</div>
+              ${t.resolution ? `<div style="margin-top:0.5rem;font-size:0.8rem;"><strong>Resolution:</strong> ${fabEscHtml(t.resolution)}</div>` : ''}
+            </div>
+          `).join('');
+        }
+        document.getElementById('cc-track-form-view').style.display    = 'none';
+        document.getElementById('cc-track-results-view').style.display = 'block';
+      } catch(err) {
+        errEl.textContent = 'Could not fetch tickets: ' + err.message;
+        errEl.style.display = 'block';
+      }
+      finally { btn.disabled = false; btn.textContent = 'Find My Tickets'; }
+    }
+
     async function fabAddToCart(variantGid, btn) {
       if (!variantGid) return;
       if (btn) { btn.textContent = '…'; btn.disabled = true; }
@@ -19641,8 +20514,16 @@ Questions? We're always here!
         setTimeout(showAuthorLogin, 400);
       }
 
+      // ── Deep-link to a specific book (#book/<handle>) — keep the hash intact so it stays shareable ──
+      const rawHash = window.location.hash.replace('#', '');
+      if (rawHash.indexOf('book/') === 0) {
+        const handle = decodeURIComponent(rawHash.slice(5));
+        if (handle) setTimeout(() => openBookModalByHandle(handle), 400);
+        return;
+      }
+
       // ── Deep-link login via URL hash (/admin → /#admin etc.) ──
-      const hash = window.location.hash.replace('#', '').toLowerCase();
+      const hash = rawHash.toLowerCase();
       if (hash) {
         history.replaceState(null, '', window.location.pathname); // clean URL
         const actions = {
@@ -20489,6 +21370,13 @@ Questions? We're always here!
       function showFlashCard() {
         if (!document.body.classList.contains('guest-mode')) return;
         if (sessionStorage.getItem(FLASH_SESSION_KEY)) return;
+        // Don't interrupt someone mid-way through a form with a promo popup on top of it.
+        var ccModal   = document.getElementById('cc-complaint-modal');
+        var ccTrack   = document.getElementById('cc-track-modal');
+        var fabModal  = document.getElementById('fab-request-modal');
+        if ((ccModal && ccModal.classList.contains('open')) ||
+            (ccTrack && ccTrack.classList.contains('open')) ||
+            (fabModal && fabModal.classList.contains('open'))) return;
         document.getElementById('flash-card-overlay').classList.add('active');
         if (_flashBooks.length > 1) startAutoRotate();
       }
@@ -20543,7 +21431,7 @@ Questions? We're always here!
         if (e.target === this) closeFlashCard();
       });
 
-      // Wait 1.5s then load books from admin config
+      // Wait 0.5s then load books from admin config
       setTimeout(async function() {
         var books = await loadFlashBooks();
         if (!books.length) return;
@@ -20556,7 +21444,7 @@ Questions? We're always here!
           updateDots();
         }
         showFlashCard();
-      }, 1500);
+      }, 500);
     })();
   </script>
 
@@ -20625,12 +21513,40 @@ Questions? We're always here!
     if (e.target === this) closeSignedFlash();
   });
 
-  // ── Android App Banner ────────────────────────────────────────────────────
-  (function initAppBanner() {
-    const isAndroid = /android/i.test(navigator.userAgent);
-    if (!isAndroid) return;
-    if (sessionStorage.getItem('yfb_app_banner_dismissed')) return;
+  // ── App links: every "Get the App" CTA is gated by the visitor's OS ────────
+  // Android → Play Store (default markup, left as-is). iOS (iPhone/iPad/iPod,
+  // incl. iPadOS 13+ which reports as "MacIntel" + touch) → swapped in-place
+  // to the App Store link/icon/label. Desktop (neither) keeps the Android
+  // default — same fallback these links always had.
+  (function initAppLinks() {
+    const ua = navigator.userAgent;
+    const isAndroid = /android/i.test(ua);
+    const isIOS = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
+    if (isIOS) {
+      const APP_STORE_URL = 'https://apps.apple.com/app/yellow-feather-books/id6762762976';
+      const APPLE_ICON = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16.365 1.43c0 1.14-.493 2.27-1.177 3.08-.744.9-1.99 1.57-2.987 1.57-.12 0-.23-.02-.3-.03-.01-.06-.04-.22-.04-.39 0-1.15.572-2.27 1.206-2.98.804-.94 2.142-1.64 3.248-1.68.03.13.05.28.05.43zm4.565 15.71c-.03.07-.463 1.58-1.518 3.12-.945 1.34-1.94 2.71-3.43 2.71-1.517 0-2.008-.87-3.72-.87-1.685 0-2.29.9-3.72.9-1.47 0-2.55-1.28-3.51-2.6-1.99-2.7-3.51-7.65-1.44-11.13.99-1.7 2.76-2.79 4.62-2.82 1.44-.03 2.79.94 3.72.94.9 0 2.54-1.15 4.28-.98.73.03 2.79.29 4.11 2.19-.11.07-2.45 1.42-2.43 4.24.02 3.35 2.98 4.47 3.01 4.48z"/></svg>';
+      [
+        { link: 'aab-link',          icon: 'aab-link-icon',          text: 'aab-link-text',          label: 'Get the App' },
+        { link: 'drawer-app-link',   icon: 'drawer-app-link-icon',   text: 'drawer-app-link-text',   label: '📱 Download iOS App' },
+        { link: 'sidebar-app-link',  icon: 'sidebar-app-link-icon',  text: 'sidebar-app-link-text',  label: 'Get iOS App' },
+        { link: 'footer-app-link',   icon: 'footer-app-link-icon',   text: 'footer-app-link-text',   label: 'App Store' },
+      ].forEach(function (cfg) {
+        const a = document.getElementById(cfg.link);
+        if (!a) return;
+        a.href = APP_STORE_URL;
+        const iconEl = document.getElementById(cfg.icon); if (iconEl) iconEl.innerHTML = APPLE_ICON;
+        const textEl = document.getElementById(cfg.text); if (textEl) textEl.textContent = cfg.label;
+      });
+      const sub = document.getElementById('footer-app-link-sub');
+      if (sub) sub.textContent = 'iOS · Free download';
+      const bannerEl = document.getElementById('android-app-banner');
+      if (bannerEl) bannerEl.setAttribute('aria-label', 'Download our iOS app');
+    }
+
+    // ── Auto-popup banner: only for Android/iOS, once per session ──
+    if (!isAndroid && !isIOS) return;
+    if (sessionStorage.getItem('yfb_app_banner_dismissed')) return;
     const banner = document.getElementById('android-app-banner');
     if (!banner) return;
 

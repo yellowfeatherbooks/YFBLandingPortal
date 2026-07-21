@@ -107,6 +107,36 @@ CREATE TABLE IF NOT EXISTS signed_copy_requests (
   created_at    timestamptz DEFAULT now()
 );
 
+-- ── complaints ───────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS complaints (
+  id            bigserial PRIMARY KEY,
+  name          text NOT NULL,
+  email         text NOT NULL,
+  phone         text,
+  order_number  text,
+  category      text NOT NULL DEFAULT 'Other',
+  subject       text NOT NULL,
+  message       text NOT NULL,
+  status        text NOT NULL DEFAULT 'open',
+  resolution    text,
+  resolved_by   text,
+  resolved_at   timestamptz,
+  created_at    timestamptz NOT NULL DEFAULT now(),
+  updated_at    timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS complaints_email_idx      ON complaints(email);
+CREATE INDEX IF NOT EXISTS complaints_status_idx     ON complaints(status);
+CREATE INDEX IF NOT EXISTS complaints_created_at_idx ON complaints(created_at DESC);
+
+-- ── book_recommendations ───────────────────────────────────────
+-- Caches AI-picked "Readers Also Loved" handles per book to avoid
+-- calling Claude on every single book-modal open.
+CREATE TABLE IF NOT EXISTS book_recommendations (
+  handle              text PRIMARY KEY,
+  recommended_handles jsonb NOT NULL DEFAULT '[]',
+  generated_at        timestamptz NOT NULL DEFAULT now()
+);
+
 -- ── member_sessions ───────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS member_sessions (
   email      text PRIMARY KEY,
@@ -143,6 +173,11 @@ CREATE TABLE IF NOT EXISTS site_config (
 -- ── Seed: flash sale default (off) ───────────────────────────
 INSERT INTO site_config (key, value)
 VALUES ('flash_sale', 'false'::jsonb)
+ON CONFLICT (key) DO NOTHING;
+
+-- ── Seed: featured books default (empty) ─────────────────────
+INSERT INTO site_config (key, value)
+VALUES ('featured_books', '{"books":[]}'::jsonb)
 ON CONFLICT (key) DO NOTHING;
 
 -- ── wa_campaign_blacklist ──────────────────────────────────

@@ -1,0 +1,75 @@
+{
+  "name": "YFB — New Complaint Notification",
+  "nodes": [
+    {
+      "id": "1",
+      "name": "Complaint Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [100, 300],
+      "webhookId": "yfb-complaint-new",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "yfb-complaint-new",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "2",
+      "name": "Build Notification Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [340, 300],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const d = $('Complaint Webhook').first().json.body;\n\nconst ticketId    = d.id            || '—';\nconst name        = d.name          || 'Not provided';\nconst email       = d.email         || '';\nconst phone       = d.phone         || 'Not provided';\nconst orderNumber = d.order_number  || 'Not provided';\nconst category    = d.category      || 'Other';\nconst subject     = d.subject       || '(no subject)';\nconst message     = d.message       || '';\n\nconst now = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });\n\nconst LOGO_URL = 'https://yellowfeather.netlify.app/logo-landscape.png';\n\nconst html = `<!DOCTYPE html>\n<html lang=\"en\"><head><meta charset=\"UTF-8\"/><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"/></head>\n<body style=\"font-family:Arial,sans-serif;background:#f4f4f4;margin:0;padding:0;\">\n<div style=\"max-width:600px;margin:32px auto;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,0.10);\">\n  <div style=\"background:#1a1a2e;padding:24px 40px;display:flex;align-items:center;justify-content:space-between;\">\n    <img src=\"${LOGO_URL}\" alt=\"Yellow Feather Books\" style=\"height:44px;object-fit:contain;\"/>\n    <div style=\"text-align:right;\"><span style=\"color:#F5B800;font-size:15px;font-weight:700;display:block;\">New Complaint #${ticketId}</span><span style=\"color:#aaa;font-size:11px;\">${now}</span></div>\n  </div>\n  <div style=\"padding:32px 40px;\">\n    <div style=\"background:#f9f7f2;border-left:4px solid #C9922A;border-radius:6px;padding:16px 20px;margin-bottom:28px;\">\n      <div style=\"font-size:11px;color:#999;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;\">${category}</div>\n      <div style=\"font-size:20px;font-weight:700;color:#1a1a2e;\">${subject}</div>\n    </div>\n    <table style=\"width:100%;border-collapse:collapse;font-size:14px;margin-bottom:24px;\">\n      <tr><td style=\"padding:10px 0;color:#666;width:140px;\">Name</td><td style=\"padding:10px 0;font-weight:600;color:#1a1a2e;\">${name}</td></tr>\n      <tr style=\"border-top:1px solid #e5e0d8;\"><td style=\"padding:10px 0;color:#666;\">Email</td><td style=\"padding:10px 0;\"><a href=\"mailto:${email}\" style=\"color:#C9922A;font-weight:600;text-decoration:none;\">${email}</a></td></tr>\n      <tr style=\"border-top:1px solid #e5e0d8;\"><td style=\"padding:10px 0;color:#666;\">Phone</td><td style=\"padding:10px 0;font-weight:600;color:#1a1a2e;\">${phone}</td></tr>\n      <tr style=\"border-top:1px solid #e5e0d8;\"><td style=\"padding:10px 0;color:#666;\">Order #</td><td style=\"padding:10px 0;font-weight:600;color:#1a1a2e;\">${orderNumber}</td></tr>\n      <tr style=\"border-top:1px solid #e5e0d8;\"><td style=\"padding:10px 0;color:#666;vertical-align:top;\">Message</td><td style=\"padding:10px 0;color:#555;\">${message}</td></tr>\n    </table>\n    <p style=\"font-size:13px;color:#888;line-height:1.7;margin:0;\">This ticket was submitted through the <strong>Customer Care</strong> form on yellowfeatherbooks.com. Open the admin panel's Customer Care section to respond and resolve it.</p>\n  </div>\n  <div style=\"background:#f5f0e8;padding:16px 40px;text-align:center;font-size:11px;color:#888;border-top:1px solid #e5e0d8;\">Yellow Feather Books &nbsp;·&nbsp; Customer Care &nbsp;·&nbsp; <a href=\"mailto:${email}\" style=\"color:#C9922A;text-decoration:none;\">Reply to ${email}</a></div>\n</div></body></html>`;\n\nreturn [{ json: { ...d, html, ticketId, subject, customerEmail: email } }];"
+      }
+    },
+    {
+      "id": "3",
+      "name": "Notify Store Team",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [580, 300],
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "toList": "yellowfeatherbookstore@gmail.com",
+        "subject": "={{ '🎫 New Complaint #' + $json.ticketId + ' — ' + $json.subject }}",
+        "message": "={{ $json.html }}",
+        "options": { "emailType": "html" }
+      },
+      "credentials": {
+        "gmailOAuth2": { "id": "n4S10HXIC145nr8L", "name": "Gmail account 2" }
+      }
+    },
+    {
+      "id": "4",
+      "name": "Respond OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [820, 300],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"status\": \"ok\" }"
+      }
+    }
+  ],
+
+  "connections": {
+    "Complaint Webhook": {
+      "main": [[{ "node": "Build Notification Email", "type": "main", "index": 0 }]]
+    },
+    "Build Notification Email": {
+      "main": [[{ "node": "Notify Store Team", "type": "main", "index": 0 }]]
+    },
+    "Notify Store Team": {
+      "main": [[{ "node": "Respond OK", "type": "main", "index": 0 }]]
+    }
+  },
+
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "tags": ["yfb", "complaints", "customer-care"]
+}

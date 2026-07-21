@@ -77,6 +77,7 @@ async function listProducts() {
         status:          p.status,                       // ACTIVE / DRAFT / ARCHIVED
         productType:     p.productType || '',
         author:          p.authorMf?.value || p.vendor || '',
+        vendor:          p.vendor || '',
         image:           p.featuredImage?.url || '',
         variantId:       v.id || null,
         inventoryItemId: v.inventoryItem?.id || null,
@@ -104,7 +105,7 @@ async function listProducts() {
 // ── action: update ───────────────────────────────────────────────────────────
 async function updateProduct(body) {
   const { productId, variantId, inventoryItemId,
-          salePrice, mrp, stock, status, productType, requiresShipping, title,
+          salePrice, mrp, stock, status, productType, requiresShipping, title, vendor,
           addCollectionIds = [], removeCollectionIds = [] } = body;
 
   if (!productId) return json({ success: false, error: 'productId required' }, 400);
@@ -150,6 +151,7 @@ async function updateProduct(body) {
   if (status !== undefined && status) { pInput.status = String(status).toUpperCase(); needProductUpdate = true; }
   if (productType !== undefined)      { pInput.productType = productType || '';        needProductUpdate = true; }
   if (title !== undefined && String(title).trim()) { pInput.title = String(title).trim(); needProductUpdate = true; }
+  if (vendor !== undefined) { pInput.vendor = String(vendor).trim(); needProductUpdate = true; }
   if (needProductUpdate) {
     try {
       const r = await shopifyGql(`

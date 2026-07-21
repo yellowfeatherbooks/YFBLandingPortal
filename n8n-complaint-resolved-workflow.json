@@ -1,0 +1,75 @@
+{
+  "name": "YFB — Complaint Resolved Notification",
+  "nodes": [
+    {
+      "id": "1",
+      "name": "Complaint Resolved Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [100, 300],
+      "webhookId": "yfb-complaint-resolved",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "yfb-complaint-resolved",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "2",
+      "name": "Build Resolution Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [340, 300],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const d = $('Complaint Resolved Webhook').first().json.body;\n\nconst ticketId   = d.id         || '—';\nconst name       = d.name       || 'Valued Customer';\nconst email      = d.email      || '';\nconst subject    = d.subject    || 'your complaint';\nconst resolution = d.resolution || '';\n\nconst LOGO_URL = 'https://yellowfeather.netlify.app/logo-landscape.png';\n\nconst html = `<!DOCTYPE html>\n<html lang=\"en\"><head><meta charset=\"UTF-8\"/><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"/></head>\n<body style=\"font-family:Arial,sans-serif;background:#f4f4f4;margin:0;padding:0;\">\n<div style=\"max-width:600px;margin:32px auto;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,0.10);\">\n  <div style=\"background:#1a1a2e;padding:28px 40px;text-align:center;\">\n    <img src=\"${LOGO_URL}\" alt=\"Yellow Feather Books\" style=\"height:52px;object-fit:contain;\"/>\n  </div>\n  <div style=\"padding:40px;\">\n    <p style=\"font-size:15px;color:#444;line-height:1.8;margin:0 0 16px;\">Hello <strong>${name}</strong>,</p>\n    <p style=\"font-size:15px;color:#444;line-height:1.8;margin:0 0 16px;\">Your support ticket <strong>#${ticketId} &mdash; ${subject}</strong> has been resolved. Here's a summary of what we found and how it was handled:</p>\n    <div style=\"background:#f9f7f2;border-left:4px solid #C9922A;border-radius:6px;padding:16px 20px;margin-bottom:24px;\">\n      <div style=\"font-size:11px;color:#999;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;\">Resolution</div>\n      <div style=\"font-size:15px;color:#1a1a2e;line-height:1.7;\">${resolution}</div>\n    </div>\n    <p style=\"font-size:15px;color:#444;line-height:1.8;margin:0 0 16px;\">If this doesn't fully address your concern, just reply to this email and we'll reopen your ticket.</p>\n    <p style=\"font-size:15px;color:#444;margin-top:28px;\">Thank you for your patience,</p>\n  </div>\n  <div style=\"background:#f5f0e8;padding:20px 40px;font-size:13px;color:#555;line-height:1.8;border-top:1px solid #e5e0d8;\">\n    <strong style=\"color:#1a1a2e;display:block;font-size:15px;margin-bottom:4px;\">Yellow Feather Books — Customer Care</strong>\n    Phone: <a href=\"tel:9400448000\" style=\"color:#C9922A;text-decoration:none;\">9400448000</a><br/>\n    Website: <a href=\"https://yellowfeatherbooks.com\" style=\"color:#C9922A;text-decoration:none;\">yellowfeatherbooks.com</a>\n  </div>\n</div></body></html>`;\n\nreturn [{ json: { ...d, html, ticketId, subject, customerEmail: email } }];"
+      }
+    },
+    {
+      "id": "3",
+      "name": "Send Resolution Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [580, 300],
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "sendTo": "={{ $json.customerEmail }}",
+        "subject": "={{ 'Update on your ticket #' + $json.ticketId + ' — ' + $json.subject + ' | Yellow Feather Books' }}",
+        "message": "={{ $json.html }}",
+        "options": { "emailType": "html" }
+      },
+      "credentials": {
+        "gmailOAuth2": { "id": "n4S10HXIC145nr8L", "name": "Gmail account 2" }
+      }
+    },
+    {
+      "id": "4",
+      "name": "Respond OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [820, 300],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"status\": \"ok\" }"
+      }
+    }
+  ],
+
+  "connections": {
+    "Complaint Resolved Webhook": {
+      "main": [[{ "node": "Build Resolution Email", "type": "main", "index": 0 }]]
+    },
+    "Build Resolution Email": {
+      "main": [[{ "node": "Send Resolution Email", "type": "main", "index": 0 }]]
+    },
+    "Send Resolution Email": {
+      "main": [[{ "node": "Respond OK", "type": "main", "index": 0 }]]
+    }
+  },
+
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "tags": ["yfb", "complaints", "customer-care"]
+}

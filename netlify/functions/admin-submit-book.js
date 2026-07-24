@@ -249,7 +249,7 @@ exports.handler = async function (event) {
     adminEmail, adminKey,
     book, author, publisher, genre, shopifyTags,
     description, mrp, salePrice, barcode, phone, cover,
-    initialStock,
+    initialStock, alreadyInCatalog,
     metafields   // { genreGids, bookCoverTypeGids, languageVersionGids, targetAudienceGids }
   } = JSON.parse(event.body || '{}');
   const stockQty = Math.max(1, parseInt(initialStock) || 1);
@@ -365,7 +365,12 @@ exports.handler = async function (event) {
     }
 
     // Step 4 — Enrich the global catalog with this (now admin-confirmed) book too.
-    await upsertGlobalCatalog({ title: book, author, publisher, genre, description, barcode, mrp });
+    // Skip the write when the admin flagged it as already present — the checkbox is
+    // auto-set from a real catalog lookup (title match or, for scanned covers, the
+    // extracted title), so trust it unless the admin explicitly unticked it.
+    if (!alreadyInCatalog) {
+      await upsertGlobalCatalog({ title: book, author, publisher, genre, description, barcode, mrp });
+    }
 
     return json({ ...data, _sb: sbDebug });
 

@@ -6176,6 +6176,12 @@
             </div>
           </div>
 
+          <label style="display:flex;align-items:center;gap:0.5rem;margin:0.6rem 0 0.9rem;font-size:0.85rem;color:var(--cream);">
+            <input type="checkbox" id="ab-catalog-exists" />
+            Already available in global catalog
+            <span class="muted" style="font-size:0.72rem;">(auto-checked on a title match — leave checked to skip re-adding it on publish; untick to force-add anyway)</span>
+          </label>
+
           <div class="ab-row">
             <div class="ab-field">
               <label class="ab-label">Publisher *</label>
@@ -11901,6 +11907,10 @@ Questions? We're always here!
         }
         if (d.isbn) { document.getElementById('ab-barcode').value = d.isbn; filled.push('ISBN'); }
 
+        // Check the extracted title against the global catalog too (separately from
+        // the vision-filled fields above, so this never clobbers what was just scanned).
+        if (d.title) await abSyncCatalogCheckbox(d.title);
+
         // Use the scanned front cover as the Shopify listing image too — run it
         // through the same 1000x1500 cover-fit + logo compositing as every other
         // cover-attach path (Missing Covers / Stock Summary), so it matches.
@@ -11948,6 +11958,27 @@ Questions? We're always here!
       ssEnrichFromCatalog(title);
     }
 
+    function abSetCatalogCheckbox(found) {
+      const cb = document.getElementById('ab-catalog-exists');
+      if (cb) cb.checked = !!found;
+    }
+
+    // Lightweight catalog-presence check (checkbox only) — used after Scan Covers,
+    // which already filled the other fields from vision extraction and shouldn't
+    // have them clobbered by ssEnrichFromCatalog's catalog-derived values.
+    async function abSyncCatalogCheckbox(title) {
+      if (!title || !title.trim()) { abSetCatalogCheckbox(false); return; }
+      try {
+        const res = await fetch('/.netlify/functions/catalog-enrich', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ adminEmail: _adminSession.email, adminKey: _adminSession.adminKey, title: title.trim() })
+        });
+        const d = await res.json();
+        abSetCatalogCheckbox(!!d.found);
+      } catch (e) { abSetCatalogCheckbox(false); }
+    }
+
     // Clear only the lookup-derived fields (so switching titles never leaves stale data).
     function ssClearEnrichFields() {
       const author = document.getElementById('ab-author');  if (author) author.value = '';
@@ -11962,6 +11993,7 @@ Questions? We're always here!
     async function ssEnrichFromCatalog(title) {
       _abLastEnriched = title;
       ssClearEnrichFields();   // reset previous book's author/publisher/genre/ISBN/description
+      abSetCatalogCheckbox(false);
       let catMsg = '', color = 'grey', author = '';
 
       // 1) Catalog enrichment (Author / Publisher / Genre / ISBN).
@@ -11972,6 +12004,7 @@ Questions? We're always here!
           body:    JSON.stringify({ adminEmail: _adminSession.email, adminKey: _adminSession.adminKey, title })
         });
         const d = await res.json();
+        abSetCatalogCheckbox(d.found);
 
         if (!d.found) {
           catMsg = 'ℹ️ Not in the global catalog — enter Author, Publisher &amp; Genre manually.';
@@ -12514,6 +12547,7 @@ Questions? We're always here!
 
       const tags = Array.from(document.querySelectorAll('#ab-tags-grid .ab-tag-chip.active'))
                         .map(c => c.dataset.tag);
+      const alreadyInCatalog = !!document.getElementById('ab-catalog-exists')?.checked;
 
       const btn = document.getElementById('ab-submit-btn');
       btn.textContent = '⏳ Publishing…';
@@ -12534,6 +12568,7 @@ Questions? We're always here!
             barcode, phone,
             initialStock: stock,
             cover: _abCoverBase64 || null,
+            alreadyInCatalog,
             metafields: {
               genreGids:           abGetSelectedGids('ab-mf-genre'),
               bookCoverTypeGids:   abGetSelectedGids('ab-mf-cover-type'),
@@ -12555,6 +12590,7 @@ Questions? We're always here!
             if (el) el.value = '';
           });
           const abStockEl = document.getElementById('ab-stock'); if (abStockEl) abStockEl.value = '1';
+          abSetCatalogCheckbox(false);
           abRemoveCover({ stopPropagation: () => {} });
           document.querySelectorAll('#ab-tags-grid .ab-tag-chip.active, .ab-mf-chips .ab-mf-chip.active').forEach(c => c.classList.remove('active'));
           document.getElementById('ab-char-count').textContent = '0 / 500';

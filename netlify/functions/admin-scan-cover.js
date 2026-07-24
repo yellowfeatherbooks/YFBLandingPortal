@@ -14,7 +14,12 @@ const crypto        = require('crypto');
 const SUPABASE_URL  = process.env.SUPABASE_URL;
 const SUPABASE_KEY  = process.env.SUPABASE_KEY;
 const CLAUDE_KEY    = (process.env.ANTHROPIC_API_KEY || '').trim();
-const CLAUDE_MODEL  = 'claude-sonnet-5';
+// Haiku, not Sonnet — this is a straightforward "read the text you see" extraction,
+// not a task needing deep reasoning, and Sonnet 5's extra latency (plus any
+// reasoning/thinking blocks) risks blowing past Netlify's synchronous function
+// timeout on a full-detail cover photo, which surfaces to the admin as a
+// confusing "Unexpected token '<'" (an HTML timeout page instead of JSON).
+const CLAUDE_MODEL  = 'claude-haiku-4-5-20251001';
 
 const cors = {
   'Access-Control-Allow-Origin':  '*',

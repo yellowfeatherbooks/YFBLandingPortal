@@ -11816,7 +11816,10 @@ Questions? We're always here!
     // edge (no cropping, so a wraparound front+spine+back spread stays fully intact
     // — unlike the cover-fit uploader elsewhere which deliberately crops to portrait),
     // and canvas output is always a clean re-encoded sRGB JPEG regardless of source.
-    const AB_SCAN_MAX_EDGE = 1800;
+    // Kept modest (Claude's own useful max is ~1568px on the long edge anyway) —
+    // a smaller image means less vision-processing latency, which matters against
+    // Netlify's synchronous function timeout.
+    const AB_SCAN_MAX_EDGE = 1400;
     async function abScanFileChosen(which, inputEl) {
       const file = inputEl.files && inputEl.files[0];
       if (!file) return;
@@ -11859,7 +11862,15 @@ Questions? We're always here!
           headers: { 'Content-Type': 'application/json' },
           body:    JSON.stringify({ adminEmail: _adminSession.email, adminKey: _adminSession.adminKey, frontImageBase64: _abScanFront, backImageBase64: _abScanBack })
         });
-        const d = await res.json();
+        let d;
+        try {
+          d = await res.json();
+        } catch (parseErr) {
+          // A non-JSON body (starts with "<") means the platform itself returned an
+          // error page — most often a function timeout — not our own error response.
+          ssEnrichNote('⚠️ The scan took too long or the server hit an error (HTTP ' + res.status + '). Please try again, or enter details manually.', 'amber');
+          return;
+        }
         if (!d.success) {
           ssEnrichNote('⚠️ ' + (d.error || 'Could not read the covers — enter details manually.') +
             (d.debug ? '<br/><span style="font-size:0.72rem;opacity:0.75;">Debug: ' + _stkEsc(d.debug) + '</span>' : ''), 'amber');

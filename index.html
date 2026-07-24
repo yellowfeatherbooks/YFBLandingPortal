@@ -12451,21 +12451,32 @@ Questions? We're always here!
       const file = e.dataTransfer.files[0];
       if (file) abLoadCover(file);
     }
-    function abLoadCover(file) {
+    // Runs any manually-uploaded cover through the same 1000x1500 cover-fit crop +
+    // logo compositing as every other cover-attach path (Missing Covers, Scan
+    // Covers) — so a book added here looks like every other book, not just
+    // whatever raw size/shape the uploaded file happened to be.
+    async function abLoadCover(file) {
       if (file.size > 2 * 1024 * 1024) {
         alert('Cover image must be under 2 MB.');
         return;
       }
-      const reader = new FileReader();
-      reader.onload = function(ev) {
-        _abCoverBase64 = ev.target.result;
-        document.getElementById('ab-cover-thumb').src = _abCoverBase64;
+      try {
+        const rawDataUrl = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload  = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+        const composed = await mcComposeCoverImage(rawDataUrl);
+        _abCoverBase64 = composed;
+        document.getElementById('ab-cover-thumb').src = composed;
         document.getElementById('ab-cover-name').textContent = file.name;
-        document.getElementById('ab-cover-size').textContent = (file.size / 1024).toFixed(0) + ' KB';
+        document.getElementById('ab-cover-size').textContent = 'Standardized to 1000×1500 + logo';
         document.getElementById('ab-cover-placeholder').style.display = 'none';
         document.getElementById('ab-cover-preview').style.display = 'flex';
-      };
-      reader.readAsDataURL(file);
+      } catch (e) {
+        alert('Could not process that cover image: ' + e.message);
+      }
     }
     function abRemoveCover(e) {
       e.stopPropagation();

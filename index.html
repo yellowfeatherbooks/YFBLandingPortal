@@ -11890,9 +11890,13 @@ Questions? We're always here!
         }
         if (d.isbn) { document.getElementById('ab-barcode').value = d.isbn; filled.push('ISBN'); }
 
-        // Use the scanned front cover as the Shopify listing image too.
-        _abCoverBase64 = _abScanFront;
-        document.getElementById('ab-cover-thumb').src = _abScanFront;
+        // Use the scanned front cover as the Shopify listing image too — run it
+        // through the same 1000x1500 cover-fit + logo compositing as every other
+        // cover-attach path (Missing Covers / Stock Summary), so it matches.
+        let coverForShopify = _abScanFront;
+        try { coverForShopify = await mcComposeCoverImage(_abScanFront); } catch (e) { /* fall back to the plain scanned image */ }
+        _abCoverBase64 = coverForShopify;
+        document.getElementById('ab-cover-thumb').src = coverForShopify;
         document.getElementById('ab-cover-name').textContent = 'From scanned front cover';
         document.getElementById('ab-cover-size').textContent = '';
         document.getElementById('ab-cover-placeholder').style.display = 'none';
@@ -14004,6 +14008,29 @@ Questions? We're always here!
       });
     }
 
+    // Shared by every cover-attach path (Missing Covers manual upload, Add Book's
+    // Scan Covers) so every cover ends up the same standard shape: 1000x1500
+    // portrait cover-fit crop with the brand logo composited top-left.
+    async function mcComposeCoverImage(sourceDataUrl) {
+      const img  = await _mcLoadImage(sourceDataUrl);
+      const logo = await _mcLoadImage('yfb2.png');
+
+      const canvas = document.createElement('canvas');
+      canvas.width = MC_CANVAS_W; canvas.height = MC_CANVAS_H;
+      const ctx = canvas.getContext('2d');
+
+      // Cover-fit: scale so the image fully covers the canvas, center-cropping overflow.
+      const scale  = Math.max(MC_CANVAS_W / img.width, MC_CANVAS_H / img.height);
+      const drawW  = img.width * scale, drawH = img.height * scale;
+      const offX   = (MC_CANVAS_W - drawW) / 2, offY = (MC_CANVAS_H - drawH) / 2;
+      ctx.drawImage(img, offX, offY, drawW, drawH);
+
+      // Brand logo, top-left corner.
+      ctx.drawImage(logo, MC_LOGO_MARGIN, MC_LOGO_MARGIN, MC_LOGO_SIZE, MC_LOGO_SIZE);
+
+      return canvas.toDataURL('image/jpeg', 0.92);
+    }
+
     async function mcProcessUpload(productId, inputEl) {
       const file = inputEl.files && inputEl.files[0];
       const previewEl = document.getElementById('mc-upload-preview');
@@ -14018,23 +14045,7 @@ Questions? We're always here!
           reader.onerror = reject;
           reader.readAsDataURL(file);
         });
-        const img  = await _mcLoadImage(dataUrl);
-        const logo = await _mcLoadImage('yfb2.png');
-
-        const canvas = document.createElement('canvas');
-        canvas.width = MC_CANVAS_W; canvas.height = MC_CANVAS_H;
-        const ctx = canvas.getContext('2d');
-
-        // Cover-fit: scale so the image fully covers the canvas, center-cropping overflow.
-        const scale  = Math.max(MC_CANVAS_W / img.width, MC_CANVAS_H / img.height);
-        const drawW  = img.width * scale, drawH = img.height * scale;
-        const offX   = (MC_CANVAS_W - drawW) / 2, offY = (MC_CANVAS_H - drawH) / 2;
-        ctx.drawImage(img, offX, offY, drawW, drawH);
-
-        // Brand logo, top-left corner.
-        ctx.drawImage(logo, MC_LOGO_MARGIN, MC_LOGO_MARGIN, MC_LOGO_SIZE, MC_LOGO_SIZE);
-
-        const jpegDataUrl = canvas.toDataURL('image/jpeg', 0.92);
+        const jpegDataUrl = await mcComposeCoverImage(dataUrl);
         const base64 = jpegDataUrl.split(',')[1];
 
         previewEl.innerHTML = `<div style="text-align:center;">

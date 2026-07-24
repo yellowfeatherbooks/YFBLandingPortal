@@ -11860,7 +11860,11 @@ Questions? We're always here!
           body:    JSON.stringify({ adminEmail: _adminSession.email, adminKey: _adminSession.adminKey, frontImageBase64: _abScanFront, backImageBase64: _abScanBack })
         });
         const d = await res.json();
-        if (!d.success) { ssEnrichNote('⚠️ ' + (d.error || 'Could not read the covers — enter details manually.'), 'amber'); return; }
+        if (!d.success) {
+          ssEnrichNote('⚠️ ' + (d.error || 'Could not read the covers — enter details manually.') +
+            (d.debug ? '<br/><span style="font-size:0.72rem;opacity:0.75;">Debug: ' + _stkEsc(d.debug) + '</span>' : ''), 'amber');
+          return;
+        }
 
         const filled = [];
         if (d.title)  { document.getElementById('ab-book').value = d.title; _abLastEnriched = d.title; filled.push('Title'); }

@@ -135,15 +135,26 @@ Rules:
       return json({ success: false, error: 'Could not read the cover images. Please try again or enter details manually.' }, 502);
     }
 
-    const cd  = await claudeRes.json();
-    const raw = cd.content?.[0]?.text || '{}';
-    console.log(`admin-scan-cover: front=${Math.round(front.data.length/1024)}KB back=${back ? Math.round(back.data.length/1024)+'KB' : 'none'} tokens_in=${cd.usage?.input_tokens} tokens_out=${cd.usage?.output_tokens}`);
+    const cd = await claudeRes.json();
+    console.log(`admin-scan-cover: front=${Math.round(front.data.length/1024)}KB back=${back ? Math.round(back.data.length/1024)+'KB' : 'none'} tokens_in=${cd.usage?.input_tokens} tokens_out=${cd.usage?.output_tokens} stop_reason=${cd.stop_reason} block_types=${(cd.content||[]).map(b=>b.type).join(',')}`);
+
+    // Don't assume the text reply is content[0] — a reasoning/thinking block (or
+    // other non-text block) can come first, which is what silently produced an
+    // empty "{}" fallback the first time this ran on a real cover photo.
+    const textBlock = (cd.content || []).find(b => b.type === 'text');
+    const raw = textBlock?.text || '';
+    if (!raw) {
+      const shape = `stop_reason=${cd.stop_reason} block_types=[${(cd.content||[]).map(b=>b.type).join(',')}]`;
+      console.error('admin-scan-cover: no text block in response —', shape, JSON.stringify(cd).slice(0, 500));
+      return json({ success: false, error: 'The vision model returned no readable reply. Please try again or enter details manually.', debug: shape }, 502);
+    }
+
     let extracted;
     try {
       extracted = JSON.parse(raw.replace(/```json|```/g, '').trim());
     } catch (e) {
       console.error('admin-scan-cover: JSON parse failed', raw.slice(0, 300));
-      return json({ success: false, error: 'Could not parse the extracted details. Please try again or enter details manually.' }, 502);
+      return json({ success: false, error: 'Could not parse the extracted details. Please try again or enter details manually.', debug: raw.slice(0, 500) }, 502);
     }
 
     const result = {

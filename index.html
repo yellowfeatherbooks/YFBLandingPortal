@@ -6143,8 +6143,28 @@
           <div id="ab-success" class="ab-msg ab-msg-success" style="display:none;"></div>
           <div id="ab-enrich-note" style="display:none;margin-bottom:0.75rem;padding:0.5rem 0.75rem;border-radius:6px;font-size:0.8rem;line-height:1.4;border:1px solid;"></div>
 
+          <!-- ── Scan Covers (optional shortcut — extracts + prefills everything below) ── -->
+          <div class="ab-section-label">📷 Scan Covers <span style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:normal;">(optional — auto-fills the fields below from photos)</span></div>
+          <div class="ab-row">
+            <div class="ab-field">
+              <label class="ab-label">Front Cover Photo</label>
+              <input type="file" id="ab-scan-front" class="ab-input" accept="image/jpeg,image/png,image/webp" onchange="abScanFileChosen('front', this)" style="padding:0.4rem;" />
+              <div id="ab-scan-front-preview" style="margin-top:0.4rem;"></div>
+            </div>
+            <div class="ab-field">
+              <label class="ab-label">Back Cover Photo</label>
+              <input type="file" id="ab-scan-back" class="ab-input" accept="image/jpeg,image/png,image/webp" onchange="abScanFileChosen('back', this)" style="padding:0.4rem;" />
+              <div id="ab-scan-back-preview" style="margin-top:0.4rem;"></div>
+            </div>
+          </div>
+          <button type="button" id="ab-scan-btn" disabled onclick="abScanCovers()"
+            style="margin-top:0.5rem;background:rgba(212,175,55,0.12);border:1px solid var(--gold);color:var(--gold);font-weight:700;border-radius:6px;padding:0.5rem 1rem;font-size:0.85rem;cursor:pointer;">
+            📷 Extract Details from Covers
+          </button>
+          <div class="ab-hint" style="margin-top:0.35rem;">Upload at least the front cover — extracted details land as a draft below for you to review before publishing.</div>
+
           <!-- ── Book Info ── -->
-          <div class="ab-section-label">Book Information</div>
+          <div class="ab-section-label" style="margin-top:1.2rem;">Book Information</div>
           <div class="ab-row">
             <div class="ab-field">
               <label class="ab-label">Book Title *</label>
@@ -11777,6 +11797,82 @@ Questions? We're always here!
         return { msg: got.length ? `🌐 From ${d.source}: ${got.join(' + ')} (verify).` : '', got, data: d };
       } catch (e) {
         return { msg: '', got: [] };
+      }
+    }
+
+    // ── Scan Covers → auto-fill the Add Book form (Claude vision on front/back photos) ──
+    var _abScanFront = null, _abScanBack = null;
+    function abScanFileChosen(which, inputEl) {
+      const file = inputEl.files && inputEl.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(ev) {
+        if (which === 'front') _abScanFront = ev.target.result; else _abScanBack = ev.target.result;
+        const prev = document.getElementById('ab-scan-' + which + '-preview');
+        if (prev) prev.innerHTML = '<img src="' + ev.target.result + '" style="width:48px;height:68px;object-fit:cover;border-radius:4px;border:1px solid var(--border);" />';
+        const btn = document.getElementById('ab-scan-btn');
+        if (btn) btn.disabled = !_abScanFront;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    async function abScanCovers() {
+      if (!_abScanFront) { alert('Upload the front cover first.'); return; }
+      const btn = document.getElementById('ab-scan-btn');
+      const orig = btn.textContent;
+      btn.disabled = true; btn.textContent = '⏳ Reading covers…';
+      ssEnrichNote('📷 Reading the cover photos…', 'grey');
+      try {
+        const res = await fetch('/.netlify/functions/admin-scan-cover', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ adminEmail: _adminSession.email, adminKey: _adminSession.adminKey, frontImageBase64: _abScanFront, backImageBase64: _abScanBack })
+        });
+        const d = await res.json();
+        if (!d.success) { ssEnrichNote('⚠️ ' + (d.error || 'Could not read the covers — enter details manually.'), 'amber'); return; }
+
+        const filled = [];
+        if (d.title)  { document.getElementById('ab-book').value = d.title; _abLastEnriched = d.title; filled.push('Title'); }
+        if (d.author) { document.getElementById('ab-author').value = d.author; filled.push('Author'); }
+        if (d.publisher) {
+          if (ssMatchSelectOption('ab-publisher', d.publisher)) {
+            abToggleOtherPublisher(document.getElementById('ab-publisher').value);
+          } else {
+            document.getElementById('ab-publisher').value = 'Other';
+            abToggleOtherPublisher('Other');
+            const other = document.getElementById('ab-publisher-other');
+            if (other) other.value = d.publisher;
+          }
+          filled.push('Publisher');
+        }
+        if (d.genre && ssMatchSelectOption('ab-genre', d.genre)) filled.push('Genre');
+        if (d.mrp)  { document.getElementById('ab-mrp').value = d.mrp; filled.push('MRP'); }
+        if (d.description) {
+          const descEl = document.getElementById('ab-desc');
+          descEl.value = d.description.slice(0, 740);
+          descEl.dispatchEvent(new Event('input'));
+          filled.push('Description');
+        }
+        if (d.isbn) { document.getElementById('ab-barcode').value = d.isbn; filled.push('ISBN'); }
+
+        // Use the scanned front cover as the Shopify listing image too.
+        _abCoverBase64 = _abScanFront;
+        document.getElementById('ab-cover-thumb').src = _abScanFront;
+        document.getElementById('ab-cover-name').textContent = 'From scanned front cover';
+        document.getElementById('ab-cover-size').textContent = '';
+        document.getElementById('ab-cover-placeholder').style.display = 'none';
+        document.getElementById('ab-cover-preview').style.display = 'flex';
+
+        const confColor = d.confidence === 'high' ? 'green' : (d.confidence === 'low' ? 'amber' : 'grey');
+        ssEnrichNote(
+          '📷 Extracted from covers (' + d.confidence + ' confidence): ' + (filled.join(', ') || 'nothing readable') +
+          '. Please review every field before publishing.' + (d.notes ? ' <em>' + d.notes + '</em>' : ''),
+          confColor
+        );
+      } catch (e) {
+        ssEnrichNote('⚠️ Scan failed: ' + e.message, 'amber');
+      } finally {
+        btn.disabled = false; btn.textContent = orig;
       }
     }
 

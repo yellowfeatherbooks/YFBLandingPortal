@@ -2,6 +2,8 @@ const crypto         = require('crypto');
 const SUPABASE_URL    = process.env.SUPABASE_URL;
 const SUPABASE_KEY    = process.env.SUPABASE_KEY;
 const SUPABASE_SVC_KEY = process.env.SUPABASE_SERVICE_KEY || SUPABASE_KEY;
+const OPENAI_KEY      = (process.env.OPENAI_API_KEY || '').trim();
+const EMBED_MODEL     = 'text-embedding-3-small';
 const SHOPIFY_DOMAIN  = process.env.SHOPIFY_DOMAIN || 'zgqk4e-1m.myshopify.com';
 const SHOPIFY_TOKEN   = process.env.SHOPIFY_ADMIN_TOKEN;
 const API_VERSION     = '2025-04';
@@ -195,6 +197,50 @@ async function getPrintBooksCategoryGid() {
   return match?.node?.id || null;
 }
 
+// After a book is confirmed and published to Shopify, feed its (now admin-reviewed)
+// metadata into the global catalog (private.catalog_books) too — grows the shared
+// catalog from in-house books, not just the scraped partner sites. Idempotent by
+// normalized title (upsert_catalog_book RPC), so re-adding/editing never duplicates.
+// Best-effort: never throws, never blocks/breaks the Shopify publish it rides on.
+async function upsertGlobalCatalog({ title, author, publisher, genre, description, barcode, mrp }) {
+  if (!SUPABASE_URL || !SUPABASE_SVC_KEY || !title) return;
+  try {
+    let embedding = null;
+    if (OPENAI_KEY) {
+      const embedInput = [title, author, description].filter(Boolean).join('. ').slice(0, 8000);
+      const er = await fetch('https://api.openai.com/v1/embeddings', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${OPENAI_KEY}` },
+        body:    JSON.stringify({ model: EMBED_MODEL, input: embedInput })
+      });
+      if (er.ok) {
+        const ed = await er.json();
+        embedding = ed?.data?.[0]?.embedding || null;
+      } else {
+        console.warn('upsertGlobalCatalog: embedding request failed', er.status);
+      }
+    }
+
+    const rpcRes = await fetch(`${SUPABASE_URL}/rest/v1/rpc/upsert_catalog_book`, {
+      method:  'POST',
+      headers: { apikey: SUPABASE_SVC_KEY, Authorization: `Bearer ${SUPABASE_SVC_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        p_title:       title,
+        p_author:      author || null,
+        p_isbn:        barcode || null,
+        p_price:       mrp != null && mrp !== '' ? parseFloat(mrp) : null,
+        p_publisher:   publisher || null,
+        p_genre:       genre || null,
+        p_description: description || null,
+        p_embedding:   embedding,
+      })
+    });
+    if (!rpcRes.ok) console.warn('upsertGlobalCatalog: rpc failed', rpcRes.status, (await rpcRes.text()).slice(0, 200));
+  } catch (e) {
+    console.warn('upsertGlobalCatalog error (non-fatal):', e.message);
+  }
+}
+
 exports.handler = async function (event) {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: cors, body: '' };
   if (event.httpMethod !== 'POST')    return json({ success: false, error: 'Method Not Allowed' }, 405);
@@ -317,6 +363,9 @@ exports.handler = async function (event) {
       const sbText = await sbRes.text();
       sbDebug = { status: sbRes.status, body: sbText || '(empty — success)' };
     }
+
+    // Step 4 — Enrich the global catalog with this (now admin-confirmed) book too.
+    await upsertGlobalCatalog({ title: book, author, publisher, genre, description, barcode, mrp });
 
     return json({ ...data, _sb: sbDebug });
 

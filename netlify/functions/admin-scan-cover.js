@@ -103,6 +103,15 @@ Respond ONLY with valid JSON (no markdown fences), matching this exact shape:
 Rules:
 - Never invent a value you can't actually read — use an empty string instead.
 - If front and back cover disagree on a field, prefer whichever is clearer/more complete.
+- The "FRONT COVER" image may actually be a single wraparound photo showing the back
+  panel, spine, AND front panel side by side (common when someone photographs the
+  whole flattened cover in one shot) — that's fine, read text from ANYWHERE in the
+  image regardless of which panel it's in, don't restrict yourself to only the
+  right-hand/front-facing portion.
+- A stylized/decorative title logo can be hard to OCR — still report the author name,
+  publisher, ISBN, price and description if those are in plainer text elsewhere on
+  the cover, even if the title itself is illegible. Getting some fields right beats
+  reporting nothing.
 - "confidence":"low" whenever the photo is blurry, glared, or a field is a guess.`
     });
 
@@ -128,6 +137,7 @@ Rules:
 
     const cd  = await claudeRes.json();
     const raw = cd.content?.[0]?.text || '{}';
+    console.log(`admin-scan-cover: front=${Math.round(front.data.length/1024)}KB back=${back ? Math.round(back.data.length/1024)+'KB' : 'none'} tokens_in=${cd.usage?.input_tokens} tokens_out=${cd.usage?.output_tokens}`);
     let extracted;
     try {
       extracted = JSON.parse(raw.replace(/```json|```/g, '').trim());
@@ -136,7 +146,7 @@ Rules:
       return json({ success: false, error: 'Could not parse the extracted details. Please try again or enter details manually.' }, 502);
     }
 
-    return json({
+    const result = {
       success: true,
       title:       extracted.title       || '',
       title_ml:    extracted.title_ml    || '',
@@ -149,7 +159,18 @@ Rules:
       mrp:         extracted.mrp         || '',
       confidence:  extracted.confidence  || 'medium',
       notes:       extracted.notes       || ''
-    });
+    };
+
+    // Nothing readable at all is unusual for a real cover photo — surface Claude's
+    // raw reply so a repeat can be diagnosed from the response alone, without
+    // needing to pull Netlify function logs.
+    const gotNothing = !result.title && !result.author && !result.publisher && !result.isbn && !result.description;
+    if (gotNothing) {
+      console.warn('admin-scan-cover: nothing extracted, raw reply:', raw.slice(0, 500));
+      result.debug = raw.slice(0, 500);
+    }
+
+    return json(result);
   } catch (err) {
     console.error('admin-scan-cover error:', err.message);
     return json({ success: false, error: 'Scan failed. Please try again.' }, 500);

@@ -11802,18 +11802,49 @@ Questions? We're always here!
 
     // ── Scan Covers → auto-fill the Add Book form (Claude vision on front/back photos) ──
     var _abScanFront = null, _abScanBack = null;
-    function abScanFileChosen(which, inputEl) {
+    function _abScanLoadImage(dataUrl) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload  = () => resolve(img);
+        img.onerror = reject;
+        img.src = dataUrl;
+      });
+    }
+    // Print-ready cover design files are often huge (many MB, sometimes a CMYK/print
+    // color profile) — send those straight to the vision API and it can come back
+    // with nothing readable at all. Re-encode through a canvas: caps the longest
+    // edge (no cropping, so a wraparound front+spine+back spread stays fully intact
+    // — unlike the cover-fit uploader elsewhere which deliberately crops to portrait),
+    // and canvas output is always a clean re-encoded sRGB JPEG regardless of source.
+    const AB_SCAN_MAX_EDGE = 1800;
+    async function abScanFileChosen(which, inputEl) {
       const file = inputEl.files && inputEl.files[0];
       if (!file) return;
-      const reader = new FileReader();
-      reader.onload = function(ev) {
-        if (which === 'front') _abScanFront = ev.target.result; else _abScanBack = ev.target.result;
-        const prev = document.getElementById('ab-scan-' + which + '-preview');
-        if (prev) prev.innerHTML = '<img src="' + ev.target.result + '" style="width:48px;height:68px;object-fit:cover;border-radius:4px;border:1px solid var(--border);" />';
+      const previewEl = document.getElementById('ab-scan-' + which + '-preview');
+      if (!file.type.startsWith('image/')) { if (previewEl) previewEl.innerHTML = '<span style="color:#f87171;font-size:0.72rem;">Please choose an image file.</span>'; return; }
+      if (previewEl) previewEl.innerHTML = '<span class="muted" style="font-size:0.72rem;">Processing…</span>';
+      try {
+        const rawDataUrl = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload  = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+        const img   = await _abScanLoadImage(rawDataUrl);
+        const scale = Math.min(1, AB_SCAN_MAX_EDGE / Math.max(img.width, img.height));
+        const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.88);
+
+        if (which === 'front') _abScanFront = dataUrl; else _abScanBack = dataUrl;
+        if (previewEl) previewEl.innerHTML = '<img src="' + dataUrl + '" style="width:48px;height:68px;object-fit:cover;border-radius:4px;border:1px solid var(--border);" />';
         const btn = document.getElementById('ab-scan-btn');
         if (btn) btn.disabled = !_abScanFront;
-      };
-      reader.readAsDataURL(file);
+      } catch (e) {
+        if (previewEl) previewEl.innerHTML = '<span style="color:#f87171;font-size:0.72rem;">Could not process image: ' + e.message + '</span>';
+      }
     }
 
     async function abScanCovers() {
@@ -11863,10 +11894,11 @@ Questions? We're always here!
         document.getElementById('ab-cover-placeholder').style.display = 'none';
         document.getElementById('ab-cover-preview').style.display = 'flex';
 
-        const confColor = d.confidence === 'high' ? 'green' : (d.confidence === 'low' ? 'amber' : 'grey');
+        const confColor = filled.length ? (d.confidence === 'high' ? 'green' : (d.confidence === 'low' ? 'amber' : 'grey')) : 'amber';
         ssEnrichNote(
           '📷 Extracted from covers (' + d.confidence + ' confidence): ' + (filled.join(', ') || 'nothing readable') +
-          '. Please review every field before publishing.' + (d.notes ? ' <em>' + d.notes + '</em>' : ''),
+          '. Please review every field before publishing.' + (d.notes ? ' <em>' + d.notes + '</em>' : '') +
+          (d.debug ? '<br/><span style="font-size:0.72rem;opacity:0.75;">Debug — Claude\'s raw reply: ' + _stkEsc(d.debug) + '</span>' : ''),
           confColor
         );
       } catch (e) {

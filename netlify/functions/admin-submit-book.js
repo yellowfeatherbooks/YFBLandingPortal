@@ -114,6 +114,26 @@ async function setupVariantDefaults(shopifyProductId) {
   }
 }
 
+// Attach the cover image directly via REST — n8n's product-creation step receives
+// `cover` too, but doesn't reliably attach it (confirmed: a book published through
+// this form ended up with zero Shopify images despite a cover being uploaded). This
+// mirrors admin-attach-cover.js's already-proven path instead of trusting n8n with it.
+// Shopify's REST image.attachment wants RAW base64 — strip any "data:...;base64," prefix.
+async function attachCoverImage(shopifyProductId, cover) {
+  if (!cover) return;
+  try {
+    const b64 = cover.includes(',') ? cover.split(',').pop() : cover;
+    const res = await fetch(
+      `https://${SHOPIFY_DOMAIN}/admin/api/${API_VERSION}/products/${shopifyProductId}/images.json`,
+      { method: 'POST', headers: { 'X-Shopify-Access-Token': SHOPIFY_TOKEN, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: { attachment: b64 } }) }
+    );
+    if (!res.ok) console.warn('attachCoverImage failed:', res.status, (await res.text()).slice(0, 300));
+  } catch (e) {
+    console.warn('attachCoverImage error (non-fatal):', e.message);
+  }
+}
+
 // Map genre label → Shopify collection handle (matches landing page genre grid)
 const GENRE_HANDLE_MAP = {
   'romance':              'romance',
@@ -338,6 +358,9 @@ exports.handler = async function (event) {
 
       // 2f — Add product to matching Shopify collection based on genre
       if (genre) await addProductToGenreCollection(productGid, genre);
+
+      // 2g — Attach the cover image ourselves (see attachCoverImage for why)
+      await attachCoverImage(shopifyId, cover);
     }
 
     // Step 3 — Save to Supabase as 'listed'

@@ -13472,10 +13472,15 @@ Questions? We're always here!
           { key:'number', label:'Invoice', filter:'text' },
           { key:'date', label:'Date', filter:'text' },
           { key:'customer', label:'Customer', filter:'text' },
+          { key:'email', label:'Email', filter:'text', format:v=>v?_e(v):'<span style="color:var(--muted)">— none —</span>' },
           { key:'country', label:'Country', filter:'select' },
           { key:'total', label:'Total', align:'right', format:v=>_inr(v) },
           { key:'currency', label:'Ccy', filter:'select' },
-          { key:'id', label:'', format:(v,r)=>`<button class="admin-filter-btn" style="padding:0.3rem 0.7rem;font-size:0.78rem;white-space:nowrap;" onclick="peppolDownload(${r.id},this)">⬇ Peppol UBL</button>` },
+          { key:'id', label:'', format:(v,r)=>`<div style="display:flex;gap:0.4rem;flex-wrap:nowrap;">`
+              +`<button class="admin-filter-btn" style="padding:0.3rem 0.6rem;font-size:0.78rem;white-space:nowrap;" onclick="peppolDownload(${r.id},this)">⬇ UBL</button>`
+              +`<button class="admin-filter-btn" style="padding:0.3rem 0.6rem;font-size:0.78rem;white-space:nowrap;" onclick="peppolDownloadPdf(${r.id},this)">🖨️ PDF</button>`
+              +`<button class="admin-filter-btn" style="padding:0.3rem 0.6rem;font-size:0.78rem;white-space:nowrap;" onclick="peppolEmailInvoice(${r.id},this)">📧 Email</button>`
+              +`</div>` },
         ] },
     };
     function rptInit(prefix) {
@@ -13584,6 +13589,53 @@ Questions? We're always here!
         const countEl = document.getElementById('rpt-peppol-count');
         if (countEl) countEl.innerHTML = '⚠️ ' + d.warnings.map(_e).join(' &nbsp;·&nbsp; ');
       }
+    }
+
+    function _base64ToBlob(base64, mimeType) {
+      const byteChars = atob(base64);
+      const bytes = new Uint8Array(byteChars.length);
+      for (let i = 0; i < byteChars.length; i++) bytes[i] = byteChars.charCodeAt(i);
+      return new Blob([bytes], { type: mimeType });
+    }
+
+    // Downloads the NORMAL human-readable Odoo invoice PDF (not the Peppol XML).
+    async function peppolDownloadPdf(invoiceId, btnEl) {
+      const original = btnEl ? btnEl.textContent : null;
+      if (btnEl) { btnEl.disabled = true; btnEl.textContent = '⏳ …'; }
+      let d;
+      try { d = await adminPost('admin-peppol-export', { action: 'pdf', invoiceId }); }
+      catch (e) { alert('PDF download failed: ' + e.message); }
+      finally { if (btnEl) { btnEl.disabled = false; btnEl.textContent = original; } }
+      if (!d) return;
+      if (!d.success) { alert('PDF download failed: ' + (d.error || 'Unknown error')); return; }
+      const blob = _base64ToBlob(d.pdfBase64, 'application/pdf');
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = d.filename || `invoice-${invoiceId}.pdf`;
+      a.click(); URL.revokeObjectURL(a.href);
+    }
+
+    // Emails the normal invoice PDF to the customer's captured Odoo email, or
+    // prompts for one if none is on file.
+    async function peppolEmailInvoice(invoiceId, btnEl) {
+      const st = _rpt['peppol'];
+      const row = st && st.rows.find(r => r.id === invoiceId);
+      let toEmail = (row && row.email) || '';
+      if (!toEmail) {
+        const entered = prompt(`No email on file for ${(row && row.customer) || 'this customer'}. Enter an email address to send invoice ${(row && row.number) || ''} to:`);
+        if (!entered || !entered.trim()) return;
+        toEmail = entered.trim();
+      } else if (!confirm(`Send invoice ${row.number} to ${toEmail}?`)) {
+        return;
+      }
+      const original = btnEl ? btnEl.textContent : null;
+      if (btnEl) { btnEl.disabled = true; btnEl.textContent = '⏳ …'; }
+      let d;
+      try { d = await adminPost('admin-peppol-export', { action: 'email', invoiceId, toEmail }); }
+      catch (e) { alert('Email failed: ' + e.message); }
+      finally { if (btnEl) { btnEl.disabled = false; btnEl.textContent = original; } }
+      if (!d) return;
+      if (!d.success) { alert('Email failed: ' + (d.error || 'Unknown error')); return; }
+      alert('Invoice emailed to ' + d.to);
     }
 
     // ── P&L (standalone, under Odoo → Reports) ──────────────────────────────────

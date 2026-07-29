@@ -1,0 +1,86 @@
+{
+  "name": "InvoiceEmail",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "yfb-invoice-email",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "b1a2c3d4-1111-4a2b-9c3d-000000000001",
+      "name": "Invoice Email Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "b1a2c3d4-1111-4a2b-9c3d-100000000001"
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json;\nconst d = raw.body || raw;\n\nconst html = `<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"UTF-8\"/><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"/><style>body{font-family:Arial,sans-serif;background:#f4f4f4;margin:0;padding:0;}.wrapper{max-width:560px;margin:32px auto;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,0.10);}.header{background:#1a1a2e;padding:24px 32px;}.header img{height:44px;object-fit:contain;}.body{padding:32px;color:#333;font-size:15px;line-height:1.7;}.footer{background:#f5f0e8;padding:16px 32px;text-align:center;font-size:11px;color:#888;border-top:1px solid #e5e0d8;}.footer a{color:#C9922A;text-decoration:none;}</style></head><body><div class=\"wrapper\"><div class=\"header\"><img src=\"https://yellowfeather.netlify.app/logo-landscape.png\" alt=\"Yellow Feather Books\"/></div><div class=\"body\"><p>Hello ${d.toName || 'there'},</p><p>Please find attached your invoice <strong>${d.invoiceNumber}</strong> from Yellow Feather Books.</p><p>For any queries, reach us at <a href=\"mailto:bookstore@yellowfeatherbookstore.com\" style=\"color:#C9922A;\">bookstore@yellowfeatherbookstore.com</a> or +91 94004 48000.</p><p style=\"margin-top:24px;\">Warm regards,<br/><strong>Team Yellow Feather</strong></p></div><div class=\"footer\">Yellow Feather Books &nbsp;·&nbsp; <a href=\"mailto:bookstore@yellowfeatherbookstore.com\">bookstore@yellowfeatherbookstore.com</a></div></div></body></html>`;\n\nreturn [{\n  json: { to: d.to, toName: d.toName || '', invoiceNumber: d.invoiceNumber, subject: `Invoice ${d.invoiceNumber} — Yellow Feather Books`, html },\n  binary: {\n    data: {\n      data: d.pdfBase64,\n      mimeType: 'application/pdf',\n      fileName: d.filename || `${d.invoiceNumber || 'invoice'}.pdf`\n    }\n  }\n}];"
+      },
+      "id": "b1a2c3d4-1111-4a2b-9c3d-000000000002",
+      "name": "Build Email + Attachment",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [224, 0]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.to }}",
+        "subject": "={{ $json.subject }}",
+        "message": "={{ $json.html }}",
+        "options": {
+          "attachmentsUi": {
+            "attachmentsBinary": [
+              { "property": "data" }
+            ]
+          }
+        }
+      },
+      "id": "b1a2c3d4-1111-4a2b-9c3d-000000000003",
+      "name": "Email Invoice PDF via Gmail",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [448, 0],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "n4S10HXIC145nr8L",
+          "name": "Gmail account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"status\": \"ok\" }",
+        "options": {}
+      },
+      "id": "b1a2c3d4-1111-4a2b-9c3d-000000000004",
+      "name": "Respond OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [672, 0]
+    }
+  ],
+  "connections": {
+    "Invoice Email Webhook": {
+      "main": [[{ "node": "Build Email + Attachment", "type": "main", "index": 0 }]]
+    },
+    "Build Email + Attachment": {
+      "main": [[{ "node": "Email Invoice PDF via Gmail", "type": "main", "index": 0 }]]
+    },
+    "Email Invoice PDF via Gmail": {
+      "main": [[{ "node": "Respond OK", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}

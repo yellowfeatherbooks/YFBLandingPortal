@@ -240,8 +240,12 @@ async function mapOdooInvoiceToUbl(invoiceId, opts = {}) {
     countryCode(partner.country_id),
   ]);
 
+  // Real invoice lines have a product_id; section/note/payment-term lines don't.
+  // (display_type's "no line" sentinel varies across Odoo versions — this instance
+  // uses the string 'product' for real lines rather than false — so filtering on
+  // product_id presence is the portable way to select them.)
   const lineRows = await odoo.execKw('account.move.line', 'search_read',
-    [[['move_id', '=', invoiceId], ['exclude_from_invoice_tab', '=', false], ['display_type', '=', false]]],
+    [[['move_id', '=', invoiceId], ['product_id', '!=', false]]],
     { fields: ['name', 'quantity', 'price_unit', 'price_subtotal', 'tax_ids'] });
 
   const taxIds = [...new Set(lineRows.flatMap(l => l.tax_ids || []))];

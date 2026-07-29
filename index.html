@@ -6054,6 +6054,9 @@
           <button class="admin-nav-item" data-section="odoo-reports" onclick="adminNav('odoo-reports',this)">
             <span class="admin-nav-icon">📄</span> Quick Reports
           </button>
+          <button class="admin-nav-item" data-section="peppol-export" onclick="adminNav('peppol-export',this)">
+            <span class="admin-nav-icon">🌐</span> Peppol Export
+          </button>
           <div class="admin-nav-group">
             <button class="admin-nav-group-hdr" onclick="adminNavGroup(this)">
               <span class="admin-nav-icon">📊</span> Reports <span class="admin-nav-chev">▾</span>
@@ -7302,6 +7305,26 @@
         </div>
         <div id="or-result" style="font-size:0.86rem;"></div>
       </div><!-- /admin-section-odoo-reports -->
+
+      <!-- ── Peppol Export (browse posted invoices, download BIS Billing 3.0 UBL XML) ── -->
+      <div id="admin-section-peppol-export" class="admin-section">
+        <div class="admin-section-header"><h2>🌐 Peppol Export</h2></div>
+        <p style="color:var(--muted);font-size:0.85rem;margin:0 0 1rem;">
+          Generates a Peppol BIS Billing 3.0 UBL XML for any posted Odoo invoice — for download only, nothing is
+          transmitted. Sending over the real Peppol network needs a registered Access Point (Flick) Participant ID,
+          not set up yet — downloaded files will carry a warning banner until then.
+        </p>
+        <div style="display:flex;gap:0.6rem;align-items:center;flex-wrap:wrap;margin-bottom:1rem;">
+          <label style="color:var(--muted);font-size:0.82rem;">From</label>
+          <input type="date" id="rpt-peppol-from" style="padding:0.45rem;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:var(--text);color-scheme:dark;">
+          <label style="color:var(--muted);font-size:0.82rem;">To</label>
+          <input type="date" id="rpt-peppol-to" style="padding:0.45rem;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:var(--text);color-scheme:dark;">
+          <button class="btn-primary" style="border:none;cursor:pointer;padding:0.55rem 1.1rem;border-radius:8px;" onclick="rptRun('peppol')">▶ Run</button>
+        </div>
+        <div id="rpt-peppol-filters" style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.6rem;"></div>
+        <div id="rpt-peppol-count" style="font-size:0.8rem;color:var(--muted);margin-bottom:0.6rem;"></div>
+        <div id="rpt-peppol-table" style="font-size:0.86rem;"></div>
+      </div><!-- /admin-section-peppol-export -->
 
       <!-- ── Sale Orders (detailed, filterable) ── -->
       <div id="admin-section-report-so" class="admin-section">
@@ -12641,6 +12664,7 @@ Questions? We're always here!
       if (section === 'sales-match')   svInit();
       if (section === 'stock-match')   smInit();
       if (section === 'sales-intel')   siInit();
+      if (section === 'peppol-export') rptInit('peppol');
       if (section === 'report-so')  rptInit('so');
       if (section === 'report-po')  rptInit('po');
       if (section === 'report-exp') rptInit('exp');
@@ -13443,6 +13467,16 @@ Questions? We're always here!
           { key:'paid', label:'Paid', filter:'select' },
           { key:'total', label:'Total', align:'right', format:v=>_inr(v) },
         ] },
+      peppol: { fn:'admin-peppol-export', action:'list', title:'INVOICES', totalLabel:'Total (all rows)', noCsvPdf:true,
+        columns: [
+          { key:'number', label:'Invoice', filter:'text' },
+          { key:'date', label:'Date', filter:'text' },
+          { key:'customer', label:'Customer', filter:'text' },
+          { key:'country', label:'Country', filter:'select' },
+          { key:'total', label:'Total', align:'right', format:v=>_inr(v) },
+          { key:'currency', label:'Ccy', filter:'select' },
+          { key:'id', label:'', format:(v,r)=>`<button class="admin-filter-btn" style="padding:0.3rem 0.7rem;font-size:0.78rem;white-space:nowrap;" onclick="peppolDownload(${r.id},this)">⬇ Peppol UBL</button>` },
+        ] },
     };
     function rptInit(prefix) {
       const mr=_orMonthRange();
@@ -13455,16 +13489,17 @@ Questions? We're always here!
       const to = document.getElementById('rpt-'+prefix+'-to').value;
       const tableEl = document.getElementById('rpt-'+prefix+'-table');
       tableEl.innerHTML = '<p style="color:var(--muted)">⏳ Loading…</p>';
-      document.getElementById('rpt-'+prefix+'-csv-btn').style.display = 'none';
-      document.getElementById('rpt-'+prefix+'-pdf-btn').style.display = 'none';
-      let d; try { d = await adminPost('admin-odoo-reports', { action: def.action, from, to }); }
+      const csvBtn = document.getElementById('rpt-'+prefix+'-csv-btn'), pdfBtn = document.getElementById('rpt-'+prefix+'-pdf-btn');
+      if (csvBtn) csvBtn.style.display = 'none';
+      if (pdfBtn) pdfBtn.style.display = 'none';
+      let d; try { d = await adminPost(def.fn || 'admin-odoo-reports', { action: def.action, from, to }); }
       catch (e) { tableEl.innerHTML = '<p style="color:#f87171">'+e.message+'</p>'; return; }
       if (!d.success) { tableEl.innerHTML = '<p style="color:#f87171">'+(d.error||'Failed')+'</p>'; return; }
       _rpt[prefix] = { rows: d.rows, columns: def.columns, filtered: d.rows, total: d.total, liveTotal: d.liveTotal };
       rptRenderFilters(prefix);
       rptApplyFilters(prefix);
-      document.getElementById('rpt-'+prefix+'-csv-btn').style.display = '';
-      document.getElementById('rpt-'+prefix+'-pdf-btn').style.display = '';
+      if (csvBtn) csvBtn.style.display = '';
+      if (pdfBtn) pdfBtn.style.display = '';
     }
     function rptRenderFilters(prefix) {
       const st = _rpt[prefix];
@@ -13529,6 +13564,26 @@ Questions? We're always here!
       }).join('') + '</tr>').join('');
       const body = '<table><thead>'+thead+'</thead><tbody>'+rows+'</tbody></table>';
       _printReport(title, st.filtered.length+' of '+st.rows.length+' rows', body);
+    }
+
+    // ── Peppol Export (download BIS Billing 3.0 UBL XML for one invoice) ──────
+    async function peppolDownload(invoiceId, btnEl) {
+      const original = btnEl ? btnEl.textContent : null;
+      if (btnEl) { btnEl.disabled = true; btnEl.textContent = '⏳ …'; }
+      let d;
+      try { d = await adminPost('admin-peppol-export', { action: 'generate', invoiceId }); }
+      catch (e) { alert('Peppol export failed: ' + e.message); }
+      finally { if (btnEl) { btnEl.disabled = false; btnEl.textContent = original; } }
+      if (!d) return;
+      if (!d.success) { alert('Peppol export failed: ' + (d.error || 'Unknown error')); return; }
+      const blob = new Blob([d.xml], { type: 'application/xml' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = d.filename || `peppol-invoice-${invoiceId}.xml`;
+      a.click(); URL.revokeObjectURL(a.href);
+      if (d.warnings && d.warnings.length) {
+        const countEl = document.getElementById('rpt-peppol-count');
+        if (countEl) countEl.innerHTML = '⚠️ ' + d.warnings.map(_e).join(' &nbsp;·&nbsp; ');
+      }
     }
 
     // ── P&L (standalone, under Odoo → Reports) ──────────────────────────────────

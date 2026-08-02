@@ -6014,6 +6014,9 @@
       <button class="admin-nav-item" data-section="flash" onclick="adminNav('flash',this)">
         <span class="admin-nav-icon">⚡</span> Flash Sale
       </button>
+      <button class="admin-nav-item" data-section="shipping" onclick="adminNav('shipping',this)">
+        <span class="admin-nav-icon">🚚</span> Shipping
+      </button>
       <button class="admin-nav-item" data-section="abandoned-carts" onclick="adminNav('abandoned-carts',this)">
         <span class="admin-nav-icon">🛒</span> Abandoned Carts
       </button>
@@ -6650,6 +6653,35 @@
           <div id="flash-search-results"></div>
         </div>
       </div><!-- /admin-section-flash -->
+
+      <!-- ── Shipping Settings ── -->
+      <div id="admin-section-shipping" class="admin-section">
+        <div class="admin-section-header">
+          <h2>🚚 Shipping Settings</h2>
+        </div>
+
+        <div class="tag-mgmt-card">
+          <h3>💰 Checkout Shipping Charge</h3>
+          <p style="font-size:0.85rem;color:var(--muted);margin-bottom:1rem;">
+            Used by the website's native checkout (and matched against the actual order at payment time).
+            Keep this in line with the delivery charge configured in Shopify shipping settings. Changes take effect immediately — no redeploy needed.
+          </p>
+          <div class="nco-row2" style="max-width:420px;">
+            <div>
+              <label style="display:block;font-size:0.8rem;color:var(--muted);margin-bottom:0.3rem;">Shipping Charge (₹)</label>
+              <input type="number" id="ship-charge" min="0" step="1" placeholder="80" />
+            </div>
+            <div>
+              <label style="display:block;font-size:0.8rem;color:var(--muted);margin-bottom:0.3rem;">Free Shipping Threshold (₹)</label>
+              <input type="number" id="ship-threshold" min="0" step="1" placeholder="1000" />
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:1rem;margin-top:1rem;flex-wrap:wrap;">
+            <button class="tag-sync-btn" id="ship-save-btn" onclick="adminSaveShippingSettings()">💾 Save Changes</button>
+            <span id="ship-save-status" style="font-size:0.82rem;"></span>
+          </div>
+        </div>
+      </div><!-- /admin-section-shipping -->
 
       <!-- ── Stock Sync ── -->
       <div id="admin-section-stock-sync" class="admin-section">
@@ -12650,6 +12682,7 @@ Questions? We're always here!
       if (section === 'signed-requests') { adminLoadSignedReqs(); adminLoadSignedAvailable(); }
       if (section === 'featured')        adminLoadFeaturedBooks();
       if (section === 'flash')           adminLoadFlashSale();
+      if (section === 'shipping')        adminLoadShippingSettings();
       if (section === 'wa-campaign')      wacInit();
       if (section === 'abandoned-carts') adminLoadAbandonedCarts();
       if (section === 'stock-summary')   adminLoadStockSummary();
@@ -14802,6 +14835,50 @@ Questions? We're always here!
           try { localStorage.removeItem('yfb_flash_sale_v1'); } catch(e) {}
           statusEl.style.color = '#34d399';
           statusEl.textContent = '✓ Saved! Flash sale updated.';
+        } else {
+          statusEl.style.color = '#f87171';
+          statusEl.textContent = data.error || 'Save failed.';
+        }
+      } catch(e) {
+        statusEl.style.color = '#f87171';
+        statusEl.textContent = 'Save failed. Try again.';
+      }
+      btn.disabled = false; btn.textContent = '💾 Save Changes';
+    }
+
+    // ── Shipping Settings Admin ──
+    async function adminLoadShippingSettings() {
+      const statusEl = document.getElementById('ship-save-status');
+      statusEl.style.color = 'var(--muted)'; statusEl.textContent = '';
+      try {
+        const r = await fetch('/.netlify/functions/admin-shipping-settings');
+        const d = await r.json();
+        document.getElementById('ship-charge').value    = d.charge;
+        document.getElementById('ship-threshold').value = d.freeThreshold;
+      } catch(e) {
+        statusEl.style.color = '#f87171';
+        statusEl.textContent = 'Could not load current settings.';
+      }
+    }
+
+    async function adminSaveShippingSettings() {
+      const btn      = document.getElementById('ship-save-btn');
+      const statusEl = document.getElementById('ship-save-status');
+      const charge        = parseFloat(document.getElementById('ship-charge').value);
+      const freeThreshold = parseFloat(document.getElementById('ship-threshold').value);
+      if (!Number.isFinite(charge) || charge < 0 || !Number.isFinite(freeThreshold) || freeThreshold < 0) {
+        statusEl.style.color = '#f87171';
+        statusEl.textContent = 'Enter valid non-negative numbers for both fields.';
+        return;
+      }
+      btn.disabled = true; btn.textContent = '⏳ Saving…';
+      statusEl.style.color = 'var(--muted)'; statusEl.textContent = '';
+      try {
+        const data = await adminPost('admin-shipping-settings', { charge, freeThreshold });
+        if (data.success) {
+          _shippingSettings = { charge, freeThreshold }; // keep this session's checkout estimate in sync
+          statusEl.style.color = '#34d399';
+          statusEl.textContent = '✓ Saved! Checkout will use the new charge immediately.';
         } else {
           statusEl.style.color = '#f87171';
           statusEl.textContent = data.error || 'Save failed.';
@@ -19949,6 +20026,16 @@ Questions? We're always here!
     //          verify-native-payment.js (verify + complete real order)
     // ─────────────────────────────────────────────────────────────
     var _nco = { items: [], discountCode: null, discountPercent: 0, addresses: [], selectedAddrId: null, order: null, busy: false };
+    // Admin-configurable via the "🚚 Shipping" admin screen (admin-shipping-settings.js);
+    // these are just the fallback shown before the fetch resolves / if it fails.
+    var _shippingSettings = { charge: 80, freeThreshold: 1000 };
+    async function _loadShippingSettings(){
+      try {
+        const r = await fetch('/.netlify/functions/admin-shipping-settings');
+        const d = await r.json();
+        if (d && typeof d.charge === 'number' && typeof d.freeThreshold === 'number') _shippingSettings = d;
+      } catch(e) { /* keep fallback */ }
+    }
 
     function _ncoEsc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
 
@@ -19986,6 +20073,7 @@ Questions? We're always here!
       _nco.order = null; _nco.selectedAddrId = null; _nco.addresses = [];
 
       // 3. Render + open
+      await _loadShippingSettings();
       _ncoRender();
       document.getElementById('nco-overlay').classList.add('active');
 
@@ -20000,7 +20088,7 @@ Questions? We're always here!
       const itemCount = _nco.items.reduce(function(s,i){ return s + (i.quantity||1); }, 0);
       const disc = subtotal * _nco.discountPercent / 100;
       const discountedSub = subtotal - disc;
-      const estShip = discountedSub < 1000 ? 50 : 0;   // Shopify: ₹50 below ₹1000, free at ₹1000+
+      const estShip = discountedSub < _shippingSettings.freeThreshold ? _shippingSettings.charge : 0;
       const estTotal = discountedSub + estShip;
       const m = document.getElementById('nco-modal');
       m.innerHTML =

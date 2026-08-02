@@ -23,10 +23,35 @@ const SHOPIFY_TOKEN  = process.env.SHOPIFY_ADMIN_TOKEN;
 const RZP_KEY_ID     = process.env.RAZORPAY_KEY_ID;
 const RZP_SECRET     = process.env.RAZORPAY_KEY_SECRET;
 const API_VERSION    = '2024-01';
+const SUPABASE_URL   = process.env.SUPABASE_URL;
+const SUPABASE_KEY   = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_KEY;
 
-// Shipping rules (INR): ₹50 for orders below ₹1000, free for ₹1000 and above
-const FREE_SHIPPING_THRESHOLD = 1000;
-const SHIPPING_CHARGE         = 50;
+// Shipping rules, admin-configurable via the "🚚 Shipping" admin screen
+// (site_config key 'shipping', shared with admin-shipping-settings.js). Falls
+// back to these defaults if Supabase is unreachable so checkout never breaks.
+const SHIPPING_DEFAULTS = { charge: 80, freeThreshold: 1000 };
+let _shippingCache = null; // { settings, ts } — shared across warm Lambda instances
+const SHIPPING_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+async function getShippingSettings() {
+  if (_shippingCache && (Date.now() - _shippingCache.ts) < SHIPPING_CACHE_TTL) return _shippingCache.settings;
+  try {
+    const res  = await fetch(
+      `${SUPABASE_URL}/rest/v1/site_config?key=eq.shipping&select=value&limit=1`,
+      { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
+    );
+    const rows = await res.json();
+    const settings = {
+      charge:        rows?.[0]?.value?.charge        ?? SHIPPING_DEFAULTS.charge,
+      freeThreshold: rows?.[0]?.value?.freeThreshold ?? SHIPPING_DEFAULTS.freeThreshold,
+    };
+    _shippingCache = { settings, ts: Date.now() };
+    return settings;
+  } catch (e) {
+    console.error('getShippingSettings error, using defaults:', e.message);
+    return SHIPPING_DEFAULTS;
+  }
+}
 
 const cors = {
   'Access-Control-Allow-Origin':  '*',
@@ -90,7 +115,8 @@ exports.handler = async (event) => {
 
     const discountAmt    = discountPercent > 0 ? Math.round(rawSubtotal * discountPercent / 100 * 100) / 100 : 0;
     const discountedSub  = rawSubtotal - discountAmt;
-    const shippingCharge = discountedSub < FREE_SHIPPING_THRESHOLD ? SHIPPING_CHARGE : 0;
+    const shipping       = await getShippingSettings();
+    const shippingCharge = discountedSub < shipping.freeThreshold ? shipping.charge : 0;
 
     // ── 3. Build Shopify Draft Order payload ──────────────────────────────────
     const lineItems = items.map((item) => ({

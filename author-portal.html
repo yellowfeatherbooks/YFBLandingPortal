@@ -2646,11 +2646,7 @@
     }, { threshold: 0.15 });
     reveals.forEach(el => observer.observe(el));
 
-    // Set to true when author signup is ready for everyone. Until then it's open
-    // only for validation: on any Netlify draft/preview host (hostname has '--')
-    // or with ?signup=test — production (apex/custom domain, no '--') stays gated.
-    var AUTHOR_SIGNUP_ENABLED = location.hostname.includes('--')
-      || new URLSearchParams(location.search).get('signup') === 'test';
+    var AUTHOR_SIGNUP_ENABLED = true;
 
     function switchAuthTab(tab) {
       document.getElementById('auth-login-panel').style.display  = tab === 'login'  ? 'block' : 'none';

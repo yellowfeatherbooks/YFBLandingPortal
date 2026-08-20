@@ -21471,11 +21471,7 @@ Questions? We're always here!
       document.getElementById('page-content').classList.remove('pane-mode');
       _resetOtpForm('alp');
     }
-    // Set to true when author signup is ready for everyone. Until then it's open
-    // only for validation: on any Netlify draft/preview host (hostname has '--')
-    // or with ?signup=test — production (apex/custom domain, no '--') stays gated.
-    var ALP_SIGNUP_ENABLED = location.hostname.includes('--')
-      || new URLSearchParams(location.search).get('signup') === 'test';
+    var ALP_SIGNUP_ENABLED = true;
     function alpSwitchTab(tab) {
       const isSignin = tab === 'signin';
       document.getElementById('alp-tab-signin').classList.toggle('active', isSignin);

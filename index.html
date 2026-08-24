@@ -6017,6 +6017,9 @@
       <button class="admin-nav-item" data-section="shipping" onclick="adminNav('shipping',this)">
         <span class="admin-nav-icon">🚚</span> Shipping
       </button>
+      <button class="admin-nav-item" data-section="seasonal" onclick="adminNav('seasonal',this)">
+        <span class="admin-nav-icon">🎉</span> Seasonal Discount
+      </button>
       <button class="admin-nav-item" data-section="abandoned-carts" onclick="adminNav('abandoned-carts',this)">
         <span class="admin-nav-icon">🛒</span> Abandoned Carts
       </button>
@@ -6661,27 +6664,71 @@
         </div>
 
         <div class="tag-mgmt-card">
-          <h3>💰 Checkout Shipping Charge</h3>
+          <h3>💰 Checkout Shipping Charges</h3>
           <p style="font-size:0.85rem;color:var(--muted);margin-bottom:1rem;">
-            Used by the website's native checkout (and matched against the actual order at payment time).
-            Keep this in line with the delivery charge configured in Shopify shipping settings. Changes take effect immediately — no redeploy needed.
+            Order-amount slabs, used by the website's native checkout (and matched against the actual
+            order at payment time). A slab priced ₹0 gives free shipping for that range. Only the last
+            slab may have "No limit" for Max. Changes take effect immediately — no redeploy needed.
           </p>
-          <div class="nco-row2" style="max-width:420px;">
-            <div>
-              <label style="display:block;font-size:0.8rem;color:var(--muted);margin-bottom:0.3rem;">Shipping Charge (₹)</label>
-              <input type="number" id="ship-charge" min="0" step="1" placeholder="80" />
-            </div>
-            <div>
-              <label style="display:block;font-size:0.8rem;color:var(--muted);margin-bottom:0.3rem;">Free Shipping Threshold (₹)</label>
-              <input type="number" id="ship-threshold" min="0" step="1" placeholder="1000" />
-            </div>
-          </div>
+          <div id="ship-slabs-rows"></div>
+          <button type="button" class="tag-sync-btn" style="background:rgba(96,165,250,0.1);border-color:#60a5fa;color:#60a5fa;" onclick="shipAddSlabRow()">+ Add Slab</button>
           <div style="display:flex;align-items:center;gap:1rem;margin-top:1rem;flex-wrap:wrap;">
             <button class="tag-sync-btn" id="ship-save-btn" onclick="adminSaveShippingSettings()">💾 Save Changes</button>
             <span id="ship-save-status" style="font-size:0.82rem;"></span>
           </div>
         </div>
       </div><!-- /admin-section-shipping -->
+
+      <!-- ── Seasonal Discount ── -->
+      <div id="admin-section-seasonal" class="admin-section">
+        <div class="admin-section-header">
+          <h2>🎉 Seasonal Discount</h2>
+        </div>
+
+        <div class="tag-mgmt-card">
+          <h3>🏷️ Storewide % Off — Website + App</h3>
+          <p style="font-size:0.85rem;color:var(--muted);margin-bottom:1rem;">
+            A flat percentage off every book, for a date range (e.g. "Onam Special — 10% off, Aug 25–Sep 5").
+            Saving this syncs a matching Automatic Discount to Shopify (covers the website's real checkout)
+            and updates the app's native checkout server-side (covers Android). It <b>stacks</b> with Book Club /
+            Flash Sale / Author discounts rather than replacing them. Only one campaign can be active at a time.
+          </p>
+          <label class="nco-check" style="margin-bottom:1rem;">
+            <input type="checkbox" id="season-enabled" /> Campaign enabled
+          </label>
+          <div class="nco-row2" style="max-width:560px;">
+            <div>
+              <label style="display:block;font-size:0.8rem;color:var(--muted);margin-bottom:0.3rem;">Campaign Label</label>
+              <input type="text" id="season-label" placeholder="Onam Special" />
+            </div>
+            <div>
+              <label style="display:block;font-size:0.8rem;color:var(--muted);margin-bottom:0.3rem;">Discount (%)</label>
+              <input type="number" id="season-percent" min="0" max="100" step="1" placeholder="10" />
+            </div>
+          </div>
+          <div class="nco-row2" style="max-width:560px;margin-top:0.8rem;">
+            <div>
+              <label style="display:block;font-size:0.8rem;color:var(--muted);margin-bottom:0.3rem;">Start Date</label>
+              <input type="date" id="season-start" />
+            </div>
+            <div>
+              <label style="display:block;font-size:0.8rem;color:var(--muted);margin-bottom:0.3rem;">End Date</label>
+              <input type="date" id="season-end" />
+            </div>
+          </div>
+          <div style="margin-top:0.8rem;max-width:560px;">
+            <label style="display:block;font-size:0.8rem;color:var(--muted);margin-bottom:0.3rem;">
+              Adopt an existing Shopify discount (optional) — paste the ID from its Shopify Admin URL
+              (…/discounts/<b>1234567890</b>) to update that one instead of creating a new one. Only needed once.
+            </label>
+            <input type="text" id="season-adopt-id" placeholder="e.g. 1234567890 (leave blank normally)" />
+          </div>
+          <div style="display:flex;align-items:center;gap:1rem;margin-top:1rem;flex-wrap:wrap;">
+            <button class="tag-sync-btn" id="season-save-btn" onclick="adminSaveSeasonalDiscount()">💾 Save Changes</button>
+            <span id="season-save-status" style="font-size:0.82rem;"></span>
+          </div>
+        </div>
+      </div><!-- /admin-section-seasonal -->
 
       <!-- ── Stock Sync ── -->
       <div id="admin-section-stock-sync" class="admin-section">
@@ -12683,6 +12730,7 @@ Questions? We're always here!
       if (section === 'featured')        adminLoadFeaturedBooks();
       if (section === 'flash')           adminLoadFlashSale();
       if (section === 'shipping')        adminLoadShippingSettings();
+      if (section === 'seasonal')        adminLoadSeasonalDiscount();
       if (section === 'wa-campaign')      wacInit();
       if (section === 'abandoned-carts') adminLoadAbandonedCarts();
       if (section === 'stock-summary')   adminLoadStockSummary();
@@ -14847,14 +14895,53 @@ Questions? We're always here!
     }
 
     // ── Shipping Settings Admin ──
+    function shipSlabRowHtml(s, i) {
+      return '<div class="ship-slab-row" style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:0.6rem;align-items:end;margin-bottom:0.6rem;max-width:560px;">' +
+        '<div><label style="display:block;font-size:0.75rem;color:var(--muted);margin-bottom:0.25rem;">Min (₹)</label>' +
+          '<input type="number" class="ship-slab-min" min="0" step="0.01" value="' + (s.min ?? '') + '" /></div>' +
+        '<div><label style="display:block;font-size:0.75rem;color:var(--muted);margin-bottom:0.25rem;">Max (₹)</label>' +
+          '<input type="number" class="ship-slab-max" min="0" step="0.01" placeholder="No limit" value="' + (s.max === null || s.max === undefined ? '' : s.max) + '" /></div>' +
+        '<div><label style="display:block;font-size:0.75rem;color:var(--muted);margin-bottom:0.25rem;">Price (₹)</label>' +
+          '<input type="number" class="ship-slab-price" min="0" step="1" value="' + (s.price ?? '') + '" /></div>' +
+        '<button type="button" class="tag-sync-btn" style="background:rgba(248,113,113,0.12);border-color:#f87171;color:#f87171;padding:0.5rem 0.7rem;" onclick="shipRemoveSlabRow(' + i + ')" aria-label="Remove slab">🗑</button>' +
+      '</div>';
+    }
+
+    function shipReadSlabsFromDom() {
+      const rows = document.querySelectorAll('#ship-slabs-rows .ship-slab-row');
+      return Array.from(rows).map(function(row) {
+        const maxVal = row.querySelector('.ship-slab-max').value.trim();
+        return {
+          min:   parseFloat(row.querySelector('.ship-slab-min').value),
+          max:   maxVal === '' ? null : parseFloat(maxVal),
+          price: parseFloat(row.querySelector('.ship-slab-price').value)
+        };
+      });
+    }
+
+    function shipRenderSlabRows(slabs) {
+      document.getElementById('ship-slabs-rows').innerHTML = slabs.map(shipSlabRowHtml).join('');
+    }
+
+    function shipAddSlabRow() {
+      const slabs = shipReadSlabsFromDom();
+      slabs.push({ min: '', max: '', price: '' });
+      shipRenderSlabRows(slabs);
+    }
+
+    function shipRemoveSlabRow(idx) {
+      const slabs = shipReadSlabsFromDom();
+      slabs.splice(idx, 1);
+      shipRenderSlabRows(slabs);
+    }
+
     async function adminLoadShippingSettings() {
       const statusEl = document.getElementById('ship-save-status');
       statusEl.style.color = 'var(--muted)'; statusEl.textContent = '';
       try {
         const r = await fetch('/.netlify/functions/admin-shipping-settings');
         const d = await r.json();
-        document.getElementById('ship-charge').value    = d.charge;
-        document.getElementById('ship-threshold').value = d.freeThreshold;
+        shipRenderSlabRows(Array.isArray(d.slabs) && d.slabs.length ? d.slabs : [{ min: 0, max: null, price: 0 }]);
       } catch(e) {
         statusEl.style.color = '#f87171';
         statusEl.textContent = 'Could not load current settings.';
@@ -14864,21 +14951,91 @@ Questions? We're always here!
     async function adminSaveShippingSettings() {
       const btn      = document.getElementById('ship-save-btn');
       const statusEl = document.getElementById('ship-save-status');
-      const charge        = parseFloat(document.getElementById('ship-charge').value);
-      const freeThreshold = parseFloat(document.getElementById('ship-threshold').value);
-      if (!Number.isFinite(charge) || charge < 0 || !Number.isFinite(freeThreshold) || freeThreshold < 0) {
-        statusEl.style.color = '#f87171';
-        statusEl.textContent = 'Enter valid non-negative numbers for both fields.';
-        return;
+      const slabs    = shipReadSlabsFromDom();
+
+      if (!slabs.length) { statusEl.style.color = '#f87171'; statusEl.textContent = 'Add at least one slab.'; return; }
+      for (let i = 0; i < slabs.length; i++) {
+        const s = slabs[i], n = i + 1;
+        if (!Number.isFinite(s.min) || s.min < 0)     { statusEl.style.color = '#f87171'; statusEl.textContent = 'Slab ' + n + ': Min must be a non-negative number.'; return; }
+        if (!Number.isFinite(s.price) || s.price < 0) { statusEl.style.color = '#f87171'; statusEl.textContent = 'Slab ' + n + ': Price must be a non-negative number.'; return; }
+        const isLast = i === slabs.length - 1;
+        if (s.max === null) {
+          if (!isLast) { statusEl.style.color = '#f87171'; statusEl.textContent = 'Only the last slab may have no limit (blank Max).'; return; }
+        } else if (!Number.isFinite(s.max) || s.max <= s.min) {
+          statusEl.style.color = '#f87171'; statusEl.textContent = 'Slab ' + n + ': Max must be greater than Min.'; return;
+        }
+        if (i > 0) {
+          const prev = slabs[i - 1];
+          if (s.min <= prev.min) { statusEl.style.color = '#f87171'; statusEl.textContent = 'Slabs must be in increasing order by Min.'; return; }
+          if (prev.max !== null && s.min <= prev.max) { statusEl.style.color = '#f87171'; statusEl.textContent = 'Slab ' + n + ' overlaps the previous slab.'; return; }
+        }
       }
+
       btn.disabled = true; btn.textContent = '⏳ Saving…';
       statusEl.style.color = 'var(--muted)'; statusEl.textContent = '';
       try {
-        const data = await adminPost('admin-shipping-settings', { charge, freeThreshold });
+        const data = await adminPost('admin-shipping-settings', { slabs });
         if (data.success) {
-          _shippingSettings = { charge, freeThreshold }; // keep this session's checkout estimate in sync
+          _shippingSlabs = slabs; // keep this session's checkout estimate in sync
           statusEl.style.color = '#34d399';
-          statusEl.textContent = '✓ Saved! Checkout will use the new charge immediately.';
+          statusEl.textContent = '✓ Saved! Checkout will use the new charges immediately.';
+        } else {
+          statusEl.style.color = '#f87171';
+          statusEl.textContent = data.error || 'Save failed.';
+        }
+      } catch(e) {
+        statusEl.style.color = '#f87171';
+        statusEl.textContent = 'Save failed. Try again.';
+      }
+      btn.disabled = false; btn.textContent = '💾 Save Changes';
+    }
+
+    // ── Seasonal Discount Admin ──
+    async function adminLoadSeasonalDiscount() {
+      const statusEl = document.getElementById('season-save-status');
+      statusEl.style.color = 'var(--muted)'; statusEl.textContent = '';
+      try {
+        const r = await fetch('/.netlify/functions/admin-seasonal-discount');
+        const d = await r.json();
+        document.getElementById('season-enabled').checked = !!d.enabled;
+        document.getElementById('season-label').value      = d.label || '';
+        document.getElementById('season-percent').value    = d.percent || '';
+        document.getElementById('season-start').value      = d.startDate || '';
+        document.getElementById('season-end').value        = d.endDate || '';
+      } catch(e) {
+        statusEl.style.color = '#f87171';
+        statusEl.textContent = 'Could not load current settings.';
+      }
+    }
+
+    async function adminSaveSeasonalDiscount() {
+      const btn      = document.getElementById('season-save-btn');
+      const statusEl = document.getElementById('season-save-status');
+      const enabled  = document.getElementById('season-enabled').checked;
+      const label    = document.getElementById('season-label').value.trim();
+      const percent  = parseFloat(document.getElementById('season-percent').value);
+      const startDate = document.getElementById('season-start').value;
+      const endDate    = document.getElementById('season-end').value;
+      const adoptShopifyDiscountId = document.getElementById('season-adopt-id').value.trim() || null;
+
+      if (enabled) {
+        if (!label)                                                      { statusEl.style.color = '#f87171'; statusEl.textContent = 'Enter a campaign label.'; return; }
+        if (!Number.isFinite(percent) || percent <= 0 || percent > 100)  { statusEl.style.color = '#f87171'; statusEl.textContent = 'Discount must be between 1 and 100.'; return; }
+        if (!startDate || !endDate)                                      { statusEl.style.color = '#f87171'; statusEl.textContent = 'Set both a start and end date.'; return; }
+        if (startDate > endDate)                                         { statusEl.style.color = '#f87171'; statusEl.textContent = 'Start date must be on or before end date.'; return; }
+      }
+
+      btn.disabled = true; btn.textContent = '⏳ Saving…';
+      statusEl.style.color = 'var(--muted)'; statusEl.textContent = '';
+      try {
+        const data = await adminPost('admin-seasonal-discount', { enabled, label, percent, startDate, endDate, adoptShopifyDiscountId });
+        if (data.success) {
+          _seasonalDiscount = data; // keep this session's checkout estimate in sync
+          document.getElementById('season-adopt-id').value = ''; // one-time use — clear after a successful save
+          statusEl.style.color = data.shopifyError ? '#fbbf24' : '#34d399';
+          statusEl.textContent = data.shopifyError
+            ? '✓ Saved, but Shopify sync failed: ' + data.shopifyError + ' (app checkout is unaffected; website checkout needs this fixed).'
+            : '✓ Saved! ' + (enabled ? 'Live on website + app checkout.' : 'Campaign disabled.') + (adoptShopifyDiscountId ? ' Adopted existing Shopify discount.' : '');
         } else {
           statusEl.style.color = '#f87171';
           statusEl.textContent = data.error || 'Save failed.';
@@ -20028,13 +20185,37 @@ Questions? We're always here!
     var _nco = { items: [], discountCode: null, discountPercent: 0, addresses: [], selectedAddrId: null, order: null, busy: false };
     // Admin-configurable via the "🚚 Shipping" admin screen (admin-shipping-settings.js);
     // these are just the fallback shown before the fetch resolves / if it fails.
-    var _shippingSettings = { charge: 80, freeThreshold: 1000 };
+    var _shippingSlabs = [{ min: 0, max: 1000, price: 80 }, { min: 1000.01, max: null, price: 0 }];
     async function _loadShippingSettings(){
       try {
         const r = await fetch('/.netlify/functions/admin-shipping-settings');
         const d = await r.json();
-        if (d && typeof d.charge === 'number' && typeof d.freeThreshold === 'number') _shippingSettings = d;
+        if (d && Array.isArray(d.slabs) && d.slabs.length) _shippingSlabs = d.slabs;
       } catch(e) { /* keep fallback */ }
+    }
+    // Seasonal campaign (admin-seasonal-discount.js) — stacks on top of any other
+    // discount for BOTH the website (real Shopify Automatic Discount, synced on save)
+    // and the app's native checkout estimate shown here (server enforces the real
+    // charge independently in create-native-order.js; this is just so the on-screen
+    // total matches what the customer will actually be charged).
+    var _seasonalDiscount = { enabled: false, percent: 0, active: false, label: '' };
+    async function _loadSeasonalDiscount(){
+      try {
+        const r = await fetch('/.netlify/functions/admin-seasonal-discount');
+        const d = await r.json();
+        if (d) _seasonalDiscount = d;
+      } catch(e) { /* keep fallback (inactive) */ }
+    }
+
+    // Mirrors computeShippingCharge in create-native-order.js — keep in sync.
+    function _computeShippingCharge(subtotal, slabs) {
+      const sorted = [...slabs].sort(function(a,b){ return a.min - b.min; });
+      let fallback = sorted[0];
+      for (const s of sorted) {
+        if (subtotal >= s.min && (s.max === null || s.max === undefined || subtotal <= s.max)) return s.price;
+        if (s.min <= subtotal) fallback = s;
+      }
+      return fallback ? fallback.price : 0;
     }
 
     function _ncoEsc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
@@ -20073,7 +20254,7 @@ Questions? We're always here!
       _nco.order = null; _nco.selectedAddrId = null; _nco.addresses = [];
 
       // 3. Render + open
-      await _loadShippingSettings();
+      await Promise.all([_loadShippingSettings(), _loadSeasonalDiscount()]);
       _ncoRender();
       document.getElementById('nco-overlay').classList.add('active');
 
@@ -20086,10 +20267,16 @@ Questions? We're always here!
       const email = (typeof readerEmail !== 'undefined' && readerEmail) || '';
       const subtotal = _nco.items.reduce(function(s,i){ return s + parseFloat(i.price||0)*(i.quantity||1); }, 0);
       const itemCount = _nco.items.reduce(function(s,i){ return s + (i.quantity||1); }, 0);
-      const disc = subtotal * _nco.discountPercent / 100;
+      const seasonalPercent = _seasonalDiscount.active ? Number(_seasonalDiscount.percent) || 0 : 0;
+      const combinedPercent = Math.min((_nco.discountPercent || 0) + seasonalPercent, 100);
+      const disc = subtotal * combinedPercent / 100;
       const discountedSub = subtotal - disc;
-      const estShip = discountedSub < _shippingSettings.freeThreshold ? _shippingSettings.charge : 0;
+      const estShip = _computeShippingCharge(discountedSub, _shippingSlabs);
       const estTotal = discountedSub + estShip;
+      const discountLabel = [
+        _nco.discountPercent > 0 ? _nco.discountCode : null,
+        seasonalPercent > 0 ? (_seasonalDiscount.label || 'Seasonal') : null,
+      ].filter(Boolean).join(' + ');
       const m = document.getElementById('nco-modal');
       m.innerHTML =
         '<div class="nco-head"><h3>Checkout</h3><button class="nco-close" onclick="closeNativeCheckout()" aria-label="Close">✕</button></div>' +
@@ -20115,10 +20302,10 @@ Questions? We're always here!
           '</div>' +
           '<div class="nco-summary" id="nco-summary">' +
             '<div class="nco-sum-row"><span>Subtotal (' + itemCount + ' item' + (itemCount===1?'':'s') + ')</span><span>₹' + subtotal.toFixed(2) + '</span></div>' +
-            (_nco.discountPercent>0 ? '<div class="nco-sum-row disc"><span>Discount (' + _ncoEsc(_nco.discountCode) + ' −' + _nco.discountPercent + '%)</span><span>−₹' + (subtotal*_nco.discountPercent/100).toFixed(2) + '</span></div>' : '') +
+            (combinedPercent>0 ? '<div class="nco-sum-row disc"><span>Discount (' + _ncoEsc(discountLabel) + ' −' + combinedPercent + '%)</span><span>−₹' + disc.toFixed(2) + '</span></div>' : '') +
             '<div class="nco-sum-row"><span>Shipping</span><span id="nco-ship">' + (estShip > 0 ? '₹' + estShip.toFixed(2) : 'FREE') + '</span></div>' +
             '<div class="nco-sum-row total"><span>Total</span><span id="nco-total">₹' + estTotal.toFixed(2) + '</span></div>' +
-            '<div style="font-size:0.7rem;color:var(--muted);margin-top:0.3rem;">Free shipping on orders ≥ ₹1000. Final total confirmed at payment.</div>' +
+            '<div style="font-size:0.7rem;color:var(--muted);margin-top:0.3rem;">Final total confirmed at payment.</div>' +
           '</div>' +
           '<div class="nco-err" id="nco-err"></div>' +
           '<button class="nco-pay" id="nco-pay-btn" onclick="_ncoPay()">Continue to Payment →</button>' +

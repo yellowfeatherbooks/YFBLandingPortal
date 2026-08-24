@@ -29,28 +29,72 @@ const SUPABASE_KEY   = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_
 // Shipping rules, admin-configurable via the "🚚 Shipping" admin screen
 // (site_config key 'shipping', shared with admin-shipping-settings.js). Falls
 // back to these defaults if Supabase is unreachable so checkout never breaks.
-const SHIPPING_DEFAULTS = { charge: 80, freeThreshold: 1000 };
-let _shippingCache = null; // { settings, ts } — shared across warm Lambda instances
+const SHIPPING_DEFAULT_SLABS = [
+  { min: 0,       max: 1000, price: 80 },
+  { min: 1000.01, max: null, price: 0 },
+];
+let _shippingCache = null; // { slabs, ts } — shared across warm Lambda instances
 const SHIPPING_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 async function getShippingSettings() {
-  if (_shippingCache && (Date.now() - _shippingCache.ts) < SHIPPING_CACHE_TTL) return _shippingCache.settings;
+  if (_shippingCache && (Date.now() - _shippingCache.ts) < SHIPPING_CACHE_TTL) return _shippingCache.slabs;
   try {
     const res  = await fetch(
       `${SUPABASE_URL}/rest/v1/site_config?key=eq.shipping&select=value&limit=1`,
       { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
     );
     const rows = await res.json();
-    const settings = {
-      charge:        rows?.[0]?.value?.charge        ?? SHIPPING_DEFAULTS.charge,
-      freeThreshold: rows?.[0]?.value?.freeThreshold ?? SHIPPING_DEFAULTS.freeThreshold,
-    };
-    _shippingCache = { settings, ts: Date.now() };
-    return settings;
+    const slabs = Array.isArray(rows?.[0]?.value?.slabs) ? rows[0].value.slabs : SHIPPING_DEFAULT_SLABS;
+    _shippingCache = { slabs, ts: Date.now() };
+    return slabs;
   } catch (e) {
     console.error('getShippingSettings error, using defaults:', e.message);
-    return SHIPPING_DEFAULTS;
+    return SHIPPING_DEFAULT_SLABS;
   }
+}
+
+// Picks the price for the slab whose [min, max] range contains subtotal.
+// Falls back to the nearest slab below (or the first slab, if subtotal is below
+// everything) so a misconfigured gap still produces a sane charge instead of NaN.
+function computeShippingCharge(subtotal, slabs) {
+  const sorted = [...slabs].sort((a, b) => a.min - b.min);
+  let fallback = sorted[0];
+  for (const s of sorted) {
+    if (subtotal >= s.min && (s.max === null || s.max === undefined || subtotal <= s.max)) return s.price;
+    if (s.min <= subtotal) fallback = s;
+  }
+  return fallback ? fallback.price : 0;
+}
+
+// Seasonal campaign (site_config key 'seasonal_discount', admin-seasonal-discount.js).
+// Applied server-side and STACKED on top of any client-sent discount (CLUB10/FLASH5/
+// AUTHOR10) — never trust the client for this one, it's the whole point of enforcing
+// it here rather than as a client-hardcoded percent (see FLASH5's mismatch history).
+const SEASONAL_DEFAULT = { enabled: false, label: '', percent: 0, startDate: null, endDate: null };
+let _seasonalCache = null; // { seasonal, ts }
+const SEASONAL_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+async function getSeasonalDiscount() {
+  if (_seasonalCache && (Date.now() - _seasonalCache.ts) < SEASONAL_CACHE_TTL) return _seasonalCache.seasonal;
+  try {
+    const res  = await fetch(
+      `${SUPABASE_URL}/rest/v1/site_config?key=eq.seasonal_discount&select=value&limit=1`,
+      { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
+    );
+    const rows = await res.json();
+    const seasonal = rows?.[0]?.value || SEASONAL_DEFAULT;
+    _seasonalCache = { seasonal, ts: Date.now() };
+    return seasonal;
+  } catch (e) {
+    console.error('getSeasonalDiscount error, treating as inactive:', e.message);
+    return SEASONAL_DEFAULT;
+  }
+}
+
+function isSeasonalActive(seasonal) {
+  if (!seasonal?.enabled || !seasonal.startDate || !seasonal.endDate) return false;
+  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD, date-only compare
+  return today >= seasonal.startDate && today <= seasonal.endDate;
 }
 
 const cors = {
@@ -113,10 +157,18 @@ exports.handler = async (event) => {
       return sum + parseFloat(item.price || '0') * (item.quantity || 1);
     }, 0);
 
-    const discountAmt    = discountPercent > 0 ? Math.round(rawSubtotal * discountPercent / 100 * 100) / 100 : 0;
+    // Seasonal campaign stacks on top of whatever discount the client resolved
+    // (CLUB10/FLASH5/AUTHOR10) — enforced server-side, client can't spoof or skip it.
+    const seasonal        = await getSeasonalDiscount();
+    const seasonalActive  = isSeasonalActive(seasonal);
+    const seasonalPercent = seasonalActive ? Number(seasonal.percent) || 0 : 0;
+    const clientPercent   = discountPercent > 0 ? Number(discountPercent) : 0;
+    const combinedPercent = Math.min(clientPercent + seasonalPercent, 100);
+
+    const discountAmt    = combinedPercent > 0 ? Math.round(rawSubtotal * combinedPercent / 100 * 100) / 100 : 0;
     const discountedSub  = rawSubtotal - discountAmt;
-    const shipping       = await getShippingSettings();
-    const shippingCharge = discountedSub < shipping.freeThreshold ? shipping.charge : 0;
+    const shippingSlabs  = await getShippingSettings();
+    const shippingCharge = computeShippingCharge(discountedSub, shippingSlabs);
 
     // ── 3. Build Shopify Draft Order payload ──────────────────────────────────
     const lineItems = items.map((item) => ({
@@ -162,13 +214,19 @@ exports.handler = async (event) => {
       draftPayload.draft_order.customer = { email: customer.email };
     }
 
-    // Apply discount if provided
-    if (discountCode && discountPercent > 0) {
+    // Apply discount(s) if any — a single combined percentage, since Shopify draft
+    // orders only support one applied_discount. Label lists every discount that's stacked in.
+    if (combinedPercent > 0) {
+      const labels = [];
+      if (clientPercent > 0) {
+        labels.push(discountCode === 'CLUB10' ? 'Book Club Member Discount' : discountCode === 'AUTHOR10' ? 'Author Discount' : 'Flash Sale Discount');
+      }
+      if (seasonalActive) labels.push(seasonal.label || 'Seasonal Discount');
       draftPayload.draft_order.applied_discount = {
-        description: discountCode === 'CLUB10' ? 'Book Club Member Discount' : 'Flash Sale Discount',
+        description: labels.join(' + '),
         value_type:  'percentage',
-        value:       String(discountPercent),
-        title:       discountCode,
+        value:       String(combinedPercent),
+        title:       [discountCode, seasonalActive ? 'SEASONAL' : null].filter(Boolean).join('+') || 'SEASONAL',
       };
     }
 
@@ -214,6 +272,7 @@ exports.handler = async (event) => {
           draft_order_name: draftOrder.name,
           customer_email:   customer.email,
           discount_code:    discountCode || '',
+          seasonal_applied: seasonalActive ? (seasonal.label || 'seasonal') : '',
         },
       }),
     });

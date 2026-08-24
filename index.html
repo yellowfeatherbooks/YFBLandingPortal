@@ -15018,6 +15018,11 @@ Questions? We're always here!
       const endDate    = document.getElementById('season-end').value;
       const adoptShopifyDiscountId = document.getElementById('season-adopt-id').value.trim() || null;
 
+      if (adoptShopifyDiscountId && !enabled) {
+        statusEl.style.color = '#f87171';
+        statusEl.textContent = 'Check "Campaign enabled" before adopting an existing Shopify discount — otherwise this would delete it.';
+        return;
+      }
       if (enabled) {
         if (!label)                                                      { statusEl.style.color = '#f87171'; statusEl.textContent = 'Enter a campaign label.'; return; }
         if (!Number.isFinite(percent) || percent <= 0 || percent > 100)  { statusEl.style.color = '#f87171'; statusEl.textContent = 'Discount must be between 1 and 100.'; return; }

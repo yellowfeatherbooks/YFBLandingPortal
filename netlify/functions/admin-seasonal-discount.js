@@ -169,6 +169,14 @@ exports.handler = async (event) => {
     const { adminEmail, adminKey, enabled, label, percent, startDate, endDate, adoptShopifyDiscountId } = JSON.parse(event.body || '{}');
     if (!await verifyAdmin(adminEmail, adminKey)) return json({ error: 'Unauthorized' }, 401);
 
+    // Adopting a discount while "enabled" is off would otherwise DELETE that Shopify
+    // discount (the enabled=false branch below deletes whatever previousId points at) —
+    // block that combination outright rather than silently destroying someone's manually
+    // created discount because a checkbox was left unchecked.
+    if (adoptShopifyDiscountId && !enabled) {
+      return json({ error: 'Check "Campaign enabled" before adopting an existing Shopify discount — otherwise this would delete it. Enable the campaign first, then save.' }, 400);
+    }
+
     const percentNum = Number(percent);
     if (enabled) {
       if (!label || !String(label).trim())              return json({ error: 'Campaign label is required.' }, 400);

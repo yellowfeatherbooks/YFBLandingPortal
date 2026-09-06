@@ -176,16 +176,30 @@ exports.handler = async (event) => {
     }
 
     if (action === 'gstr1') {
+      // Must exclude invoices later reversed by a posted credit note (e.g. an
+      // edit-reconcile reversed+rebuilt during the period) -- Odoo never flips
+      // the original invoice's own state to cancelled, so without this a naive
+      // date-range query double-counts both the void original and its rebuild.
+      // Same exclusion as 'pl' and 'month-close' (which this duplicates so the
+      // existing GSTR-1 Summary UI's response shape doesn't need to change).
       const invs = await odoo.execKw('account.move','search_read',
         [[['move_type','=','out_invoice'],['state','=','posted'],['invoice_date','>=',from],['invoice_date','<=',to]],
-         ['partner_id','amount_untaxed','amount_tax','amount_total']]);
-      const pids=[...new Set(invs.map(i=>i.partner_id&&i.partner_id[0]).filter(Boolean))];
+         ['id','partner_id','amount_untaxed','amount_tax','amount_total']]);
+      const invIds = invs.map(i=>i.id);
+      const reversedIds = new Set();
+      if (invIds.length) {
+        const cns = await odoo.execKw('account.move','search_read',
+          [[['move_type','=','out_refund'],['state','=','posted'],['reversed_entry_id','in',invIds]], ['reversed_entry_id']], { limit: 20000 });
+        cns.forEach(c => { if (c.reversed_entry_id) reversedIds.add(c.reversed_entry_id[0]); });
+      }
+      const live = invs.filter(i => !reversedIds.has(i.id));
+      const pids=[...new Set(live.map(i=>i.partner_id&&i.partner_id[0]).filter(Boolean))];
       const partners = pids.length ? await odoo.execKw('res.partner','search_read',[[['id','in',pids]],['id','vat']]) : [];
       const vat={}; partners.forEach(p=>vat[p.id]=p.vat);
       let taxable=0, tax=0, exempt=0, b2b=0, b2c=0;
-      for (const i of invs){ const t=i.amount_tax||0,u=i.amount_untaxed||0; tax+=t; if(t>0)taxable+=u; else exempt+=u;
+      for (const i of live){ const t=i.amount_tax||0,u=i.amount_untaxed||0; tax+=t; if(t>0)taxable+=u; else exempt+=u;
         if(vat[i.partner_id&&i.partner_id[0]]) b2b+=i.amount_total; else b2c+=i.amount_total; }
-      return json({ success:true, from, to, invoiceCount:invs.length, taxableValue:r2(taxable), taxAmount:r2(tax),
+      return json({ success:true, from, to, invoiceCount:live.length, taxableValue:r2(taxable), taxAmount:r2(tax),
         exemptValue:r2(exempt), b2bTotal:r2(b2b), b2cTotal:r2(b2c) });
     }
 

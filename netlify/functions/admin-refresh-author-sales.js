@@ -64,27 +64,43 @@ exports.handler = async (event) => {
       if (!d.products.pageInfo.hasNextPage) break;
     }
 
-    // 2) Odoo shop sales in range (batched)
+    // 2) Odoo shop sales -- fetch ALL matching orders (no date_order pre-filter).
+    // date_order is UNRELIABLE for MyBillBook-synced orders: a one-time historical
+    // bulk import stamped ~190 orders spanning months of real activity onto a
+    // handful of sync-run days (119 landed on the single date 2026-06-28), and an
+    // edit-reconcile rebuild can also restamp it to the rebuild date. Every other
+    // report in this codebase (pl/gstr1/gstr3b/sale-orders-detail/liveSaleLines in
+    // admin-odoo-reports.js) resolves each order's real date from its own posted
+    // invoice's invoice_date instead -- do the same here so Total Sales / Sales by
+    // Author don't silently drop orders whose date_order falls outside the range.
     const sos = await odoo.execKw('sale.order','search_read',
       [['|',['client_order_ref','=like','sales:%'],['client_order_ref','=like','mbb:%']], ['id','client_order_ref','date_order','invoice_ids','partner_id','state']], { limit: 10000 });
-    const inRangeAll = sos.filter(s => { const d=(s.date_order||'').slice(0,10); return d>=from && d<=to; });
+    const allInvIds = [...new Set(sos.flatMap(s=>s.invoice_ids||[]))];
+    const invById = {};
+    if (allInvIds.length) (await odoo.execKw('account.move','search_read',
+      [[['id','in',allInvIds]], ['id','invoice_date','move_type','state','payment_state']])).forEach(i=>invById[i.id]=i);
 
     // Exclude cancelled-state SOs and any whose invoice has been reversed by a
     // posted credit note (e.g. a MyBillBook cancellation reconciled after the
     // fact) — those sales never really happened and shouldn't feed the author
-    // attribution / Total Sales dashboards, regardless of what date_order says.
-    const candInvIds = [...new Set(inRangeAll.flatMap(s=>s.invoice_ids||[]))];
+    // attribution / Total Sales dashboards.
     const reversedInvIds = new Set();
-    if (candInvIds.length) {
+    if (allInvIds.length) {
       const cns = await odoo.execKw('account.move','search_read',
-        [[['move_type','=','out_refund'],['state','=','posted'],['reversed_entry_id','in',candInvIds]], ['reversed_entry_id']], { limit: 20000 });
+        [[['move_type','=','out_refund'],['state','=','posted'],['reversed_entry_id','in',allInvIds]], ['reversed_entry_id']], { limit: 20000 });
       cns.forEach(c => { if (c.reversed_entry_id) reversedInvIds.add(c.reversed_entry_id[0]); });
     }
-    const inRange = inRangeAll.filter(s => s.state !== 'cancel' && !(s.invoice_ids||[]).some(id => reversedInvIds.has(id)));
+    const soMeta = {};
+    for (const s of sos) {
+      if (s.state === 'cancel') continue;
+      const invId = (s.invoice_ids||[]).find(id => invById[id] && invById[id].move_type==='out_invoice' && invById[id].state==='posted');
+      if (!invId || reversedInvIds.has(invId)) continue;
+      const date = invById[invId].invoice_date;
+      if (!date || date < from || date > to) continue;
+      soMeta[s.id] = { date, invId };
+    }
+    const inRange = sos.filter(s => soMeta[s.id]);
     const soById = {}; inRange.forEach(s => soById[s.id]=s);
-    const invIds = [...new Set(inRange.flatMap(s=>s.invoice_ids||[]))];
-    const payById = {};
-    if (invIds.length) (await odoo.execKw('account.move','search_read',[[['id','in',invIds]],['id','payment_state']])).forEach(i=>payById[i.id]=i.payment_state);
     const soIds = inRange.map(s=>s.id);
     const lines = soIds.length ? await odoo.execKw('sale.order.line','search_read',
       [[['order_id','in',soIds],['product_id','!=',false]], ['name','product_uom_qty','price_subtotal','product_id','order_id']], { limit: 20000 }) : [];
@@ -96,9 +112,9 @@ exports.handler = async (event) => {
     for (const l of lines) {
       const prod = prodById[l.product_id[0]]; if (!prod || prod.type!=='product') continue; // skip delivery/discount
       const s = soById[l.order_id[0]]; if (!s) continue;
-      const d = (s.date_order||'').slice(0,10);
+      const d = soMeta[s.id].date;
       const yfb = s.client_order_ref.split(':').slice(1).join(':');
-      const pstate = payById[(s.invoice_ids||[])[0]] || '';
+      const pstate = invById[soMeta[s.id].invId].payment_state || '';
       const paid = pstate==='paid' ? 'paid' : (pstate==='partial' ? 'partial' : 'unpaid');
       const customer = s.partner_id ? s.partner_id[1] : '';
       const sku = prod.default_code || '';

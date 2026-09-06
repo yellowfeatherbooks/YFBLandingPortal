@@ -203,6 +203,63 @@ exports.handler = async (event) => {
         exemptValue:r2(exempt), b2bTotal:r2(b2b), b2cTotal:r2(b2c) });
     }
 
+    if (action === 'gstr3b') {
+      // Table 3.1: outward supplies -- identical reversal-safe logic to 'gstr1'
+      // (duplicated rather than shared, matching this file's existing pattern
+      // for pl/gstr1/month-close, so a change to one report can't silently
+      // shift another's numbers).
+      const outInvs = await odoo.execKw('account.move','search_read',
+        [[['move_type','=','out_invoice'],['state','=','posted'],['invoice_date','>=',from],['invoice_date','<=',to]],
+         ['id','partner_id','amount_untaxed','amount_tax','amount_total']]);
+      const outIds = outInvs.map(i=>i.id);
+      const outReversed = new Set();
+      if (outIds.length) {
+        const cns = await odoo.execKw('account.move','search_read',
+          [[['move_type','=','out_refund'],['state','=','posted'],['reversed_entry_id','in',outIds]], ['reversed_entry_id']], { limit: 20000 });
+        cns.forEach(c => { if (c.reversed_entry_id) outReversed.add(c.reversed_entry_id[0]); });
+      }
+      const liveOut = outInvs.filter(i => !outReversed.has(i.id));
+      const opids=[...new Set(liveOut.map(i=>i.partner_id&&i.partner_id[0]).filter(Boolean))];
+      const oparts = opids.length ? await odoo.execKw('res.partner','search_read',[[['id','in',opids]],['id','vat']]) : [];
+      const ovat={}; oparts.forEach(p=>ovat[p.id]=p.vat);
+      let taxable=0, tax=0, exempt=0, b2b=0, b2c=0;
+      for (const i of liveOut){ const t=i.amount_tax||0,u=i.amount_untaxed||0; tax+=t; if(t>0)taxable+=u; else exempt+=u;
+        if(ovat[i.partner_id&&i.partner_id[0]]) b2b+=i.amount_total; else b2c+=i.amount_total; }
+
+      // Table 4: ITC on purchases. GROSS eligible credit = tax on posted vendor
+      // bills in the period, net of any posted vendor credit note reversing one
+      // (same reversed_entry_id pattern, mirrored for in_invoice/in_refund).
+      // This is pre-apportionment: YFB is a mixed supplier (exempt books +
+      // taxable subscriptions), so common/overhead input GST (Meta, GoDaddy,
+      // software) is only PARTIALLY claimable under Rule 42, by the ratio of
+      // taxable-to-total outward turnover. We surface that ratio and an
+      // estimated apportioned figure as an aid, not an authoritative filing
+      // number -- the accountant runs the real apportionment (and any RCM
+      // self-invoice treatment) at filing time.
+      const bills = await odoo.execKw('account.move','search_read',
+        [[['move_type','=','in_invoice'],['state','=','posted'],['invoice_date','>=',from],['invoice_date','<=',to]],
+         ['id','amount_untaxed','amount_tax','amount_total']]);
+      const billIds = bills.map(b=>b.id);
+      const billReversed = new Set();
+      if (billIds.length) {
+        const dns = await odoo.execKw('account.move','search_read',
+          [[['move_type','=','in_refund'],['state','=','posted'],['reversed_entry_id','in',billIds]], ['reversed_entry_id']], { limit: 20000 });
+        dns.forEach(d => { if (d.reversed_entry_id) billReversed.add(d.reversed_entry_id[0]); });
+      }
+      const liveBills = bills.filter(b => !billReversed.has(b.id));
+      const grossItc = r2(liveBills.reduce((s,b)=>s+(b.amount_tax||0),0));
+      const purchaseValue = r2(liveBills.reduce((s,b)=>s+(b.amount_untaxed||0),0));
+      const turnoverRatio = (taxable+exempt) > 0 ? taxable/(taxable+exempt) : 0;
+      const apportionedItc = r2(grossItc * turnoverRatio);
+
+      return json({ success:true, from, to,
+        outward: { invoiceCount: liveOut.length, taxableValue:r2(taxable), taxAmount:r2(tax),
+          exemptValue:r2(exempt), b2bTotal:r2(b2b), b2cTotal:r2(b2c) },
+        itc: { billCount: liveBills.length, purchaseValue, grossItc,
+          turnoverRatioPct: r2(turnoverRatio*100), apportionedItc },
+        netTaxPayable: r2(tax - apportionedItc) });
+    }
+
     if (action === 'aged') {
       const today = new Date();
       const lines = await odoo.execKw('account.move.line','search_read',

@@ -6083,6 +6083,9 @@
               <button class="admin-nav-item" data-section="report-gst" onclick="adminNav('report-gst',this)">
                 <span class="admin-nav-icon">🧾</span> GST
               </button>
+              <button class="admin-nav-item" data-section="report-gstr3b" onclick="adminNav('report-gstr3b',this)">
+                <span class="admin-nav-icon">🧮</span> GSTR-3B
+              </button>
               <button class="admin-nav-item" data-section="report-sub" onclick="adminNav('report-sub',this)">
                 <span class="admin-nav-icon">💳</span> Memberships &amp; Subscriptions
               </button>
@@ -7485,6 +7488,22 @@
         </div>
         <div id="gst2-result" style="font-size:0.86rem;"></div>
       </div><!-- /admin-section-report-gst -->
+
+      <!-- ── GSTR-3B (standalone) ── -->
+      <div id="admin-section-report-gstr3b" class="admin-section">
+        <div class="admin-section-header"><h2>🧮 GSTR-3B</h2></div>
+        <p style="font-size:0.8rem;color:var(--muted);margin:0 0 1rem;">Outward supplies (3.1) same as GSTR-1, plus Input Tax Credit (4) from posted vendor bills. The apportioned ITC is an <b>estimate</b> (Rule 42 taxable-turnover ratio) for a mixed exempt-books/taxable-subscriptions supplier — confirm with your accountant before filing.</p>
+        <div style="display:flex;gap:0.6rem;align-items:center;flex-wrap:wrap;margin-bottom:1rem;">
+          <label style="color:var(--muted);font-size:0.82rem;">From</label>
+          <input type="date" id="gst3b-from" style="padding:0.45rem;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:var(--text);color-scheme:dark;">
+          <label style="color:var(--muted);font-size:0.82rem;">To</label>
+          <input type="date" id="gst3b-to" style="padding:0.45rem;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:var(--text);color-scheme:dark;">
+          <button class="btn-primary" style="border:none;cursor:pointer;padding:0.55rem 1.1rem;border-radius:8px;" onclick="gst3bRun()">▶ Run</button>
+          <button id="gst3b-csv-btn" style="display:none;cursor:pointer;padding:0.5rem 0.9rem;border-radius:8px;border:1px solid rgba(255,255,255,0.2);background:transparent;color:var(--text);" onclick="gst3bExportCsv()">⬇ CSV</button>
+          <button id="gst3b-pdf-btn" style="display:none;cursor:pointer;padding:0.5rem 0.9rem;border-radius:8px;border:1px solid rgba(255,255,255,0.2);background:transparent;color:var(--text);" onclick="gst3bPdf()">🖨️ PDF</button>
+        </div>
+        <div id="gst3b-result" style="font-size:0.86rem;"></div>
+      </div><!-- /admin-section-report-gstr3b -->
 
       <!-- ── Memberships & Subscriptions (standalone) ── -->
       <div id="admin-section-report-sub" class="admin-section">
@@ -12751,6 +12770,7 @@ Questions? We're always here!
       if (section === 'report-exp') rptInit('exp');
       if (section === 'report-pl')  pl2Init();
       if (section === 'report-gst') gst2Init();
+      if (section === 'report-gstr3b') gst3bInit();
       if (section === 'report-sub') sub2Init();
       if (section === 'odoo-razorpay') rzbInit();
       if (section === 'razorpay-payments') rpayInit();
@@ -13811,6 +13831,71 @@ Questions? We're always here!
         +'<tr><td>B2C Total</td><td class="r">'+_inr(d.b2cTotal)+'</td></tr>'
         +'</tbody></table>';
       _printReport('GSTR-1 SUMMARY', 'Period '+_e(d.from)+' to '+_e(d.to), body);
+    }
+
+    // ── GSTR-3B (standalone, under Odoo → Reports) ──────────────────────────────
+    let _gst3bLast = null;
+    function gst3bInit() {
+      const mr=_orMonthRange(), f=document.getElementById('gst3b-from'), t=document.getElementById('gst3b-to');
+      if (f && !f.value) f.value=mr.from; if (t && !t.value) t.value=mr.to;
+    }
+    async function gst3bRun() {
+      const from = document.getElementById('gst3b-from').value, to = document.getElementById('gst3b-to').value;
+      const res = document.getElementById('gst3b-result'); res.innerHTML = '<p style="color:var(--muted)">⏳ Loading…</p>';
+      document.getElementById('gst3b-csv-btn').style.display = 'none';
+      document.getElementById('gst3b-pdf-btn').style.display = 'none';
+      let d; try { d = await adminPost('admin-odoo-reports', { action:'gstr3b', from, to }); }
+      catch (e) { res.innerHTML = '<p style="color:#f87171">'+e.message+'</p>'; return; }
+      if (!d.success) { res.innerHTML = '<p style="color:#f87171">'+(d.error||'Failed')+'</p>'; return; }
+      _gst3bLast = d;
+      const o=d.outward, i=d.itc;
+      let h=`<div style="margin-bottom:0.6rem;color:var(--muted)">Period ${_e(d.from)} → ${_e(d.to)} · ${o.invoiceCount} sale invoices · ${i.billCount} vendor bills</div>`;
+      h+=`<div class="admin-table-wrap"><table class="admin-table"><thead><tr><th colspan="2">3.1 — Outward Supplies</th><th style="text-align:right">Value</th><th style="text-align:right">Tax</th></tr></thead><tbody>`;
+      h+=`<tr><td>(a)</td><td>Taxable (B2B + B2C)</td><td style="text-align:right">${_inr(o.taxableValue)}</td><td style="text-align:right">${_inr(o.taxAmount)}</td></tr>`;
+      h+=`<tr><td>(c)</td><td>Nil-rated / Exempt</td><td style="text-align:right">${_inr(o.exemptValue)}</td><td style="text-align:right">—</td></tr>`;
+      h+=`<tr style="font-weight:700;border-top:2px solid var(--gold)"><td colspan="2">Total outward tax liability</td><td style="text-align:right">${_inr(o.taxableValue+o.exemptValue)}</td><td style="text-align:right">${_inr(o.taxAmount)}</td></tr>`;
+      h+='</tbody></table></div>';
+      h+=`<div class="admin-table-wrap" style="margin-top:1rem;"><table class="admin-table"><thead><tr><th colspan="2">4 — Eligible ITC</th><th style="text-align:right">Value</th></tr></thead><tbody>`;
+      h+=`<tr><td colspan="2">Purchase value (posted vendor bills)</td><td style="text-align:right">${_inr(i.purchaseValue)}</td></tr>`;
+      h+=`<tr><td colspan="2">Gross ITC (before apportionment)</td><td style="text-align:right">${_inr(i.grossItc)}</td></tr>`;
+      h+=`<tr><td colspan="2">Taxable-turnover ratio (Rule 42)</td><td style="text-align:right">${i.turnoverRatioPct}%</td></tr>`;
+      h+=`<tr style="font-weight:700;border-top:2px solid var(--gold)"><td colspan="2">Estimated apportioned ITC</td><td style="text-align:right">${_inr(i.apportionedItc)}</td></tr>`;
+      h+='</tbody></table></div>';
+      h+=`<div style="margin-top:1rem;font-weight:700;">Estimated net tax payable: ${_inr(d.netTaxPayable)}</div>`;
+      h+=`<p style="font-size:0.78rem;color:var(--muted);margin-top:0.6rem;">Apportioned ITC and net payable are estimates for review — confirm the real Rule 42 split and any RCM self-invoice treatment with your accountant before filing.</p>`;
+      res.innerHTML = h;
+      document.getElementById('gst3b-csv-btn').style.display = '';
+      document.getElementById('gst3b-pdf-btn').style.display = '';
+    }
+    function gst3bExportCsv() {
+      if (!_gst3bLast) return; const d=_gst3bLast, o=d.outward, i=d.itc;
+      const rows=[['Metric','Value']];
+      rows.push(['Sale invoices',o.invoiceCount],['Taxable value',o.taxableValue],['Tax amount',o.taxAmount],
+        ['Exempt value',o.exemptValue],['B2B total',o.b2bTotal],['B2C total',o.b2cTotal],
+        ['Vendor bills',i.billCount],['Purchase value',i.purchaseValue],['Gross ITC',i.grossItc],
+        ['Turnover ratio %',i.turnoverRatioPct],['Estimated apportioned ITC',i.apportionedItc],
+        ['Estimated net tax payable',d.netTaxPayable]);
+      const csv=rows.map(r=>r.map(c=>`"${String(c==null?'':c).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+      const blob=new Blob([csv],{type:'text/csv'}), a=document.createElement('a');
+      a.href=URL.createObjectURL(blob); a.download=`yfb-gstr3b-${Date.now()}.csv`; a.click(); URL.revokeObjectURL(a.href);
+    }
+    function gst3bPdf() {
+      if (!_gst3bLast) return; const d=_gst3bLast, o=d.outward, i=d.itc;
+      const body='<table><tbody>'
+        +'<tr><td>Sale invoices</td><td class="r">'+o.invoiceCount+'</td></tr>'
+        +'<tr><td>Taxable Value</td><td class="r">'+_inr(o.taxableValue)+'</td></tr>'
+        +'<tr><td>Tax Amount</td><td class="r">'+_inr(o.taxAmount)+'</td></tr>'
+        +'<tr><td>Exempt Value</td><td class="r">'+_inr(o.exemptValue)+'</td></tr>'
+        +'<tr><td>B2B Total</td><td class="r">'+_inr(o.b2bTotal)+'</td></tr>'
+        +'<tr><td>B2C Total</td><td class="r">'+_inr(o.b2cTotal)+'</td></tr>'
+        +'<tr><td>Vendor Bills</td><td class="r">'+i.billCount+'</td></tr>'
+        +'<tr><td>Purchase Value</td><td class="r">'+_inr(i.purchaseValue)+'</td></tr>'
+        +'<tr><td>Gross ITC</td><td class="r">'+_inr(i.grossItc)+'</td></tr>'
+        +'<tr><td>Turnover Ratio</td><td class="r">'+i.turnoverRatioPct+'%</td></tr>'
+        +'<tr><td>Est. Apportioned ITC</td><td class="r">'+_inr(i.apportionedItc)+'</td></tr>'
+        +'<tr><td>Est. Net Tax Payable</td><td class="r">'+_inr(d.netTaxPayable)+'</td></tr>'
+        +'</tbody></table>';
+      _printReport('GSTR-3B SUMMARY (ESTIMATE)', 'Period '+_e(d.from)+' to '+_e(d.to), body);
     }
 
     // ── Memberships & Subscriptions (standalone, under Odoo → Reports) ─────────

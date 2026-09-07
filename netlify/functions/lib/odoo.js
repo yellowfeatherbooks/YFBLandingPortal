@@ -629,6 +629,39 @@ async function setPartnerAddress(partnerId, a) {
 //
 // order = { invoiceNo, customer, date:'YYYY-MM-DD', dayTotal, moneyIn,
 //           delivery, billDiscount, lines:[{ sku, title, qty, total }] }
+// Confirm a draft/quotation SO through delivery + invoicing + posting (+ optional
+// payment). Shared by both the fresh-SO path and the stuck-draft-recovery path
+// below, so the two can never silently diverge on how a sale gets finished.
+async function confirmAndInvoiceSalesOrder(soId, order, invoiceNo) {
+  await execKw('sale.order', 'action_confirm', [[soId]]);
+
+  const so = await findOne('sale.order', [['id', '=', soId]], ['picking_ids', 'name', 'amount_total']);
+  for (const pickId of (so.picking_ids || [])) await validateDelivery(pickId);
+
+  const wizId = await execKw('sale.advance.payment.inv', 'create',
+    [{ advance_payment_method: 'delivered' }],
+    { context: { active_model: 'sale.order', active_ids: [soId] } });
+  await execKw('sale.advance.payment.inv', 'create_invoices', [[wizId]],
+    { context: { active_model: 'sale.order', active_ids: [soId] } });
+
+  const soInv = await findOne('sale.order', [['id', '=', soId]], ['invoice_ids', 'name', 'amount_total']);
+  const invIds = soInv.invoice_ids || [];
+  let invoiceNumber = null, paymentState = null;
+  const orderDate = order.date || new Date().toISOString().slice(0, 10);
+  if (invIds.length) {
+    await execKw('account.move', 'write', [invIds, { invoice_date: orderDate }]);
+    await execKw('account.move', 'action_post', [invIds]);
+    const moneyIn = Number(order.moneyIn) || 0;
+    if (moneyIn > 0) {
+      try { await registerPaymentAmount(invIds[0], moneyIn, orderDate, MBB_PAY_JOURNAL); }
+      catch (e) { console.error(`mbb payment ${invoiceNo}:`, e.message); }
+    }
+    const inv = await findOne('account.move', [['id', '=', invIds[0]]], ['name', 'payment_state']);
+    invoiceNumber = inv && inv.name; paymentState = inv && inv.payment_state;
+  }
+  return { saleOrderId: soId, number: soInv.name, total: soInv.amount_total, invoiceNumber, paymentState };
+}
+
 async function createMbbSaleOrder(order, opts = {}) {
   if (!isConfigured()) throw new Error('Odoo is not configured (ODOO_URL/DB/USERNAME/PASSWORD)');
   const invoiceNo = order.invoiceNo;
@@ -640,6 +673,17 @@ async function createMbbSaleOrder(order, opts = {}) {
     [['client_order_ref', 'in', [ref, `sales:${invoiceNo}`]]],
     ['id', 'name', 'amount_total', 'state', 'client_order_ref']);
   if (existing) {
+    // A prior sync run can be interrupted after creating the SO but before it
+    // was confirmed/invoiced (e.g. a Netlify timeout) -- Odoo then leaves it as
+    // a draft Quotation forever. Its amount_total can already equal the
+    // incoming total exactly (confirmed live: YFB4691 / S00359, stuck in
+    // 'draft' with the correct ₹280), so the unchanged-total skip check below
+    // would never notice and this sale would stay un-invoiced no matter how
+    // many times the sync re-ran. Finish it instead of treating it as done.
+    if (existing.state === 'draft') {
+      const r = await confirmAndInvoiceSalesOrder(existing.id, order, invoiceNo);
+      return { invoiceNo, status: 'ok', recoveredStuckDraft: true, unresolved: [], ...r };
+    }
     // Incoming MyBillBook total for this invoice (grand total incl. delivery/discount).
     const incoming = round2(Number(order.dayTotal) || (order.lines || []).reduce((s, l) => s + (Number(l.total) || 0), 0)
       + (Number(order.delivery) || 0) - (Number(order.billDiscount) || 0));
@@ -712,37 +756,13 @@ async function createMbbSaleOrder(order, opts = {}) {
     partner_id: partnerId, client_order_ref: ref,
     date_order: `${orderDate} 00:00:00`, order_line: orderLine
   }]);
-  await execKw('sale.order', 'action_confirm', [[soId]]);
-
-  const so = await findOne('sale.order', [['id', '=', soId]], ['picking_ids', 'name', 'amount_total']);
-  for (const pickId of (so.picking_ids || [])) await validateDelivery(pickId);
-
-  const wizId = await execKw('sale.advance.payment.inv', 'create',
-    [{ advance_payment_method: 'delivered' }],
-    { context: { active_model: 'sale.order', active_ids: [soId] } });
-  await execKw('sale.advance.payment.inv', 'create_invoices', [[wizId]],
-    { context: { active_model: 'sale.order', active_ids: [soId] } });
-
-  const soInv = await findOne('sale.order', [['id', '=', soId]], ['invoice_ids', 'name', 'amount_total']);
-  const invIds = soInv.invoice_ids || [];
-  let invoiceNumber = null, paymentState = null;
-  if (invIds.length) {
-    await execKw('account.move', 'write', [invIds, { invoice_date: orderDate }]);
-    await execKw('account.move', 'action_post', [invIds]);
-    const moneyIn = Number(order.moneyIn) || 0;
-    if (moneyIn > 0) {
-      try { await registerPaymentAmount(invIds[0], moneyIn, orderDate, MBB_PAY_JOURNAL); }
-      catch (e) { console.error(`mbb payment ${invoiceNo}:`, e.message); }
-    }
-    const inv = await findOne('account.move', [['id', '=', invIds[0]]], ['name', 'payment_state']);
-    invoiceNumber = inv && inv.name; paymentState = inv && inv.payment_state;
-  }
+  const r = await confirmAndInvoiceSalesOrder(soId, order, invoiceNo);
 
   return {
-    invoiceNo, status: order.__edit ? 'edited' : 'ok', saleOrderId: soId, number: soInv.name,
-    total: soInv.amount_total, invoiceNumber, paymentState,
+    invoiceNo, status: order.__edit ? 'edited' : 'ok',
     lines: orderLine.length, unresolved,
-    ...(order.__edit ? { edit: order.__edit } : {})
+    ...(order.__edit ? { edit: order.__edit } : {}),
+    ...r
   };
 }
 

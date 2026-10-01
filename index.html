@@ -14153,11 +14153,25 @@ Questions? We're always here!
       // returns an HTML timeout page → "Unexpected token '<'").
       const BATCH = 1, all = [];
       let done = 0;
+      // "Failed to fetch" = no response at all (Wi-Fi blip, PC sleep). Without a
+      // retry, one drop fails every remaining order. Sync is idempotent (an order
+      // already in Odoo is skipped), so re-sending is safe.
+      async function postRetry(body) {
+        const waits = [3000, 8000, 15000];
+        for (let a = 0; ; a++) {
+          try { return await adminPost('admin-odoo-sync', body); }
+          catch (e) {
+            if (a >= waits.length || !/fetch|network/i.test(e.message)) throw e;
+            ptext.textContent = 'Connection dropped — retrying in ' + (waits[a] / 1000) + 's…';
+            await new Promise(res => setTimeout(res, waits[a]));
+          }
+        }
+      }
       for (let i = 0; i < orders.length; i += BATCH) {
         const slice = orders.slice(i, i + BATCH);
         ptext.textContent = 'Syncing ' + (i + 1) + '–' + Math.min(i + BATCH, orders.length) + ' of ' + orders.length + '…';
         let r;
-        try { r = await adminPost('admin-odoo-sync', { action: action, orders: slice, autoCreate: autoCreate, moveStock: moveStock, reconcileEdits: reconcileEdits }); }
+        try { r = await postRetry({ action: action, orders: slice, autoCreate: autoCreate, moveStock: moveStock, reconcileEdits: reconcileEdits }); }
         catch (e) { r = { success: false, error: e.message }; }
         if (r.success) {
           for (const x of (r.results || [])) {
@@ -14169,7 +14183,7 @@ Questions? We're always here!
               const o = slice.find(s => s.invoiceNo === x.invoiceNo) || slice[0];
               ptext.textContent = 'Rebuilding ' + x.invoiceNo + ' with the new lines…';
               let r2;
-              try { r2 = await adminPost('admin-odoo-sync', { action: action, orders: [o], autoCreate: autoCreate, moveStock: moveStock, reconcileEdits: false }); }
+              try { r2 = await postRetry({ action: action, orders: [o], autoCreate: autoCreate, moveStock: moveStock, reconcileEdits: false }); }
               catch (e) { r2 = { success: false, error: e.message }; }
               const built = r2.success && r2.results && r2.results[0];
               if (built && built.status !== 'fail') { built.status = 'edited'; built.edit = x.edit; all.push(built); }

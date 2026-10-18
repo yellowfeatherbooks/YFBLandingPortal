@@ -832,30 +832,12 @@ async function createMbbPurchaseOrder(p, opts = {}) {
   const billNo = p.billNo;
   if (!billNo) throw new Error('billNo is required');
   const ref = `mbbpo:${billNo}`;
-
-  const existingBill = await findOne('account.move',
-    [['move_type', '=', 'in_invoice'], ['ref', '=', ref], ['state', '!=', 'cancel']], ['id', 'name', 'amount_total']);
-  if (existingBill) return { billNo, status: 'skip', number: existingBill.name, total: existingBill.amount_total };
-  const existingPO = await findOne('purchase.order', [['partner_ref', '=', ref], ['state', '!=', 'cancel']], ['id', 'name', 'amount_total']);
-  if (existingPO) return { billNo, status: 'skip', number: existingPO.name, total: existingPO.amount_total };
+  const billDate = (p.date || new Date().toISOString().slice(0, 10));
+  const moneyOut = Number(p.moneyOut) || 0;
 
   const taxId = await purchaseTaxIdByName(TAX_EXEMPT);
   const taxCmd = [[6, 0, [taxId]]];
-  const vendorId = await ensureVendorByName(p.vendor);
-  const billDate = (p.date || new Date().toISOString().slice(0, 10));
-
-  const specs = [];
-  const unresolved = [];
-  const created = [];
-  for (const l of (p.lines || [])) {
-    const qty = Number(l.qty) > 0 ? Number(l.qty) : 1;
-    const total = Number(l.total) || 0;
-    const res = await ensureBookProduct({ sku: l.sku, title: l.title, cost: total / qty, autoCreate: opts.autoCreate });
-    if (!res) { unresolved.push(l.title || (l.sku || '')); continue; }
-    if (res.created) created.push({ sku: res.code, title: l.title });
-    specs.push({ prodId: res.id, name: l.title || 'Book', qty, price: round2(total / qty) });
-  }
-  if (!specs.length) throw new Error(`No resolvable book lines for purchase ${billNo}`);
+  const billLine = s => [0, 0, { product_id: s.prodId, name: s.name, quantity: s.qty, price_unit: s.price, tax_ids: taxCmd }];
 
   // Footer adjustments so the bill total matches the daybook: freight/other charges
   // (+, when daybook > line-sum) and trade discount (-, when daybook < line-sum).
@@ -872,7 +854,91 @@ async function createMbbPurchaseOrder(p, opts = {}) {
     const dp = await findOne('product.product', [['default_code', '=', DISCOUNT_SKU]], ['id']);
     if (dp) adj.push({ prodId: dp.id, name: 'Purchase discount', qty: 1, price: -round2(billDiscount) });
   }
-  const billLine = s => [0, 0, { product_id: s.prodId, name: s.name, quantity: s.qty, price_unit: s.price, tax_ids: taxCmd }];
+
+  // Post a (possibly half-finished) bill + register Money-Out. Each step checks
+  // state first, so it is safe on a bill a previous attempt left behind.
+  async function finish(billId, poId, extra) {
+    const cur = await findOne('account.move', [['id', '=', billId]], ['state', 'payment_state']);
+    if (cur.state === 'draft') {
+      const vals = { invoice_date: billDate, ref };
+      if (adj.length) {
+        const have = await execKw('account.move.line', 'search_read',
+          [[['move_id', '=', billId], ['product_id', 'in', adj.map(a => a.prodId)]]], { fields: ['product_id'] });
+        const haveIds = new Set(have.map(h => h.product_id && h.product_id[0]));
+        const missing = adj.filter(a => !haveIds.has(a.prodId));
+        if (missing.length) vals.invoice_line_ids = missing.map(billLine);  // freight/discount onto the bill
+      }
+      await execKw('account.move', 'write', [[billId], vals]);
+      await execKw('account.move', 'action_post', [[billId]]);
+    }
+    if (moneyOut > 0 && cur.payment_state !== 'paid' && cur.payment_state !== 'in_payment') {
+      const now = await findOne('account.move', [['id', '=', billId]], ['payment_state']);
+      if (now.payment_state === 'not_paid') {
+        try { await registerPaymentAmount(billId, moneyOut, billDate, MBB_PAY_JOURNAL); }
+        catch (e) { console.error(`mbb purchase payment ${billNo}:`, e.message); }
+      }
+    }
+    const bill = await findOne('account.move', [['id', '=', billId]], ['name', 'payment_state', 'amount_total']);
+    return {
+      billNo, status: 'ok', billId, poId, number: bill.name,
+      total: bill.amount_total, paymentState: bill.payment_state,
+      movedStock: !!opts.moveStock, ...extra
+    };
+  }
+
+  // Drive a PO forward from wherever it stopped: confirm -> receive (increments
+  // stock) -> create bill. Returns the bill id.
+  async function advancePO(poId) {
+    let po = await findOne('purchase.order', [['id', '=', poId]], ['state', 'picking_ids', 'invoice_ids']);
+    if (po.state === 'draft' || po.state === 'sent') {
+      await execKw('purchase.order', 'button_confirm', [[poId]]);
+      po = await findOne('purchase.order', [['id', '=', poId]], ['state', 'picking_ids', 'invoice_ids']);
+    }
+    if ((po.picking_ids || []).length) {
+      const picks = await execKw('stock.picking', 'search_read',
+        [[['id', 'in', po.picking_ids], ['state', 'not in', ['done', 'cancel']]]], { fields: ['id'] });
+      for (const pk of picks) await validateDelivery(pk.id);  // receipt -> increment
+    }
+    const live = (po.invoice_ids || []).length ? await findOne('account.move',
+      [['id', 'in', po.invoice_ids], ['state', '!=', 'cancel']], ['id']) : null;
+    if (live) return live.id;
+    await execKw('purchase.order', 'action_create_invoice', [[poId]]);
+    const poInv = await findOne('purchase.order', [['id', '=', poId]], ['invoice_ids']);
+    return (poInv.invoice_ids || [])[0];
+  }
+
+  // Idempotent AND resumable on ref 'mbbpo:<billNo>'. A previous attempt can die
+  // mid-chain (Netlify's sync limit -> "Unexpected token '<'"), leaving a confirmed
+  // PO with no bill, or a draft/unpaid bill. A plain "skip if it exists" would
+  // strand those forever, so finish them instead.
+  const existingBill = await findOne('account.move',
+    [['move_type', '=', 'in_invoice'], ['ref', '=', ref], ['state', '!=', 'cancel']],
+    ['id', 'name', 'amount_total', 'state', 'payment_state']);
+  if (existingBill) {
+    const complete = existingBill.state === 'posted' && !(moneyOut > 0 && existingBill.payment_state === 'not_paid');
+    if (complete) return { billNo, status: 'skip', number: existingBill.name, total: existingBill.amount_total };
+    return finish(existingBill.id, null, { resumed: true });
+  }
+  const existingPO = await findOne('purchase.order', [['partner_ref', '=', ref], ['state', '!=', 'cancel']], ['id', 'name']);
+  if (existingPO) {
+    const billId = await advancePO(existingPO.id);
+    if (!billId) throw new Error(`Vendor bill not created for purchase ${billNo}`);
+    return finish(billId, existingPO.id, { resumed: true });
+  }
+
+  const vendorId = await ensureVendorByName(p.vendor);
+  const specs = [];
+  const unresolved = [];
+  const created = [];
+  for (const l of (p.lines || [])) {
+    const qty = Number(l.qty) > 0 ? Number(l.qty) : 1;
+    const total = Number(l.total) || 0;
+    const res = await ensureBookProduct({ sku: l.sku, title: l.title, cost: total / qty, autoCreate: opts.autoCreate });
+    if (!res) { unresolved.push(l.title || (l.sku || '')); continue; }
+    if (res.created) created.push({ sku: res.code, title: l.title });
+    specs.push({ prodId: res.id, name: l.title || 'Book', qty, price: round2(total / qty) });
+  }
+  if (!specs.length) throw new Error(`No resolvable book lines for purchase ${billNo}`);
 
   let billId = null, poId = null;
   if (opts.moveStock) {
@@ -881,17 +947,7 @@ async function createMbbPurchaseOrder(p, opts = {}) {
       partner_id: vendorId, partner_ref: ref, date_order: `${billDate} 00:00:00`,
       order_line: specs.map(s => [0, 0, { product_id: s.prodId, name: s.name, product_qty: s.qty, price_unit: s.price, taxes_id: taxCmd }])
     }]);
-    await execKw('purchase.order', 'button_confirm', [[poId]]);
-    const po = await findOne('purchase.order', [['id', '=', poId]], ['picking_ids']);
-    for (const pickId of (po.picking_ids || [])) await validateDelivery(pickId);  // receipt -> increment
-    await execKw('purchase.order', 'action_create_invoice', [[poId]]);
-    const poInv = await findOne('purchase.order', [['id', '=', poId]], ['invoice_ids']);
-    billId = (poInv.invoice_ids || [])[0];
-    if (billId) {
-      const vals = { invoice_date: billDate, ref };
-      if (adj.length) vals.invoice_line_ids = adj.map(billLine);  // freight/discount onto the bill
-      await execKw('account.move', 'write', [[billId], vals]);
-    }
+    billId = await advancePO(poId);
   } else {
     // BACKFILL: direct vendor bill, no stock movement
     billId = await execKw('account.move', 'create', [{
@@ -900,20 +956,7 @@ async function createMbbPurchaseOrder(p, opts = {}) {
     }]);
   }
   if (!billId) throw new Error(`Vendor bill not created for purchase ${billNo}`);
-  await execKw('account.move', 'action_post', [[billId]]);
-
-  const moneyOut = Number(p.moneyOut) || 0;
-  if (moneyOut > 0) {
-    try { await registerPaymentAmount(billId, moneyOut, billDate, MBB_PAY_JOURNAL); }
-    catch (e) { console.error(`mbb purchase payment ${billNo}:`, e.message); }
-  }
-
-  const bill = await findOne('account.move', [['id', '=', billId]], ['name', 'payment_state', 'amount_total']);
-  return {
-    billNo, status: 'ok', billId, poId, number: bill.name,
-    total: bill.amount_total, paymentState: bill.payment_state,
-    lines: specs.length, unresolved, created, movedStock: !!opts.moveStock
-  };
+  return finish(billId, poId, { lines: specs.length, unresolved, created });
 }
 
 // MyBillBook expense category ("Exp. Name") -> Odoo account code. Ordered: first
@@ -1205,6 +1248,7 @@ module.exports = {
   createDirectSaleOrder,
   createMbbSaleOrder,
   createMbbPurchaseOrder,
+  ensureBookProduct,
   createMbbExpenseBill,
   applyStockSnapshot,
   getInvoicePdfBase64,

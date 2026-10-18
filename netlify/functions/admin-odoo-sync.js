@@ -108,6 +108,24 @@ exports.handler = async (event) => {
     return json({ success: true, results });
   }
 
+  // ── PURCHASE-PRODUCTS: create a few missing books ahead of their purchase ──
+  // Book creation is the slow part of a purchase with many new titles; doing it in
+  // small separate requests keeps the purchase call itself under Netlify's limit.
+  if (action === 'purchase-products') {
+    const lines = Array.isArray(body.lines) ? body.lines : [];
+    const created = [], unresolved = [];
+    for (const l of lines) {
+      try {
+        const qty = Number(l.qty) > 0 ? Number(l.qty) : 1;
+        const res = await odoo.ensureBookProduct({ sku: l.sku, title: l.title,
+          cost: (Number(l.total) || 0) / qty, autoCreate: body.autoCreate === true });
+        if (!res) unresolved.push(l.title || l.sku || '');
+        else if (res.created) created.push({ sku: res.code, title: l.title });
+      } catch (e) { unresolved.push((l.title || l.sku || '') + ' (' + e.message + ')'); }
+    }
+    return json({ success: true, created, unresolved });
+  }
+
   // ── EXPENSE: record a batch of MyBillBook expense vouchers as categorized bills ──
   if (action === 'expense') {
     const orders = Array.isArray(body.orders) ? body.orders : [];

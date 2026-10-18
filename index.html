@@ -14161,8 +14161,14 @@ Questions? We're always here!
         for (let a = 0; ; a++) {
           try { return await adminPost('admin-odoo-sync', body); }
           catch (e) {
-            if (a >= waits.length || !/fetch|network/i.test(e.message)) throw e;
-            ptext.textContent = 'Connection dropped — retrying in ' + (waits[a] / 1000) + 's…';
+            // A purchase that overran Netlify's limit returns an HTML page ("Unexpected
+            // token '<'"). Purchases resume from wherever Odoo got to, so retry those too.
+            const timedOut = body.action !== 'sales' && body.action !== 'expense' && /Unexpected token|not valid JSON/i.test(e.message);
+            if (a >= waits.length || !(timedOut || /fetch|network/i.test(e.message))) {
+              if (/Unexpected token|not valid JSON/i.test(e.message)) throw new Error('Timed out on the server (Odoo too slow) — re-run Sync; it resumes where it stopped');
+              throw e;
+            }
+            ptext.textContent = (timedOut ? 'Server timed out — resuming' : 'Connection dropped — retrying') + ' in ' + (waits[a] / 1000) + 's…';
             await new Promise(res => setTimeout(res, waits[a]));
           }
         }
@@ -14170,9 +14176,25 @@ Questions? We're always here!
       for (let i = 0; i < orders.length; i += BATCH) {
         const slice = orders.slice(i, i + BATCH);
         ptext.textContent = 'Syncing ' + (i + 1) + '–' + Math.min(i + BATCH, orders.length) + ' of ' + orders.length + '…';
+        // Purchases: create missing books first, 3 per request, so the bill request
+        // itself only has to find them (book creation is what overran the limit).
+        const preCreated = [];
+        if (action === 'purchase' && autoCreate) {
+          const unm = new Set((_osyncPayload.unmatched || []).map(u => String((u && u.title) || u).trim()));
+          const todo = slice.flatMap(o => (o.lines || []).filter(l => !l.sku || unm.has(String(l.title || '').trim())));
+          for (let k = 0; k < todo.length; k += 3) {
+            ptext.textContent = 'Creating books for ' + (slice[0].billNo || '') + ' (' + (k + 1) + '–' + Math.min(k + 3, todo.length) + ' of ' + todo.length + ')…';
+            try {
+              const pr = await postRetry({ action: 'purchase-products', lines: todo.slice(k, k + 3), autoCreate: true });
+              if (pr.success) preCreated.push(...(pr.created || []));
+            } catch (e) { /* the purchase call below retries creation itself */ }
+          }
+        }
         let r;
         try { r = await postRetry({ action: action, orders: slice, autoCreate: autoCreate, moveStock: moveStock, reconcileEdits: reconcileEdits }); }
         catch (e) { r = { success: false, error: e.message }; }
+        if (r.success && preCreated.length && r.results && r.results[0])
+          r.results[0].created = preCreated.concat(r.results[0].created || []);
         if (r.success) {
           for (const x of (r.results || [])) {
             if (x.needsRebuild) {
